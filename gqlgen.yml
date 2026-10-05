@@ -18,3 +18,9 @@ models:
     fields:
       appendices:
         resolver: true
+
+resolver:
+  filename_template: "{name}.resolvers.go"
+  dir: internal/resolvers
+  package: resolvers
+  layout: follow-schema

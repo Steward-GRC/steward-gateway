@@ -1,0 +1,37 @@
+# --- Phase 4: Delivery types ---
+# NOTE: The Phase 4 plan specifies a SectionDiff with fields
+# (sectionKey, changeType, diffHtml, boilerplate). The Phase 1 SectionDiff
+# (declared above) is the canonical type; PolicyDiff reuses it rather than
+# redefining the SDL type. Field semantics map cleanly:
+#   plan.diffHtml    -> existing.wordDiffHtml
+#   plan.boilerplate -> existing.isBoilerplate
+
+type RenderedContent { html: String! }
+
+type PolicyDiff { sections: [SectionDiff!]! }
+
+type PDFExportJob { jobId: String! }
+
+type PDFDownloadLink {
+  signedUrl: String!
+  expiresAt: String!
+}
+
+type MagicLink {
+  token: String!
+  expiresAt: String!
+}
+
+extend type Query {
+  renderedContent(policyVersionId: ID!): RenderedContent!
+  policyDiff(fromVersionId: ID!, toVersionId: ID!): PolicyDiff!
+  pdfDownloadLink(jobId: ID!): PDFDownloadLink!
+}
+
+extend type Mutation {
+  requestPDFExport(policyVersionId: ID!): PDFExportJob!
+  createMagicLink(policyVersionId: ID!, sensitive: Boolean!): MagicLink!
+  revokeMagicLink(token: String!): Boolean!
+}
+
+

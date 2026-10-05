@@ -1,0 +1,11 @@
+# The root operation types. Every domain file extends them; one file per
+# backend area keeps the resolvers split the same way (gqlgen follow-schema).
+type Query {
+  health: HealthStatus!
+}
+
+type Mutation
+
+type Subscription
+
+type HealthStatus { status: String! }

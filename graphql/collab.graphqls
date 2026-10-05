@@ -1,0 +1,27 @@
+extend type Mutation {
+  """
+  Issue a short-lived websocket token for the Collaboration service.
+  The caller must be authenticated and have at least Editor access to the draft's policy group.
+  """
+  issueCollabToken(input: IssueCollabTokenInput!): IssueCollabTokenPayload!
+}
+
+input IssueCollabTokenInput {
+  policyId:          ID!
+  draftId:           ID!
+  # Optional (collab#13): the pinned TemplateVersion.id, embedded in the collab
+  # JWT. Free-form policies have no template — which is most policies — so this
+  # is nullable and null/omitted is passed through to collab as empty. It was
+  # ID!, which made "no template" inexpressible and left co-editing unavailable
+  # for the normal case. core reads an empty value as "no pin" and still
+  # rejects a mismatched or omitted id on a templated draft.
+  templateVersionId: ID
+}
+
+type IssueCollabTokenPayload {
+  token:     String!
+  wsUrl:     String!
+  expiresAt: String!  # ISO-8601
+}
+
+

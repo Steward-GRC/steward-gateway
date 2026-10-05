@@ -1,0 +1,541 @@
+# --- AI: search-and-answer and authoring assist ---
+# Backed by modules/ai (AiService). Both fields are queries because neither
+# mutates persistent state. actor_user_id is bound from authmw claims.
+
+type AICitation {
+  policyId: ID!
+  policyTitle: String!
+  versionNo: Int!
+  versionId: ID!
+  sectionKey: String!
+  chunkId: ID
+  chunkIndex: Int
+  # documentType labels the cited source's kind ("POLICY" | "PROCEDURE") so the
+  # Ask UI can render "Procedure PRC-…" vs "Policy POL-…". Empty for legacy
+  # citations; treat as POLICY. (ai#25)
+  documentType: String
+}
+
+type SearchAndAnswerResult {
+  answer: String!
+  citations: [AICitation!]!
+  noAuthorizedSource: Boolean!
+  segments: [AnswerSegment!]!
+  hasSensitiveSource: Boolean!
+}
+
+type AnswerSegment {
+  start: Int!
+  end: Int!
+  sources: [SegmentSource!]!
+}
+
+type SegmentSource {
+  policyId: ID!
+  versionId: ID!
+  sectionKey: String!
+  chunkId: ID!
+  chunkIndex: Int!
+}
+
+type AuthoringAssistResult {
+  suggestion: String!
+  operationId: String!
+}
+
+enum AssistOperation {
+  ASSIST_OPERATION_UNSPECIFIED
+  ASSIST_OPERATION_DRAFT
+  ASSIST_OPERATION_EXPAND
+  ASSIST_OPERATION_REWRITE
+  ASSIST_OPERATION_CLARIFY
+  ASSIST_OPERATION_SUMMARIZE
+}
+
+input AuthoringAssistInput {
+  policyId: ID!
+  versionId: ID!
+  sectionKey: String!
+  editableContent: String!
+  contextHint: String
+  operation: AssistOperation!
+  instruction: String
+}
+
+extend type Query {
+  """
+  Grounded search-and-answer over policy content. authorizedGroupIds and
+  includeSensitive are derived server-side from the authenticated caller's
+  identity (via IdentityReadService.ListUserGroups + role claim) and are
+  NEVER trusted from client input. groupId is an optional scope hint and,
+  when set, must be a group the caller belongs to (PermissionDenied otherwise).
+  """
+  searchAndAnswer(question: String!, groupId: ID): SearchAndAnswerResult!
+  authoringAssist(input: AuthoringAssistInput!): AuthoringAssistResult!
+  """
+  Poll the status of a previously submitted async AI job (see
+  submitDraftGeneration). Once phase is SUCCEEDED, the result is available
+  under resultRef (a Redis key) — fetching the generated content itself is a
+  separate concern (ai#6); a future RabbitMQ-backed subscription (ai#8) will
+  push completion instead of requiring polling.
+  """
+  aiJob(jobId: ID!): AIJobStatus!
+  """
+  Usage-driven suggestions for a "Try asking" surface: the top questions
+  actually asked via searchAndAnswer, most-frequent first, ranked and
+  maintained server-side (ai owns the ask-count tracking). limit caps the
+  number returned (default 6); the result may be shorter when fewer
+  distinct questions have been asked yet.
+  """
+  topPolicyQuestions(limit: Int = 6): [String!]!
+  """
+  Read a previously-stored, publish-time policy summary for a version (see
+  PolicySummaryResult), so a viewer's summary panel can read it instead of
+  regenerating on every view. Null when no summary has been stored yet for
+  that version.
+  """
+  policyVersionSummary(versionId: ID!): PolicySummaryResult
+  """
+  AI-suggested related policies for a policy, derived from per-policy centroid
+  similarity (the mean of each policy's indexed chunk embeddings), nearest
+  first (ai#17). Results are access-filtered server-side by the caller's read
+  scope — the same READ model as searchAndAnswer (standard visible to all;
+  sensitive gated by group + sensitive-reader; site-admin bypass) — so a
+  suggestion never reveals a policy the caller cannot read. first caps the
+  number returned (default 10). Named distinctly from the author-owned
+  relatedPolicies (core explicit links) — these are AI proposals, never
+  auto-applied.
+  """
+  relatedPolicySuggestions(policyId: ID!, first: Int): [RelatedPolicySuggestion!]!
+}
+
+type PolicySummaryResult {
+  summaryText: String!
+  generatedAt: String!
+}
+
+type RelatedPolicySuggestion {
+  policyId: ID!
+  policyTitle: String!
+  groupId: ID!
+  versionNo: Int!
+  "Cosine distance between the two policies' centroids; lower is more related."
+  distance: Float!
+}
+
+# --- Async AI job framework ---
+# Generic, operation-typed job submission: the operator dispatches by
+# operation, writes the result to Redis (version-keyed), and publishes a
+# RabbitMQ completion event. DRAFT (whole-draft generation), REVIEW
+# (review & gap-analysis), and REVISE (whole-policy targeted revision) are
+# wired to mutations today; rewrite/clarify/summarize/qa reuse the same
+# PolicyAIJob CR shape and will get their own submit mutations as those
+# operations land.
+
+enum AIJobPhase {
+  AI_JOB_PHASE_PENDING
+  AI_JOB_PHASE_RUNNING
+  AI_JOB_PHASE_SUCCEEDED
+  AI_JOB_PHASE_FAILED
+}
+
+type AIJobStatus {
+  jobId: ID!
+  phase: AIJobPhase!
+  resultRef: String     # Redis key holding the result; set once phase=AI_JOB_PHASE_SUCCEEDED
+  error: String         # populated when phase=AI_JOB_PHASE_FAILED
+  startedAt: String     # RFC3339; null until phase leaves PENDING
+  finishedAt: String    # RFC3339; null until phase reaches SUCCEEDED/FAILED
+}
+
+# --- submitDraftGeneration: async template-driven whole-draft generation ---
+# Non-blocking replacement for the former synchronous generateDraft query:
+# one coherent LLM call across every section of the resolved template
+# (whole-document context), NOT one call per section, run by the operator
+# off the request path. The UI ("Generate with AI" dialog) polls aiJob (or,
+# later, subscribes) and must let the author review/edit before the result
+# is inserted into the Lexical editor and saved as a draft.
+
+input SubmitDraftGenerationSectionInput {
+  key: String!
+  title: String!
+  guidance: String    # optional author-facing guidance/help text for this section
+  order: Int!
+}
+
+input SubmitDraftGenerationInput {
+  groupId: ID          # optional scope hint; when set, must be a group the caller belongs to
+  title: String         # working title of the policy being drafted
+  brief: String!        # free-text authoring brief/instruction
+  sections: [SubmitDraftGenerationSectionInput!]!   # resolved template sections, in template order
+  referenceHints: [String!]                         # optional hints, e.g. titles of prior policies to model on
+  referenceDocuments: [ReferenceDocumentInput!]      # optional uploaded reference documents (structured, instead of folding into brief)
+  enrichmentOptOut: EnrichmentOptOutInput            # ai#20: per-category opt-out of the folded-in enrichment suggestions (default: all suggested)
+}
+
+# EnrichmentOptOutInput is the per-category opt-out chosen at generation kickoff
+# (ai#20 §6.4). A true value opts that category OUT — it produces no
+# suggestions. All-false/omitted suggests every category. Related uses centroid
+# KNN (zero LLM); definitions/references share one LLM call, skipped entirely
+# when both are opted out. References are constrained to the retrieved RAG
+# context, never fabricated.
+input EnrichmentOptOutInput {
+  definitions: Boolean
+  related: Boolean
+  references: Boolean
+}
+
+input ReferenceDocumentInput {
+  title: String!
+  content: String!
+}
+
+type SubmitDraftGenerationResult {
+  jobId: ID!
+}
+
+extend type Mutation {
+  """
+  Submit whole-draft generation as an async job and return immediately with a
+  jobId. authorizedGroupIds is derived server-side exactly as for
+  searchAndAnswer (never client-supplied); input.groupId is an optional scope
+  hint checked against it the same way. Poll aiJob(jobId) for the result.
+  """
+  submitDraftGeneration(input: SubmitDraftGenerationInput!): SubmitDraftGenerationResult!
+}
+
+# --- submitPolicyReview: async review & gap-analysis over an existing draft ---
+# Non-blocking, same job framework as submitDraftGeneration: the operator runs
+# generation.Review off the request path and writes a findings list to Redis
+# (result fetch is ai#6, same as DRAFT — not inlined here). Findings are
+# advisory only: this operation NEVER edits or otherwise mutates the policy.
+
+input SubmitPolicyReviewSectionInput {
+  key: String!
+  title: String!
+  content: String!    # the section's current draft content being reviewed
+}
+
+input SubmitPolicyReviewInput {
+  policyId: ID!
+  versionId: ID!
+  groupId: ID          # optional scope hint; when set, must be a group the caller belongs to
+  title: String         # working title of the policy being reviewed
+  sections: [SubmitPolicyReviewSectionInput!]!   # draft sections under review, in template order
+  standardsRefs: [String!]        # titles/citations of the policy's assigned standards
+  relatedPolicyRefs: [String!]     # titles of related policies to check consistency against
+  enrichmentOptOut: EnrichmentOptOutInput   # ai#20: per-category opt-out of the folded-in enrichment suggestions
+}
+
+type SubmitPolicyReviewResult {
+  jobId: ID!
+}
+
+extend type Mutation {
+  """
+  Submit review & gap-analysis of an existing policy draft as an async job and
+  return immediately with a jobId. authorizedGroupIds is derived server-side
+  exactly as for searchAndAnswer/submitDraftGeneration; input.groupId is an
+  optional scope hint checked against it the same way. Poll aiJob(jobId) for
+  the result: a findings list (sectionKey?/severity/finding/suggestion), never
+  an edit applied to the policy.
+  """
+  submitPolicyReview(input: SubmitPolicyReviewInput!): SubmitPolicyReviewResult!
+}
+
+# --- submitPolicyRevision: async whole-policy, targeted revision ---
+# Same job framework as submitDraftGeneration/submitPolicyReview: the
+# operator runs the REVISE generation off the request path. Unlike REWRITE
+# (a single editable region), REVISE takes the CURRENT content of every
+# section so the model has the whole policy in context and can make a
+# coherent, targeted change described by instruction — e.g. "add a data
+# retention clause to section 3 and update the summary to match" — without
+# losing the surrounding document. The result is fetched via
+# aiJobResultContent, same as DRAFT/REVIEW; suggested changes are never
+# auto-applied.
+
+input PolicyRevisionSectionInput {
+  key: String!
+  title: String!
+  content: String!    # the section's current content, so the model sees the whole policy
+  order: Int!
+}
+
+input SubmitPolicyRevisionInput {
+  policyId: ID!
+  versionId: ID!
+  instruction: String!                              # the requested change, in the author's words
+  sections: [PolicyRevisionSectionInput!]!           # the CURRENT policy sections WITH content, in order
+  enrichmentOptOut: EnrichmentOptOutInput            # ai#20: per-category opt-out of the folded-in enrichment suggestions
+}
+
+extend type Mutation {
+  """
+  Submit a targeted revision of an existing policy as an async job and
+  return immediately with a jobId. instruction describes the requested
+  change in the author's own words; sections carries the CURRENT content of
+  every section so the model revises with the whole policy in context
+  rather than one region blind. Poll aiJob(jobId) for status and fetch the
+  result via aiJobResultContent, same as submitDraftGeneration/
+  submitPolicyReview — a suggestion for review, never auto-applied.
+  """
+  submitPolicyRevision(input: SubmitPolicyRevisionInput!): SubmitDraftGenerationResult!
+}
+
+# --- submitEnrichmentSuggestions: async standalone enrichment proposals ---
+# ai#20: ask for enrichment proposals for an EXISTING draft/policy WITHOUT
+# regenerating the body — related policies (centroid KNN, zero LLM),
+# definitions, and references (constrained to the retrieved RAG context, never
+# fabricated). Same job framework as the generation mutations; the result rides
+# in aiJobResultContent.resultJson as {"suggestions":{...}} (see below). The
+# per-category opt-out and the dedupe library are resolved server-side and
+# passed through the job input. NEVER auto-applied — accept goes through the
+# EXISTING core mutations (setRelatedPolicies, setPolicyReferences/
+# createReference, setPolicyDefinitionEntries/createDefinitionEntry).
+
+input SubmitEnrichmentSuggestionsSectionInput {
+  key: String!
+  title: String!
+  content: String!    # the section's current content the suggestions reason over
+}
+
+input SubmitEnrichmentSuggestionsInput {
+  policyId: ID!
+  versionId: ID
+  groupId: ID          # optional scope hint; when set, must be a group the caller belongs to
+  title: String         # working title of the policy
+  sections: [SubmitEnrichmentSuggestionsSectionInput!]!   # current policy sections, in order
+  enrichmentOptOut: EnrichmentOptOutInput                  # per-category opt-out (default: all suggested)
+}
+
+extend type Mutation {
+  """
+  Submit a standalone enrichment-suggestion job (ai#20) and return immediately
+  with a jobId. Produces per-category proposals (related/definitions/references)
+  without regenerating the policy. Poll aiJob(jobId) and fetch the result via
+  aiJobResultContent — the suggestions ride in resultJson. Never auto-applied.
+  """
+  submitEnrichmentSuggestions(input: SubmitEnrichmentSuggestionsInput!): SubmitDraftGenerationResult!
+}
+
+# --- aiJobResultContent: fetch async AI job content by resultRef ---
+# This is the fetch-by-resultRef query the AIJobStatus/AIJobResult doc
+# comments above point to (tagged ai#6 there — note that numbering collides
+# with the unrelated two-tier Redis+pgvector semantic-cache change, also
+# ai#6; left as-is, not renumbered). Content is kept out of AIJobStatus/
+# AIJobResult on purpose (see their doc comments): polling/subscribing is one
+# concern, fetching the (potentially large) generated body is another.
+#
+# resultJson is the JSON-encoded generation payload as the operator wrote it
+# (opaque string on the wire, same posture as saveDraft's contentJson) —
+# shape depends on operation:
+#   DRAFT  -> {"sections":[{"sectionKey":"...","content":"..."}]}
+#   REVIEW -> {"findings":[{"sectionKey":"...","severity":"...",
+#                            "finding":"...","suggestion":"..."}]}
+#
+# ai#20 enrichment suggestions (§6.3): DRAFT/REVIEW/REVISE results additionally
+# carry a "suggestions" block when the author did not opt every category out,
+# and SUGGEST_ENRICHMENTS results are entirely that block:
+#   {"suggestions":{
+#      "related":[{"policyId","title","groupId","versionNo","distance"}],
+#      "definitions":[{"term","definition"?,"action":"attach_existing|create_new",
+#                       "existingEntryId"?}],
+#      "references":[{"label","kind":"STANDARD","action":"attach_existing|create_new",
+#                      "existingReferenceId"?,"sourcePolicyId"}]}}
+# References are constrained to the retrieved RAG context (sourcePolicyId names
+# the retrieved policy) — never a model-fabricated citation. Accept a suggestion
+# via the EXISTING core mutations (setRelatedPolicies, setPolicyReferences/
+# createReference, setPolicyDefinitionEntries/createDefinitionEntry); the AI
+# layer never writes core.
+
+type AIJobResultContent {
+  operation: String!
+  resultJson: String!
+}
+
+extend type Query {
+  """
+  Fetch the generated content of a completed async AI job by resultRef (from
+  AIJobStatus.resultRef / AIJobResult.resultRef, set once phase=
+  AI_JOB_PHASE_SUCCEEDED). Reads the job-result envelope from Redis and
+  returns it as operation + resultJson (opaque, operation-shaped JSON — see
+  above). Errors if resultRef doesn't resolve (not yet written, or past its
+  TTL).
+  """
+  aiJobResultContent(resultRef: String!): AIJobResultContent!
+}
+
+# --- AI health + kill switch (best-effort degrade) ---
+# The AI service is best-effort: the rest of the app must keep working
+# whether it's up or down. aiHealth never errors on a downstream failure —
+# an unreachable ai svc or a Claude outage comes back as a clean
+# available:false, never a GraphQL error, so the UI can disable AI features
+# without the failure bubbling into unrelated flows.
+type AIHealth {
+  available: Boolean!
+  """
+  Populated only when available is false: "ai_service_unavailable" (ai svc
+  unreachable — a genuine outage, applies to everyone including a
+  site-admin), "disabled_by_admin" (the manual kill switch is off — a
+  site-admin bypasses this one and stays available), or
+  "claude_unavailable" (Claude itself is degraded — a genuine outage,
+  applies to everyone). Null when available is true.
+  """
+  reason: String
+}
+
+# The retrieval candidate count (top_k) the ai service pulls before ranking
+# when answering questions over policy content. DB-backed (Redis-cached),
+# site-admin tunable — mirrors the aiModel config surface.
+type AIRetrievalConfig {
+  """
+  The current EFFECTIVE retrieval candidate count (top_k) used when the ai
+  service gathers policy chunks before ranking. DB-configured when a
+  site-admin has set one, else the bootstrap default (50). The server clamps
+  to a ceiling, so this is the value actually in force. Not a secret —
+  returned verbatim for the admin Settings page.
+  """
+  topK: Int!
+}
+
+# The result of setting a user's per-day AI query limit (ai#14). AI query
+# limits cap AI-driven intake (searchAndAnswer / authoringAssist / whole-draft
+# generation) per user, per day, independent of the site-admin AI on/off kill
+# switch. A site-admin is always exempt.
+type AIUserQueryLimit {
+  """
+  The target user's now-effective per-day AI query limit. Meaningless when
+  unlimited is true.
+  """
+  effectiveLimit: Int!
+  """True when the user has no per-day cap (limit set to -1)."""
+  unlimited: Boolean!
+  """
+  True when the user has no override and is therefore governed by the global
+  default limit.
+  """
+  isDefault: Boolean!
+}
+
+extend type Query {
+  """
+  Whether AI is usable right now for the calling user. See AIHealth's field
+  docs for the precedence between a genuine outage (nobody bypasses) and
+  the manual admin-off toggle (a site-admin bypasses it).
+  """
+  aiHealth: AIHealth!
+  """
+  The raw site-admin AI on/off flag, independent of ai-svc/Claude
+  reachability (see aiHealth for the full picture) — for the admin UI to
+  show the current toggle state. DB-backed (Redis-cached).
+  """
+  aiEnabled: Boolean!
+  """
+  Whether a Claude token is currently stored in the DB-backed AI config.
+  WRITE-ONLY credential: there is no query that returns the token's value,
+  ever — only this presence flag, so the admin UI's masked token field can
+  show "token is stored and not retrievable — you can only replace it"
+  versus "no token set" without the value ever leaving the database.
+  """
+  aiTokenSet: Boolean!
+  """
+  The current EFFECTIVE Claude model id jobs run on: the DB-configured
+  value when a site-admin has set one, else the ANTHROPIC_MODEL_ID
+  bootstrap default. Not a secret (unlike the token) — returned verbatim so
+  the admin Settings page shows what jobs actually run on. DB-backed
+  (Redis-cached).
+  """
+  aiModel: String!
+  """
+  The current retrieval config (top_k) the ai service uses when gathering
+  policy chunks before ranking. DB-backed (Redis-cached). See
+  AIRetrievalConfig.topK for the effective-value semantics.
+  """
+  aiRetrievalConfig: AIRetrievalConfig!
+}
+
+extend type Mutation {
+  """
+  Site-admin only. Turns AI intake on/off: gates NEW submits/queries only
+  (searchAndAnswer/authoringAssist/submitDraftGeneration/
+  submitPolicyReview/submitPolicyRevision) — a job already running is NOT affected and
+  completes normally (graceful drain, not a hard stop). A job already in a
+  retry-after-failure state when this turns off IS hard-stopped rather than
+  continuing to retry. DB-backed (Redis-cached).
+  """
+  setAIEnabled(enabled: Boolean!): Boolean!
+  """
+  Site-admin only. Stores the Claude bearer token used by the ai service
+  and operator to call Claude, in the DB-backed ai_config table — replacing
+  the ANTHROPIC_AUTH_TOKEN/ANTHROPIC_API_KEY env vars as the production
+  credential source (no Kubernetes Secret is provisioned for it). Returns
+  true on success. WRITE-ONLY end to end: there is no query that returns
+  the token's value, ever, not even masked — see aiTokenSet for the
+  presence-only flag the admin UI renders instead.
+  """
+  setAIToken(token: String!): Boolean!
+  """
+  Site-admin only. Sets the Claude model id new jobs run on, in the
+  DB-backed ai_config table — the durable replacement for pinning the model
+  in Helm (ANTHROPIC_MODEL_ID is now only a bootstrap default). A change
+  affects only jobs submitted after it (the model is snapshotted at
+  submission), never a job already running. Pass an empty string to clear
+  the override and fall back to the bootstrap default. Returns true on
+  success; read the now-effective model back via aiModel.
+  """
+  setAIModel(modelId: String!): Boolean!
+  """
+  Site-admin only. Sets the retrieval candidate count (top_k) the ai service
+  pulls before ranking when answering over policy content, in the DB-backed
+  ai_config table. Pass 0 to clear the override and fall back to the
+  bootstrap default (50); the server clamps to a ceiling. A change affects
+  only jobs submitted after it. Returns the now-effective value (echoed back
+  by the ai service after clamping) so the admin UI can reflect what was
+  actually applied.
+  """
+  setAIRetrievalConfig(topK: Int!): AIRetrievalConfig!
+  """
+  Site-admin only. Sets a single user's per-day AI query limit (ai#14),
+  independent of the global AI on/off toggle. Pass a value >= 1 for an
+  explicit per-day cap, 0 to clear the override so the user reverts to the
+  global default (50), or -1 for unlimited. Site-admins are always exempt from
+  AI query limits regardless of this setting. Returns the now-effective state.
+  Over-limit AI queries fail with the AI_QUOTA_EXCEEDED error code.
+  """
+  setUserAiQueryLimit(userId: ID!, limit: Int!): AIUserQueryLimit!
+}
+
+
+# --- AI job result push (ai#8): completion pushed over the websocket ---
+# Mirrors the CompletionEvent the operator publishes on the "ai.jobs" topic
+# exchange (routing keys ai.job.succeeded / ai.job.failed) once a PolicyAIJob
+# reaches a terminal phase. This stream replaces polling aiJob(jobId): it
+# signals completion so the "Generate with AI" dialog can stop polling and move
+# the author to the review surface. It carries only the job's terminal outcome
+# and resultRef (the Redis key); the generated *content* is fetched separately
+# by resultRef (ai#6), NOT inlined here — keeping the push cheap and the result
+# encoding a single concern of the fetch path.
+type AIJobResult {
+  jobId: ID!
+  phase: AIJobPhase!
+  resultRef: String    # Redis key holding the result; set once phase=AI_JOB_PHASE_SUCCEEDED
+  error: String         # populated when phase=AI_JOB_PHASE_FAILED
+  finishedAt: String    # RFC3339; the operator's finished_at
+}
+
+extend type Subscription {
+  """
+  Streams the terminal result of a single async AI job to its submitter. The
+  subscriber is authenticated from session claims (never from input); only the
+  job's own submitter (matched on the event's actor_user_id) receives events,
+  and only for the requested jobId — a caller cannot observe another user's
+  job. On subscribe the resolver first checks GetAIJob: if the job already
+  reached a terminal phase (the completion event fired before the client
+  subscribed) it emits that immediately, then streams any live completion, so a
+  late subscriber never misses the result. The channel closes when the terminal
+  event is delivered or the client disconnects.
+  """
+  aiJobResult(jobId: ID!): AIJobResult!
+}
+
+

@@ -1,0 +1,678 @@
+extend type Query {
+
+  # Groups
+  group(id: ID!): Group
+  groupChildren(parentId: ID): [Group!]!
+
+  # Templates
+  templates(ownerGroupId: ID): [Template!]!
+  latestTemplateVersion(templateId: ID!): TemplateVersion
+  # All versions of a template (newest first), incl. drafts — admin authoring.
+  templateVersions(templateId: ID!): [TemplateVersion!]!
+
+  # Policies
+  policy(id: ID!): Policy
+  # documentType filters by kind (core#26): null => policies-only (back-compat,
+  # spec §2.8); POLICY or PROCEDURE filters to that kind explicitly.
+  policies(groupId: ID!, includeDescendants: Boolean, documentType: DocumentType): [Policy!]!
+  policyVersion(id: ID!): PolicyVersion
+  policyVersions(policyId: ID!): [PolicyVersion!]!   # published versions, oldest-first
+  diffVersions(fromVersionId: ID!, toVersionId: ID!): [SectionDiff!]!
+  effectiveTemplate(policyId: ID!): EffectiveTemplate
+}
+
+extend type Mutation {
+  # Groups
+  createGroup(name: String!, slug: String!, parentId: ID): Group!
+  # Template tri-state: pass defaultTemplateNone=true to set the group's default
+  # template to explicit NONE (freeform); defaultTemplateId is then ignored.
+  # defaultTemplateNone=false with a defaultTemplateId sets that specific
+  # template; false with a null id means inherit from the ancestor chain.
+  setGroupDefaults(id: ID!, defaultTemplateId: ID, defaultWorkflowId: ID, defaultTemplateNone: Boolean): Group!
+  # Rename a taxonomy group (name + slug). Does NOT renumber existing policies.
+  renameGroup(id: ID!, name: String!, slug: String!): Group!
+  # Delete a taxonomy group and its policy-free descendants. Refused
+  # (FAILED_PRECONDITION) when the group or any descendant owns policies.
+  deleteGroup(id: ID!): Boolean!
+  # Move a taxonomy group (and its whole descendant subtree) under a new parent.
+  # A null newParentId promotes the group to a root (top-level). Re-parents only
+  # the group row: policies keep their home_group_id and effective governance is
+  # computed live from the ancestor chain, so there is no per-policy rewrite.
+  # Refused (FAILED_PRECONDITION) when the move would exceed max depth 3 or create
+  # a cycle (moving a group under itself or one of its descendants); nothing is
+  # applied on failure.
+  moveGroup(groupId: ID!, newParentId: ID): Group!
+
+  # Templates
+  createTemplate(name: String!, ownerGroupId: ID): Template!
+  createTemplateVersion(templateId: ID!, sections: [SectionInput!]!): TemplateVersion!
+  # Save edits to a draft version's sections (the authoring "Save"). Published
+  # versions are immutable.
+  updateTemplateVersionSections(id: ID!, sections: [SectionInput!]!): TemplateVersion!
+  publishTemplateVersion(id: ID!): TemplateVersion!
+  # Discard (delete) a draft version. Published versions can't be discarded.
+  discardTemplateVersion(id: ID!): Boolean!
+  # Retire (soft-delete): hides the template from listings/pickers but keeps
+  # its versions so policies that pinned them keep working.
+  retireTemplate(id: ID!): Template!
+  # Hard-delete (dev-only, server-gated): physically removes an UNREFERENCED
+  # template. Fails if any policy references it — retire those instead.
+  deleteTemplate(id: ID!): Boolean!
+  # Rename a template's display name. Template-level, NON-VERSIONED (like
+  # renameGroup): does NOT create a new template version — the version list and
+  # count are unchanged. Templates have no slug, so this is name-only.
+  renameTemplate(id: ID!, name: String!): Template!
+
+  # Policies
+  # The owner/actor user is bound at the gateway from authmw claims;
+  # NEVER trusted from input. See docs/auth-flow.md.
+  # documentType is OPTIONAL (core#26): null => POLICY.
+  createPolicy(homeGroupId: ID!, title: String!, sensitivity: Sensitivity!, templateId: ID, documentType: DocumentType): Policy!
+  # templateVersionId is OPTIONAL: pass null or "" for a freeform (no-template)
+  # draft — the draft is saved with no pinned template version and template/
+  # section validation is skipped. A non-null id pins that template version and
+  # validates content against it.
+  saveDraft(policyId: ID!, contentJson: String!, templateVersionId: ID): PolicyVersion!
+  # setPolicyTemplate sets the policy-level template tri-state override. none=true
+  # → explicit NONE (freeform), templateId ignored; none=false with a templateId
+  # → that specific template; none=false with null templateId → inherit from the
+  # owning group chain.
+  setPolicyTemplate(policyId: ID!, templateId: ID, none: Boolean!): Policy!
+  # publishDraft cuts the policy's working draft as a published version. Gated
+  # on the effective-author model, like saveDraft. The order is:
+  #   1. flush: collab persists the live editing room's newest checkpoint to
+  #      core, so the version is not cut from content older than the room
+  #      holds. No live room is the normal case and is not an error.
+  #   2. publish: core cuts the version.
+  #   3. freeze: collab drops the live room to read-only. Best effort; a
+  #      failure here never fails the mutation, because core has committed.
+  # Any flush failure stops the mutation before core publishes, with a coded
+  # error (extensions.code / codeNum / domain "gateway" / kind):
+  #   COLLAB_FLUSH_UNAVAILABLE (1242, kind reach): collab or core could not be
+  #     reached in time. Retrying is safe; the message says so.
+  #   COLLAB_FLUSH_REJECTED (1243, kind business): core refused the room's
+  #     content, or the room belongs to another policy. extensions.reason
+  #     carries the refusal, which the message also includes.
+  #   COLLAB_FLUSH_FAILED (1244, kind reach): any other collab failure.
+  # With no collab configured the flush and the freeze are both skipped.
+  publishDraft(policyId: ID!): PolicyVersion!
+  # Discard (delete) a policy's working draft. Only the draft is removed — the
+  # policy and any published versions are untouched.
+  discardDraft(policyId: ID!): Boolean!
+  # Hard-delete a never-published policy (site-admin/category-author). Removes
+  # the policy, its draft, and any appendices. Refused if ever published.
+  deletePolicy(id: ID!): Boolean!
+  # Retire (soft-delete) a policy: hides it from listings and cancels outstanding
+  # ack obligations while KEEPING published-version history and completed acks.
+  # Works on a published policy (unlike deletePolicy). Authorized at the SAME
+  # effective-author tier as saveDraft/discardDraft/deletePolicy (site-admin,
+  # primary author, or a non-denied category author).
+  retirePolicy(id: ID!): Policy!
+  # Site-admin: reassign a policy's owner (author).
+  setPolicyOwner(policyId: ID!, ownerUserId: ID!): Policy!
+  # Site-admin: move a policy to another section; renumbers to the target's sequence.
+  movePolicy(policyId: ID!, homeGroupId: ID!): Policy!
+  # Flip a policy's classification (STANDARD <-> SENSITIVE) in place. This is a
+  # direct metadata change — it does NOT create a new version and does NOT trigger
+  # the approval workflow. Allowed for any user with edit access to the policy.
+  setPolicySensitivity(policyId: ID!, sensitivity: Sensitivity!): Policy!
+  # Rename a policy. A never-published policy is renamed in place immediately
+  # (staged=false). For a published policy the new title is staged on a draft
+  # version and takes effect only when that draft is submitted for approval and
+  # published (staged=true, draftVersionId set) — it is NOT auto-submitted.
+  # Allowed for any user with edit access to the policy.
+  renamePolicy(policyId: ID!, newTitle: String!): RenamePolicyResult!
+
+  # Break-glass: a site-admin requests a time-boxed, audited reveal of a policy
+  # whose content they would otherwise see obfuscated (excluded from its group).
+  # A non-empty reason is required. The grant flips subsequent reads to real
+  # content until grantedUntil.
+  breakGlassReveal(policyId: ID!, reason: String!): BreakGlassResult!
+
+  # Site-admin: re-index a policy's current published version into the AI search
+  # corpus. A first-class backend re-index trigger (ai#22): it re-runs section
+  # extraction through the current extractor and re-emits ONLY to the AI indexer
+  # — it does NOT re-send the compliance review email. Audited as policy.reindexed.
+  reindexPolicy(policyId: ID!): ReindexResult!
+  # Site-admin: re-index a specific published policy version. Rejects drafts and
+  # superseded versions. Same AI-only re-index as reindexPolicy.
+  reindexPolicyVersion(policyVersionId: ID!): ReindexResult!
+}
+
+# ReindexResult reports what an admin re-index queued: the version re-indexed,
+# how many section texts were emitted, and how many prior (superseded) versions'
+# chunks were purged so exactly the current published version stays searchable.
+type ReindexResult {
+  versionId: ID!
+  sections: Int!
+  removedPrior: Int!
+}
+
+
+
+enum Sensitivity { STANDARD SENSITIVE }
+
+# Policy vs procedure discriminator (core#26). Procedures are excluded from the
+# ack pipeline; otherwise they share the policies surface and lifecycle.
+enum DocumentType { POLICY PROCEDURE }
+
+enum AckTrigger { NONE ON_PUBLISH ON_CHANGE }
+enum ReviewCadence { NONE ANNUAL BIENNIAL ON_DATE }
+
+type Group {
+  id: ID!
+  name: String!
+  slug: String!
+  parentId: ID
+  # Template tri-state. defaultTemplateNone=true → explicit NONE (freeform),
+  # stop inheritance; defaultTemplateId set → that specific template;
+  # both unset (none=false, id=null) → inherit from ancestor chain.
+  defaultTemplateId: ID
+  defaultTemplateNone: Boolean!
+  defaultWorkflowId: ID
+  owners: [ID!]!
+  # Per-group ack-audience AD group names. Empty list = "no audience" (explicit
+  # override, treat as everyone per compliance service). Not-set is represented
+  # as null here (inherit from ancestor). Parallels exclusionGroupIds semantics.
+  adGroupIds: [String!]
+  ackTriggers: AckTrigger!
+  reviewCadence: ReviewCadence!
+  reviewDate: String
+  # Per-group exclusion group names. Empty list = "no exclusions" (explicit
+  # override). Not-set is represented as null here (inherit from ancestor).
+  exclusionGroupIds: [String!]
+  # Ack-audience "Everyone" tri-state (parallels adGroupIds nullability). When
+  # the resolved value is true, every user must ack (the trigger still decides
+  # WHETHER an ack is required). ackEveryoneSet=false means this group inherits
+  # from its ancestor chain; true means it carries its own value.
+  ackEveryone: Boolean!
+  ackEveryoneSet: Boolean!
+}
+
+# EffectiveGovernance carries the inherited ack-audience and exclusion group
+# names resolved by walking the ancestor chain with the leaf-wins rule. null
+# means no group in the chain has set a value (i.e. "unset / inherit from
+# system default", which is treated as everyone for audience or nobody for
+# exclusions by the compliance service).
+type EffectiveGovernance {
+  ackAudienceGroups: [String!]
+  exclusionGroups: [String!]
+  # Resolved ack-audience "Everyone" flag after nearest-ancestor-wins
+  # inheritance (false when no group in the chain sets it). When true, the ack
+  # audience is ALL users and ackAudienceGroups is irrelevant.
+  ackEveryone: Boolean!
+}
+
+type Template {
+  id: ID!
+  code: String!          # human-readable display code, TPL-NNN
+  name: String!
+  ownerGroupId: ID
+  retiredAt: String      # RFC3339; null = active. Set = retired (soft-deleted).
+}
+
+type TemplateVersion {
+  id: ID!
+  templateId: ID!
+  versionNo: Int!
+  status: String!
+  sections: [Section!]!
+}
+
+type Section {
+  key: String!
+  title: String!
+  order: Int!
+  level: Int!          # heading depth H1-H5 (1-5)
+  required: Boolean!   # must be filled before a policy can be submitted
+  blocks: [Block!]!
+}
+
+type Block {
+  type: String!
+  contentJson: String
+}
+
+input SectionInput {
+  key: String!
+  title: String!
+  order: Int!
+  level: Int          # optional; defaults to 1 (H1) when omitted
+  required: Boolean    # optional; defaults to false
+  blocks: [BlockInput!]!
+}
+
+input BlockInput {
+  type: String!
+  contentJson: String
+}
+
+type Policy {
+  id: ID!
+  homeGroupId: ID!
+  number: String!
+  title: String!
+  sensitivity: Sensitivity!
+  # Policy vs procedure (core#26). Non-null: UNSPECIFIED from core maps to POLICY.
+  documentType: DocumentType!
+  ownerUserId: ID!
+  ownerName: String       # resolved from identity service; null when lookup unavailable
+  createdAt: String       # RFC-3339 timestamp of first-version creation; null when unavailable
+  currentPublishedVersionId: ID
+  currentDraftVersionId: ID
+  # Template tri-state. templateNone=true → explicit NONE (freeform), overrides
+  # the group chain; templateId set → that specific template; both unset
+  # (none=false, id=null) → inherit from the owning group chain.
+  templateId: ID
+  templateNone: Boolean!
+  templateUpdateAvailable: Boolean!
+  ackTriggers: AckTrigger      # null = inherit owning group's
+  ackAudienceOverride: [ID!]   # null = subtree(owning group)
+  viewerCan: PolicyViewerCan!  # per-viewer authorization decision (server-computed)
+  retiredAt: String            # RFC3339; null = active. Set = retired (soft-deleted).
+}
+
+# PolicyViewerCan is the per-viewer authorization projection of a Policy,
+# computed server-side by the authz decision core. The UI mirrors these for
+# UX only; the gateway is the real enforcement boundary.
+type PolicyViewerCan {
+  read: Boolean!              # the viewer may see this policy at all
+  edit: Boolean!             # the viewer may author/edit (scoped, in-category)
+  submit: Boolean!           # the viewer may submit for approval (scoped)
+  approve: Boolean!          # the viewer may approve (scoped)
+  contentObfuscated: Boolean! # body is served obfuscated (excluded site-admin)
+  canBreakGlass: Boolean!    # the viewer may break-glass to reveal real content
+  # ack: true when the RACI chart places the viewer in this policy's ack
+  # audience (ack rule match, merit-evaluated, read-gated; per-policy
+  # override-allow uses the ungated ack match; override-deny → false).
+  ack: Boolean!
+}
+
+# BreakGlassResult is returned by breakGlassReveal: the RFC-3339 instant until
+# which the time-boxed reveal grant is active.
+type BreakGlassResult {
+  grantedUntil: String!
+}
+
+# RenamePolicyResult is returned by renamePolicy. staged=false means the new
+# title was applied in place (never-published policy). staged=true means it was
+# staged on a draft version (draftVersionId) awaiting submission + approval.
+type RenamePolicyResult {
+  policy: Policy!
+  staged: Boolean!
+  draftVersionId: ID
+}
+
+type PolicyVersion {
+  id: ID!
+  policyId: ID!
+  versionNo: Int!
+  status: String!
+  templateVersionId: ID!
+  contentJson: String!
+  appendices: [Appendix!]!
+}
+
+type Appendix {
+  id: ID!
+  policyVersionId: ID!
+  title: String!
+  contentJson: String!
+  orderIndex: Int!
+  letter: String!   # derived from orderIndex (A=0); single letter in v1
+}
+
+type SectionDiff {
+  sectionKey: String!
+  sectionTitle: String!
+  changeType: String!
+  wordDiffHtml: String
+  isBoilerplate: Boolean!
+}
+
+type EffectiveTemplate {
+  # none=true means the effective template resolved to explicit NONE (freeform):
+  # templateId / templateVersionId are empty and the policy should be treated as
+  # template-free rather than an error. The `effectiveTemplate` query returns a
+  # value (not null) in this case, with none=true.
+  templateId: ID!
+  templateVersionId: ID!
+  none: Boolean!
+}
+
+# --- Group governance + policy ack (ADM-06 / #3b) ---
+extend type Query {
+  """
+  Returns the effective (inherited) ack-audience and exclusion groups for a
+  category group by applying the leaf-wins ancestor-chain rule. Use this for
+  read-only display of inherited values and for the directory picker affordance
+  ("override" vs. "inherited from <ancestor>").
+  """
+  effectiveGovernance(groupId: ID!): EffectiveGovernance!
+}
+
+extend type Mutation {
+  """
+  Persists governance fields on a category group. adGroupIds and
+  exclusionGroupIds are validated against the live lldap directory groups. Pass
+  an empty list to explicitly set "no audience" / "no exclusions" (overriding
+  any ancestor value); pass null (or omit) to leave the field unchanged so an
+  inherited value is preserved. The stored per-group values (not the inherited
+  effective values) are returned in the Group response. ackEveryone is
+  tri-state like adGroupIds: pass true/false to set this group's own value,
+  pass null (or omit) to leave it inheriting from the ancestor chain.
+  """
+  setGroupGovernance(id: ID!, owners: [ID!]!, adGroupIds: [String!], exclusionGroupIds: [String!], ackTriggers: AckTrigger!, reviewCadence: ReviewCadence!, reviewDate: String, ackEveryone: Boolean): Group!
+  setPolicyAck(policyId: ID!, ackTriggers: AckTrigger, ackAudienceOverride: [ID!]): Policy!
+}
+
+
+# --- Global settings (cross-app banners) ---
+# Persisted server-side so a site-admin's Announcement + Maintenance notice
+# render as top banners in BOTH apps (platform ui + ui-admin). Backed by
+# policy-core SettingsService.
+type Announcement {
+  enabled: Boolean!
+  level: String!
+  message: String!
+}
+
+type Maintenance {
+  enabled: Boolean!
+  message: String!
+}
+
+type GlobalSettings {
+  announcement: Announcement!
+  maintenance: Maintenance!
+}
+
+input AnnouncementInput {
+  enabled: Boolean!
+  level: String!
+  message: String!
+}
+
+input MaintenanceInput {
+  enabled: Boolean!
+  message: String!
+}
+
+input GlobalSettingsInput {
+  announcement: AnnouncementInput!
+  maintenance: MaintenanceInput!
+}
+
+# Readable by both apps (unauthenticated read is fine; goes through authmw).
+extend type Query { globalSettings: GlobalSettings! }
+
+# Site-admin only.
+extend type Mutation { setGlobalSettings(input: GlobalSettingsInput!): GlobalSettings! }
+
+# --- Mailgun transport configuration (site-admin) ---
+# The Mailgun sending configuration for the platform email transport, persisted
+# server-side and backed by policy-core SettingsService. WRITE-ONLY credential:
+# setMailgunConfig accepts the api key, but NO field ever returns it — the only
+# thing the GraphQL surface reveals about the key is apiKeySet (a presence
+# flag), mirroring aiTokenSet. The key-bearing read path lives on an
+# internal-only service that the gateway never references, so the secret cannot
+# leak through this surface.
+type MailgunConfigStatus {
+  """
+  Whether a Mailgun sending key is currently stored. The key's value is never
+  returned by any query — only this presence flag, so the admin Settings page
+  can show "a key is stored and not retrievable — you can only replace it"
+  versus "no key set" without the value ever leaving the database.
+  """
+  apiKeySet: Boolean!
+  domain: String!
+  region: String!
+  fromAddress: String!
+  enabled: Boolean!
+}
+
+input MailgunConfigInput {
+  """
+  WRITE-ONLY, presence-tracked. The Mailgun sending api key. Stored server-side
+  and never read back — there is no query that returns it, not even masked (see
+  apiKeySet). Nullable so the field carries three states on save: omitted/null
+  leaves the stored key unchanged (persist non-secret fields without re-sending
+  the key); an empty string "" clears the stored key; a non-empty value sets it.
+  """
+  apiKey: String
+  domain: String!
+  region: String!
+  fromAddress: String!
+  enabled: Boolean!
+}
+
+# Site-admin only. Presence + non-secret configuration view; never the key.
+extend type Query { mailgunConfig: MailgunConfigStatus! }
+
+# Site-admin only. Stores the api key together with the non-secret config and
+# returns the keyless status.
+extend type Mutation { setMailgunConfig(input: MailgunConfigInput!): MailgunConfigStatus! }
+
+
+# --- Appendices ---
+extend type Mutation {
+  addAppendix(policyVersionId: ID!, title: String!, contentJson: String!): Appendix!
+  updateAppendix(id: ID!, title: String!, contentJson: String!): Appendix!
+  reorderAppendices(policyVersionId: ID!, orderedIds: [ID!]!): [Appendix!]!
+  deleteAppendix(id: ID!): Boolean!
+}
+
+# --- Related policies (structured links) ---
+# Per-policy NON-VERSIONED structured links to other policies (core#9): stored
+# one-way by id and resolved live to the related policy's number+title, so
+# relationships are data rather than free text in the body. Editing them does
+# not create a new policy version. setRelatedPolicies is a full replace.
+type RelatedPolicy {
+  policyId: ID!
+  number: String!
+  title: String!
+}
+extend type Query {
+  relatedPolicies(policyId: ID!): [RelatedPolicy!]!
+  # Policies eligible to be linked as related to the given policy (core#22).
+  # A candidate B is offered only when every user who can READ the subject
+  # policy can also read B (readers(subject) ⊆ readers(B)) — the same RACI read
+  # decision + sensitivity gate the read model uses — so a link can never create
+  # a dangling/leaky reference some of the subject's readers cannot follow. The
+  # subject policy itself and policies the caller cannot see are excluded. This
+  # is an advisory filter for the picker; setRelatedPolicies enforces the same
+  # rule authoritatively.
+  relatedPolicyCandidates(policyId: ID!): [Policy!]!
+}
+extend type Mutation {
+  # A full replace of the policy's related-policy set. Rejected when any proposed
+  # link violates the read-superset rule (readers(policyId) ⊆ readers(link));
+  # see relatedPolicyCandidates.
+  setRelatedPolicies(policyId: ID!, relatedPolicyIds: [ID!]!): [RelatedPolicy!]!
+}
+
+# --- Reusable contact blocks (library object) ---
+# A reusable contact-information block (core#13) defined once (admin-managed
+# library) and referenced by many policies. A policy references blocks by id and
+# renders them LIVE (track-latest): editing a block centrally updates every
+# referencing policy. Attach/detach is a per-policy NON-VERSIONED change
+# (setPolicyContactBlocks is a full replace). Only name is required.
+type ContactBlock {
+  id: ID!
+  # label is the REQUIRED human name authors pick by; name/role are optional.
+  label: String!
+  name: String
+  role: String
+  department: String
+  email: String
+  phone: String
+  hours: String
+  notes: String
+  # archived blocks drop out of the active library + author picker, but a
+  # still-attached archived block keeps resolving live on existing policies.
+  archived: Boolean!
+  # number of policies referencing this block (read-only indicator).
+  usedByCount: Int!
+}
+input ContactBlockInput {
+  label: String!
+  name: String
+  role: String
+  department: String
+  email: String
+  phone: String
+  hours: String
+  notes: String
+}
+extend type Query {
+  # The reusable contact-block library (admin). Defaults to ACTIVE only; pass
+  # includeArchived=true to include archived blocks.
+  contactBlocks(includeArchived: Boolean): [ContactBlock!]!
+  # The blocks attached to a policy, resolved live (incl. attached-but-archived).
+  policyContactBlocks(policyId: ID!): [ContactBlock!]!
+}
+extend type Mutation {
+  createContactBlock(block: ContactBlockInput!): ContactBlock!
+  updateContactBlock(id: ID!, block: ContactBlockInput!): ContactBlock!
+  deleteContactBlock(id: ID!): Boolean!
+  # Archive (true) or restore (false) a library block.
+  setContactBlockArchived(id: ID!, archived: Boolean!): ContactBlock!
+  setPolicyContactBlocks(policyId: ID!, contactBlockIds: [ID!]!): [ContactBlock!]!
+}
+
+# --- References / Standards library (library object) ---
+# A reusable References/Standards entry (core#20) defined once (admin-managed
+# library) and referenced by many policies, mirroring the reusable contact-block
+# library above. A policy references entries by id and renders them LIVE
+# (track-latest): editing an entry centrally updates every referencing policy.
+# Attach/detach is a per-policy NON-VERSIONED change (setPolicyReferences is a
+# full replace). Only label is required.
+enum ReferenceKind { STANDARD TEXT LINK }
+type Reference {
+  id: ID!
+  # label is the REQUIRED human name authors pick by.
+  label: String!
+  kind: ReferenceKind!
+  # clause is an optional section/clause citation (e.g. "§4.2").
+  clause: String
+  # body is free text (TEXT kind); url is an external link (LINK kind).
+  body: String
+  url: String
+  # archived entries drop out of the active library + author picker, but a
+  # still-attached archived entry keeps resolving live on existing policies.
+  archived: Boolean!
+  createdByUserId: ID
+  # number of policies referencing this entry (read-only indicator).
+  usedByCount: Int!
+}
+input ReferenceInput {
+  label: String!
+  kind: ReferenceKind!
+  clause: String
+  body: String
+  url: String
+}
+extend type Query {
+  # The reusable references/standards library (admin). Defaults to ACTIVE only;
+  # pass includeArchived=true to include archived entries.
+  references(includeArchived: Boolean): [Reference!]!
+  # The references attached to a policy, resolved live (incl. attached-but-archived).
+  policyReferences(policyId: ID!): [Reference!]!
+}
+extend type Mutation {
+  createReference(input: ReferenceInput!): Reference!
+  updateReference(id: ID!, input: ReferenceInput!): Reference!
+  deleteReference(id: ID!): Boolean!
+  # Archive (true) or restore (false) a library entry.
+  setReferenceArchived(id: ID!, archived: Boolean!): Reference!
+  setPolicyReferences(policyId: ID!, referenceIds: [ID!]!): [Reference!]!
+}
+
+# --- Definitions library (category-scoped library object) ---
+# A reusable, CATEGORY-SCOPED glossary entry (core#25) defined once and attached
+# by many policies, mirroring the References/Standards library above with one
+# addition: a categoryId scope. A definition belongs to a category (a group);
+# the staff attach picker for a policy offers definitions whose categoryId is in
+# that policy's ancestor chain (leaf -> root). A policy attaches entries by id
+# and renders them LIVE (track-latest): editing an entry centrally updates every
+# attaching policy. Attach/detach is a per-policy NON-VERSIONED change
+# (setPolicyDefinitionEntries is a full replace). Definition text is PLAIN.
+type DefinitionEntry {
+  id: ID!
+  # owning category (group) — the sharing scope.
+  categoryId: ID!
+  term: String!
+  definition: String!
+  # archived entries drop out of the active library + author picker, but a
+  # still-attached archived entry keeps resolving live on existing policies.
+  archived: Boolean!
+  createdByUserId: ID
+  # number of policies attaching this entry (read-only indicator).
+  usedByCount: Int!
+}
+input DefinitionEntryInput {
+  # required on create, immutable on update.
+  categoryId: ID!
+  term: String!
+  definition: String!
+}
+extend type Query {
+  # The reusable definitions library (admin). categoryId (optional) scopes the
+  # list to a single category; omit it for all categories. Defaults to ACTIVE
+  # only; pass includeArchived=true to include archived entries.
+  definitions(categoryId: ID, includeArchived: Boolean): [DefinitionEntry!]!
+  # The definitions attachable to a policy: those whose category is in the
+  # policy's ancestor chain (leaf -> root). Backs the staff attach picker.
+  policyDefinitionCandidates(policyId: ID!, includeArchived: Boolean): [DefinitionEntry!]!
+  # The definitions attached to a policy, resolved live (incl. attached-but-archived).
+  policyDefinitionEntries(policyId: ID!): [DefinitionEntry!]!
+}
+extend type Mutation {
+  createDefinition(input: DefinitionEntryInput!): DefinitionEntry!
+  updateDefinition(id: ID!, input: DefinitionEntryInput!): DefinitionEntry!
+  deleteDefinition(id: ID!): Boolean!
+  # Archive (true) or restore (false) a library entry.
+  setDefinitionArchived(id: ID!, archived: Boolean!): DefinitionEntry!
+  setPolicyDefinitionEntries(policyId: ID!, definitionIds: [ID!]!): [DefinitionEntry!]!
+}
+
+# --- RACI category rulesets ---
+enum RaciGrant { BLANK ALLOW DENY }
+enum RaciSubjectKind { EVERYONE GROUP USER }
+
+type RaciRule {
+  subjectKind: RaciSubjectKind!
+  subjectRef: String!
+  read: RaciGrant!
+  ack: RaciGrant!
+  approve: RaciGrant!
+  author: RaciGrant!
+}
+input RaciRuleInput {
+  subjectKind: RaciSubjectKind!
+  subjectRef: String!
+  read: RaciGrant!
+  ack: RaciGrant!
+  approve: RaciGrant!
+  author: RaciGrant!
+}
+type CategoryRuleset { categoryId: ID!  rules: [RaciRule!]! }
+type RaciDecision {
+  read: Boolean!  ack: Boolean!  approve: Boolean!  author: Boolean!
+  readReason: String!  ackReason: String!  approveReason: String!  authorReason: String!
+}
+extend type Query {
+  categoryRuleset(categoryId: ID!): CategoryRuleset!
+  simulateCategory(categoryId: ID!, userId: ID!, draftRules: [RaciRuleInput!]): RaciDecision!
+  categoryApprovers(categoryId: ID!): [User!]!
+  """
+  viewerIsApprover is true when the signed-in user holds RACI Approve in any
+  category (rule-granted or owner); drives the staff Approvals-section eligibility.
+  """
+  viewerIsApprover: Boolean!
+}
+extend type Mutation {
+  setCategoryRuleset(categoryId: ID!, rules: [RaciRuleInput!]!): CategoryRuleset!
+}
+
+

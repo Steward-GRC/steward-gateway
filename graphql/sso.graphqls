@@ -1,0 +1,134 @@
+# ---------------------------------------------------------------------------
+# SSO admin (SAML/OIDC organization connections) — site-admin only.
+# Backed by the identity IdentitySSOAdminService. An Organization is one email
+# domain's SSO connection: unverified, untested and disabled until the domain is
+# verified and the IdP connection is tested. Group mappings translate asserted
+# IdP group-claim values to platform groups; the SP certificate is the SAML
+# service-provider signing key (rotated in place).
+# ---------------------------------------------------------------------------
+
+# One organization SSO connection, keyed by email domain.
+type Organization {
+  domain: String!
+  orgName: String!
+  protocol: String!
+  displayName: String!
+  # The connection alias (identity's keycloak_alias column, kept under its
+  # historical name). /auth/sso/start?connection=<alias> matches it against
+  # identity Discover; Keycloak itself is retired.
+  keycloakAlias: String!
+  verified: Boolean!
+  testPassed: Boolean!
+  enabled: Boolean!
+  connectionId: ID!
+  # When true (default), a first-seen SSO user is auto-provisioned on sign-in
+  # (identity#26). When false, only a pre-provisioned platform user may sign in
+  # via SSO; an unknown SSO email is refused.
+  jitEnabled: Boolean!
+  # When true, this org's users may sign in with a local password as a fallback
+  # even while SSO is configured (identity#27). Defaults false (SSO-only).
+  allowLocal: Boolean!
+}
+
+# One SP (service-provider) signing certificate. notAfter is RFC3339; active is
+# true for at most one certificate at a time.
+type SpCertificate {
+  serial: String!
+  certPem: String!
+  spMetadataXml: String!
+  notAfter: String!
+  active: Boolean!
+}
+
+# Maps a single asserted IdP group-claim value to a platform group by id. Group
+# names are unique only per-parent, so the target is a group id (UUID) to avoid
+# granting the wrong same-named group during JIT provisioning.
+type GroupMapping {
+  id: ID!
+  connectionId: ID!
+  idpGroupClaimValue: String!
+  targetGroupId: ID!
+}
+
+# DNS TXT domain-verification challenge minted by startDomainVerification: add a
+# TXT record named dnsRecordName with value dnsRecordValue, then call verifyDomain.
+type DomainVerification {
+  token: String!
+  dnsRecordName: String!
+  # Exact TXT value to publish (<prefix>=<token>); the prefix is per-environment
+  # (policy-verify in prod; policy-verify-dev / policy-verify-qa in lower envs).
+  dnsRecordValue: String!
+  instructions: String!
+}
+
+# A single IdP connection config entry (e.g. SAML entityId/ssoUrl/x509cert or
+# OIDC issuer/clientId). Passed as a list because GraphQL has no map type.
+input KeyValueInput {
+  key: String!
+  value: String!
+}
+
+# New organization SSO connection. The actor is bound from the caller's claims
+# at the gateway (never from input). config carries protocol-specific IdP
+# connection settings; secretRef names the stored client secret (OIDC).
+input AddOrganizationInput {
+  orgName: String!
+  domain: String!
+  protocol: String!
+  displayName: String
+  config: [KeyValueInput!]
+  secretRef: String
+}
+
+extend type Query {
+  # All configured organization SSO connections.
+  organizations: [Organization!]!
+  # A single organization SSO connection by email domain, or null if none.
+  organization(domain: String!): Organization
+  # The active SP (service-provider) signing certificate.
+  spCertificate: SpCertificate!
+  # All SP signing certificates (history); the active one is included.
+  spCertificates: [SpCertificate!]!
+  # An organization's IdP-group-claim-to-platform-group mappings.
+  groupMappings(connectionId: ID!): [GroupMapping!]!
+}
+
+extend type Mutation {
+  # Register a new organization SSO connection (unverified, untested, disabled
+  # until the domain is verified and the IdP connection is tested).
+  addOrganization(input: AddOrganizationInput!): Organization!
+  # Mint a DNS TXT verification challenge for a domain. The token is stable by
+  # default (re-calling returns the same token). Pass rotate: true to mint a
+  # fresh token — the one explicit action that changes it, which also revokes
+  # the domain's prior verified proof (identity#12).
+  startDomainVerification(domain: String!, rotate: Boolean): DomainVerification!
+  # Check the domain's DNS TXT record against its verification token; returns
+  # the updated organization.
+  verifyDomain(domain: String!): Organization!
+  # Enable an organization's SSO connection for login.
+  activateOrganization(domain: String!): Organization!
+  # Disable an organization's SSO connection.
+  disableOrganization(domain: String!): Organization!
+  # Update an organization's per-org login toggles: jitEnabled (identity#26)
+  # and allowLocal (identity#27). Each argument is optional — omit one to leave
+  # it unchanged and flip only the other.
+  updateIdPConnection(domain: String!, jitEnabled: Boolean, allowLocal: Boolean): Organization!
+  # Change an organization's IdP protocol (SAML<->OIDC). DESTRUCTIVE: it
+  # re-provisions the backend IdP for the new protocol and resets the org to the
+  # start — clearing both gates (verified + testPassed) and disabling the
+  # connection — so the domain must be re-verified and the IdP re-tested before
+  # re-activation. config carries the new protocol's IdP settings; secretRef
+  # names the stored client secret (OIDC) (identity#13).
+  changeOrgProtocol(domain: String!, protocol: String!, config: [KeyValueInput!], secretRef: String): Organization!
+  # Remove an organization SSO connection.
+  deleteOrganization(domain: String!): Boolean!
+  # Add an IdP-group-claim-to-platform-group mapping for a connection.
+  addGroupMapping(connectionId: ID!, idpGroupClaimValue: String!, targetGroupId: ID!): GroupMapping!
+  # Remove a group mapping by id.
+  deleteGroupMapping(mappingId: ID!): Boolean!
+  # Mint a new SP signing certificate and activate it immediately, superseding
+  # the previous one.
+  forceRotateSpCertificate: SpCertificate!
+}
+
+

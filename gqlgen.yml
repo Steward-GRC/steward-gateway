@@ -1,0 +1,20 @@
+# gqlgen configuration. The SDL in graphql/ is the gateway's own contract and
+# the single source of truth for steward-web; one file per backend area.
+# Regenerate with `go tool gqlgen generate` (Taskfile: task gqlgen).
+
+schema:
+  - graphql/*.graphqls
+
+exec:
+  filename: internal/resolvers/generated.go
+  package: resolvers
+
+model:
+  filename: internal/resolvers/models_gen.go
+  package: resolvers
+
+models:
+  PolicyVersion:
+    fields:
+      appendices:
+        resolver: true

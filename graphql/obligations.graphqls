@@ -1,0 +1,140 @@
+# --- Compliance: acknowledgments, obligations, notification prefs, reporting ---
+# Backed by modules/compliance-notify (AckService, ObligationService,
+# NotifPrefService, ReportingService). The caller's user id is always sourced
+# from authmw claims at the gateway — never from input — for any field that
+# represents the actor.
+
+type Obligation {
+  policyId: ID!
+  number: String!
+  title: String!
+  version: String!
+  policyVersionId: ID!
+}
+
+type Acknowledgment {
+  id: ID!
+  userId: ID!
+  policyVersionId: ID!
+  ackedAt: String!
+}
+
+type AckStatus {
+  acknowledged: Boolean!
+  ackedAt: String   # ISO-8601; null when acknowledged=false
+}
+
+type NotificationPref {
+  userId: ID!
+  email: Boolean!
+  inApp: Boolean!
+  push: Boolean!
+}
+
+input NotificationPrefInput {
+  email: Boolean!
+  inApp: Boolean!
+  push: Boolean!
+}
+
+# Per-user notification cadence model (compliance-notify#8 slices 2-3). The
+# caller's user id is always bound from authmw claims at the gateway.
+enum NotifCadence { IMMEDIATE DAILY WEEKLY OFF }
+enum NotifCategory { COMPLIANCE SECURITY TRANSACTIONAL WORKFLOW INFORMATIONAL }
+
+# A category's resolved cadence. mandatory=true (compliance/security/
+# transactional) means the UI must not offer OFF — the server rejects it.
+type CategoryPref { category: NotifCategory! cadence: NotifCadence! mandatory: Boolean! }
+
+# How the system realizes a chosen cadence for a notification type. Never
+# user-editable. This is a client's ONLY reliable per-type cadence floor:
+# setTypeCadence rejects OFF for mandatory kinds but still ACCEPTS DAILY/WEEKLY
+# for an IMMEDIATE_ONLY kind and clamps it at send time, so a UI must read this
+# rather than infer batchability from `mandatory`.
+enum NotifDelivery {
+  # Sent the instant the event fires, never batched (transactional/security/
+  # critical, plus the locked first ack demand). Do not offer DAILY/WEEKLY.
+  IMMEDIATE_ONLY
+  # Immediate when the cadence is IMMEDIATE, else rolled into the digest.
+  IMMEDIATE_OR_DIGEST
+  # Recurring compliance driven by the scheduler, or folded into the
+  # pending-ack digest when a digest cadence is chosen.
+  REMINDER_SCHEDULE
+  # Defaults to the daily roll-up; IMMEDIATE is allowed but discouraged.
+  DIGEST_PREFERRED
+}
+
+# An advanced per-type override, carrying the type's category + mandatory flag
+# and the system's delivery policy for that kind.
+type TypePref { kind: String! category: NotifCategory! cadence: NotifCadence! mandatory: Boolean! delivery: NotifDelivery! }
+
+# One row of the notification-type taxonomy: the system's classification of a
+# notification kind, independent of any user's stored choices. Display labels
+# for the individual kinds are presentation and live in the UI, not here.
+type NotifTypeDef { kind: String! category: NotifCategory! mandatory: Boolean! delivery: NotifDelivery! }
+# The user's digest delivery anchor: local hour [0,23], ISO day-of-week [1,7].
+type DigestWindow { dailyHour: Int! weeklyDow: Int! }
+
+type NotificationSettings {
+  channels: NotificationPref!         # existing email/inApp/push master switches
+  categories: [CategoryPref!]!        # the primary control
+  overrides: [TypePref!]!             # advanced per-type overrides
+  digest: DigestWindow!
+}
+
+type OverdueEntry { userId: ID! email: String! userName: String }
+type CompletionReport {
+  totalAudience: Int!
+  totalAcked: Int!
+  completionPct: Float!
+  avgDaysToAck: Float!
+  viewedNotAckedCount: Int!
+  overdue: [OverdueEntry!]!
+}
+
+type AckRosterEntry { userId: ID! email: String! userName: String ackedAt: String }
+type AckRoster { acked: [AckRosterEntry!]! pending: [AckRosterEntry!]! }
+type AckActivityDay { date: String! acks: Int! views: Int! }
+
+# Per-caller acknowledgement compliance summary: how many policies the caller is
+# obligated to ack (required) and how many of those they have already acked
+# (done). Backs the "Acknowledgement compliance" widget on My work.
+type AckSummary { required: Int! done: Int! }
+
+type AckExport {
+  # base64-encoded payload as produced by ReportingService.ExportAcks.
+  data: String!
+  contentType: String!
+}
+
+extend type Query {
+  myObligations: [Obligation!]!
+  myAckSummary: AckSummary!
+  obligatedAudienceCount(policyId: ID!): Int!
+  ackStatus(policyVersionId: ID!): AckStatus!
+  notificationPref: NotificationPref! @deprecated(reason: "Use notificationSettings.channels")
+  notificationSettings: NotificationSettings!
+  # The notification-type taxonomy: every type the platform sends. Reference
+  # data, identical for every caller. A preferences UI needs this in addition
+  # to notificationSettings because `overrides` carries only the per-type
+  # choices a user has already saved — empty for a new user.
+  notificationTypeCatalog: [NotifTypeDef!]!
+  completionReport(policyVersionId: ID!, groupId: ID): CompletionReport!
+  exportAcks(policyVersionId: ID!, format: String!): AckExport!
+  ackRoster(policyVersionId: ID!, groupId: ID): AckRoster!
+  ackActivity(policyVersionId: ID!, groupId: ID, days: Int!): [AckActivityDay!]!
+}
+
+extend type Mutation {
+  recordAck(policyVersionId: ID!): Acknowledgment!
+  upsertNotificationPref(input: NotificationPrefInput!): NotificationPref! @deprecated(reason: "Use setNotificationChannels")
+  # Notification cadence model. The server rejects OFF for mandatory categories/
+  # types (compliance/security/transactional) — the compliance floor.
+  setCategoryCadence(category: NotifCategory!, cadence: NotifCadence!): NotificationSettings!
+  setTypeCadence(kind: String!, cadence: NotifCadence!): NotificationSettings!
+  setDigestWindow(dailyHour: Int!, weeklyDow: Int!): NotificationSettings!
+  setNotificationChannels(input: NotificationPrefInput!): NotificationSettings!
+  recordView(policyVersionId: ID!): Boolean!
+}
+
+

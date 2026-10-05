@@ -1,0 +1,18 @@
+# .protos/ holds the callee protos scripts/proto-generate.sh fetches at the
+# commits pinned in proto-refs.env. Their owners maintain them; they're never
+# edited or committed here. The gateway has no proto of its own.
+version: v2
+modules:
+  - path: .protos/steward-ai
+  - path: .protos/steward-audit
+  - path: .protos/steward-collab
+  - path: .protos/steward-core
+  - path: .protos/steward-delivery
+  - path: .protos/steward-identity
+  - path: .protos/steward-obligations
+  - path: .protos/steward-reporting
+  - path: .protos/steward-workflow
+lint:
+  use: [STANDARD]
+breaking:
+  use: [FILE]

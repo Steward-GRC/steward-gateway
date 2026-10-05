@@ -1,10 +1,7 @@
-# --- Phase 4: Delivery types ---
-# NOTE: The Phase 4 plan specifies a SectionDiff with fields
-# (sectionKey, changeType, diffHtml, boilerplate). The Phase 1 SectionDiff
-# (declared above) is the canonical type; PolicyDiff reuses it rather than
-# redefining the SDL type. Field semantics map cleanly:
-#   plan.diffHtml    -> existing.wordDiffHtml
-#   plan.boilerplate -> existing.isBoilerplate
+# --- Delivery ---
+# PolicyDiff reuses core's SectionDiff: delivery's diff_html is wordDiffHtml and
+# its boilerplate flag is isBoilerplate. Delivery sends no section title, so
+# sectionTitle is the section key.
 
 type RenderedContent { html: String! }
 

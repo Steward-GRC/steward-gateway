@@ -256,6 +256,24 @@ type BulkDecideResult struct {
 	BulkBatchID string            `json:"bulkBatchId"`
 }
 
+type Category struct {
+	ID                  string        `json:"id"`
+	Name                string        `json:"name"`
+	Slug                string        `json:"slug"`
+	ParentID            *string       `json:"parentId,omitempty"`
+	DefaultTemplateID   *string       `json:"defaultTemplateId,omitempty"`
+	DefaultTemplateNone bool          `json:"defaultTemplateNone"`
+	DefaultWorkflowID   *string       `json:"defaultWorkflowId,omitempty"`
+	Owners              []string      `json:"owners"`
+	IdpGroupIds         []string      `json:"idpGroupIds,omitempty"`
+	AckTriggers         AckTrigger    `json:"ackTriggers"`
+	ReviewCadence       ReviewCadence `json:"reviewCadence"`
+	ReviewDate          *string       `json:"reviewDate,omitempty"`
+	ExclusionGroupIds   []string      `json:"exclusionGroupIds,omitempty"`
+	AckEveryone         bool          `json:"ackEveryone"`
+	AckEveryoneSet      bool          `json:"ackEveryoneSet"`
+}
+
 type CategoryPref struct {
 	Category  NotifCategory `json:"category"`
 	Cadence   NotifCadence  `json:"cadence"`
@@ -380,6 +398,34 @@ type EffectiveWorkflow struct {
 	FirstUnstaffedStage *string `json:"firstUnstaffedStage,omitempty"`
 }
 
+type EmailServiceConfigInput struct {
+	// WRITE-ONLY, presence-tracked. The sending api key. Stored server-side and
+	// never read back (see apiKeySet). Nullable so the field carries three states
+	// on save: omitted/null leaves the stored key unchanged (persist non-secret
+	// fields without re-sending the key); an empty string "" clears the stored key;
+	// a non-empty value sets it.
+	APIKey      *string `json:"apiKey,omitempty"`
+	Provider    string  `json:"provider"`
+	Domain      string  `json:"domain"`
+	Region      string  `json:"region"`
+	FromAddress string  `json:"fromAddress"`
+	Enabled     bool    `json:"enabled"`
+}
+
+type EmailServiceConfigStatus struct {
+	// Whether a sending key is currently stored. The key's value is never returned
+	// by any query, only this presence flag, so the admin Settings page can show
+	// "a key is stored and not retrievable; you can only replace it" versus "no key
+	// set" without the value ever leaving core.
+	APIKeySet bool `json:"apiKeySet"`
+	// The provider the configuration is for; empty until an admin sets one.
+	Provider    string `json:"provider"`
+	Domain      string `json:"domain"`
+	Region      string `json:"region"`
+	FromAddress string `json:"fromAddress"`
+	Enabled     bool   `json:"enabled"`
+}
+
 type EnrichmentOptOutInput struct {
 	Definitions *bool `json:"definitions,omitempty"`
 	Related     *bool `json:"related,omitempty"`
@@ -394,24 +440,6 @@ type GlobalSettings struct {
 type GlobalSettingsInput struct {
 	Announcement *AnnouncementInput `json:"announcement"`
 	Maintenance  *MaintenanceInput  `json:"maintenance"`
-}
-
-type Group struct {
-	ID                  string        `json:"id"`
-	Name                string        `json:"name"`
-	Slug                string        `json:"slug"`
-	ParentID            *string       `json:"parentId,omitempty"`
-	DefaultTemplateID   *string       `json:"defaultTemplateId,omitempty"`
-	DefaultTemplateNone bool          `json:"defaultTemplateNone"`
-	DefaultWorkflowID   *string       `json:"defaultWorkflowId,omitempty"`
-	Owners              []string      `json:"owners"`
-	AdGroupIds          []string      `json:"adGroupIds,omitempty"`
-	AckTriggers         AckTrigger    `json:"ackTriggers"`
-	ReviewCadence       ReviewCadence `json:"reviewCadence"`
-	ReviewDate          *string       `json:"reviewDate,omitempty"`
-	ExclusionGroupIds   []string      `json:"exclusionGroupIds,omitempty"`
-	AckEveryone         bool          `json:"ackEveryone"`
-	AckEveryoneSet      bool          `json:"ackEveryoneSet"`
 }
 
 type GroupApprovers struct {
@@ -480,31 +508,6 @@ type LiveEvent struct {
 type MagicLink struct {
 	Token     string `json:"token"`
 	ExpiresAt string `json:"expiresAt"`
-}
-
-type MailgunConfigInput struct {
-	// WRITE-ONLY, presence-tracked. The Mailgun sending api key. Stored server-side
-	// and never read back — there is no query that returns it, not even masked (see
-	// apiKeySet). Nullable so the field carries three states on save: omitted/null
-	// leaves the stored key unchanged (persist non-secret fields without re-sending
-	// the key); an empty string "" clears the stored key; a non-empty value sets it.
-	APIKey      *string `json:"apiKey,omitempty"`
-	Domain      string  `json:"domain"`
-	Region      string  `json:"region"`
-	FromAddress string  `json:"fromAddress"`
-	Enabled     bool    `json:"enabled"`
-}
-
-type MailgunConfigStatus struct {
-	// Whether a Mailgun sending key is currently stored. The key's value is never
-	// returned by any query — only this presence flag, so the admin Settings page
-	// can show "a key is stored and not retrievable — you can only replace it"
-	// versus "no key set" without the value ever leaving the database.
-	APIKeySet   bool   `json:"apiKeySet"`
-	Domain      string `json:"domain"`
-	Region      string `json:"region"`
-	FromAddress string `json:"fromAddress"`
-	Enabled     bool   `json:"enabled"`
 }
 
 type Maintenance struct {
@@ -637,7 +640,7 @@ type PendingTask struct {
 
 type Policy struct {
 	ID                        string           `json:"id"`
-	HomeGroupID               string           `json:"homeGroupId"`
+	HomeCategoryID            string           `json:"homeCategoryId"`
 	Number                    string           `json:"number"`
 	Title                     string           `json:"title"`
 	Sensitivity               Sensitivity      `json:"sensitivity"`
@@ -969,11 +972,11 @@ type SwapAssigneeResult struct {
 }
 
 type Template struct {
-	ID           string  `json:"id"`
-	Code         string  `json:"code"`
-	Name         string  `json:"name"`
-	OwnerGroupID *string `json:"ownerGroupId,omitempty"`
-	RetiredAt    *string `json:"retiredAt,omitempty"`
+	ID              string  `json:"id"`
+	Code            string  `json:"code"`
+	Name            string  `json:"name"`
+	OwnerCategoryID *string `json:"ownerCategoryId,omitempty"`
+	RetiredAt       *string `json:"retiredAt,omitempty"`
 }
 
 type TemplateVersion struct {

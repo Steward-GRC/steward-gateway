@@ -10,151 +10,163 @@ package resolvers
 import (
 	"context"
 	"fmt"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-// CreateGroup is the resolver for the createGroup field.
-func (r *mutationResolver) CreateGroup(ctx context.Context, name string, slug string, parentID *string) (*Group, error) {
-	panic(fmt.Errorf("not implemented: CreateGroup - createGroup"))
+// CreateCategory is the resolver for the createCategory field.
+func (r *mutationResolver) CreateCategory(ctx context.Context, name string, slug string, parentID *string) (*Category, error) {
+	return CreateCategory(ctx, r.CategoryClient, name, slug, parentID)
 }
 
-// SetGroupDefaults is the resolver for the setGroupDefaults field.
-func (r *mutationResolver) SetGroupDefaults(ctx context.Context, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) (*Group, error) {
-	panic(fmt.Errorf("not implemented: SetGroupDefaults - setGroupDefaults"))
+// SetCategoryDefaults is the resolver for the setCategoryDefaults field.
+func (r *mutationResolver) SetCategoryDefaults(ctx context.Context, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) (*Category, error) {
+	return SetCategoryDefaults(ctx, r.CategoryClient, id, defaultTemplateID, defaultWorkflowID, defaultTemplateNone)
 }
 
-// RenameGroup is the resolver for the renameGroup field.
-func (r *mutationResolver) RenameGroup(ctx context.Context, id string, name string, slug string) (*Group, error) {
-	panic(fmt.Errorf("not implemented: RenameGroup - renameGroup"))
+// RenameCategory is the resolver for the renameCategory field.
+func (r *mutationResolver) RenameCategory(ctx context.Context, id string, name string, slug string) (*Category, error) {
+	return RenameCategory(ctx, r.CategoryClient, id, name, slug)
 }
 
-// DeleteGroup is the resolver for the deleteGroup field.
-func (r *mutationResolver) DeleteGroup(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteGroup - deleteGroup"))
+// DeleteCategory is the resolver for the deleteCategory field.
+func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (bool, error) {
+	return DeleteCategory(ctx, r.CategoryClient, id)
 }
 
-// MoveGroup is the resolver for the moveGroup field.
-func (r *mutationResolver) MoveGroup(ctx context.Context, groupID string, newParentID *string) (*Group, error) {
-	panic(fmt.Errorf("not implemented: MoveGroup - moveGroup"))
+// MoveCategory is the resolver for the moveCategory field.
+func (r *mutationResolver) MoveCategory(ctx context.Context, categoryID string, newParentID *string) (*Category, error) {
+	return MoveCategory(ctx, r.CategoryClient, categoryID, newParentID)
 }
 
 // CreateTemplate is the resolver for the createTemplate field.
-func (r *mutationResolver) CreateTemplate(ctx context.Context, name string, ownerGroupID *string) (*Template, error) {
-	panic(fmt.Errorf("not implemented: CreateTemplate - createTemplate"))
+func (r *mutationResolver) CreateTemplate(ctx context.Context, name string, ownerCategoryID *string) (*Template, error) {
+	return CreateTemplate(ctx, r.TemplateClient, name, ownerCategoryID)
 }
 
 // CreateTemplateVersion is the resolver for the createTemplateVersion field.
 func (r *mutationResolver) CreateTemplateVersion(ctx context.Context, templateID string, sections []*SectionInput) (*TemplateVersion, error) {
-	panic(fmt.Errorf("not implemented: CreateTemplateVersion - createTemplateVersion"))
+	return CreateTemplateVersion(ctx, r.TemplateClient, templateID, sections)
 }
 
 // UpdateTemplateVersionSections is the resolver for the updateTemplateVersionSections field.
 func (r *mutationResolver) UpdateTemplateVersionSections(ctx context.Context, id string, sections []*SectionInput) (*TemplateVersion, error) {
-	panic(fmt.Errorf("not implemented: UpdateTemplateVersionSections - updateTemplateVersionSections"))
+	return UpdateTemplateVersionSections(ctx, r.TemplateClient, id, sections)
 }
 
 // PublishTemplateVersion is the resolver for the publishTemplateVersion field.
 func (r *mutationResolver) PublishTemplateVersion(ctx context.Context, id string) (*TemplateVersion, error) {
-	panic(fmt.Errorf("not implemented: PublishTemplateVersion - publishTemplateVersion"))
+	return PublishTemplateVersion(ctx, r.TemplateClient, id)
 }
 
 // DiscardTemplateVersion is the resolver for the discardTemplateVersion field.
 func (r *mutationResolver) DiscardTemplateVersion(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DiscardTemplateVersion - discardTemplateVersion"))
+	if err := DiscardTemplateVersion(ctx, r.TemplateClient, id); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // RetireTemplate is the resolver for the retireTemplate field.
 func (r *mutationResolver) RetireTemplate(ctx context.Context, id string) (*Template, error) {
-	panic(fmt.Errorf("not implemented: RetireTemplate - retireTemplate"))
+	return RetireTemplate(ctx, r.TemplateClient, id)
 }
 
 // DeleteTemplate is the resolver for the deleteTemplate field.
 func (r *mutationResolver) DeleteTemplate(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteTemplate - deleteTemplate"))
+	if !r.AllowHardDelete {
+		return false, status.Error(codes.FailedPrecondition, "hard delete is disabled; retire the template instead")
+	}
+	if err := DeleteTemplate(ctx, r.TemplateClient, id); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // RenameTemplate is the resolver for the renameTemplate field.
 func (r *mutationResolver) RenameTemplate(ctx context.Context, id string, name string) (*Template, error) {
-	panic(fmt.Errorf("not implemented: RenameTemplate - renameTemplate"))
+	return RenameTemplate(ctx, r.TemplateClient, id, name)
 }
 
 // CreatePolicy is the resolver for the createPolicy field.
-func (r *mutationResolver) CreatePolicy(ctx context.Context, homeGroupID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) (*Policy, error) {
-	panic(fmt.Errorf("not implemented: CreatePolicy - createPolicy"))
+func (r *mutationResolver) CreatePolicy(ctx context.Context, homeCategoryID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) (*Policy, error) {
+	return CreatePolicy(ctx, r.PolicyClient, r.CategoryClient, homeCategoryID, title, sensitivity, templateID, documentType)
 }
 
 // SaveDraft is the resolver for the saveDraft field.
 func (r *mutationResolver) SaveDraft(ctx context.Context, policyID string, contentJSON string, templateVersionID *string) (*PolicyVersion, error) {
-	panic(fmt.Errorf("not implemented: SaveDraft - saveDraft"))
+	return SaveDraft(ctx, r.PolicyClient, r.CategoryClient, policyID, contentJSON, derefOrEmpty(templateVersionID))
 }
 
 // SetPolicyTemplate is the resolver for the setPolicyTemplate field.
 func (r *mutationResolver) SetPolicyTemplate(ctx context.Context, policyID string, templateID *string, none bool) (*Policy, error) {
-	panic(fmt.Errorf("not implemented: SetPolicyTemplate - setPolicyTemplate"))
+	return SetPolicyTemplate(ctx, r.PolicyClient, r.CategoryClient, policyID, templateID, none)
 }
 
 // PublishDraft is the resolver for the publishDraft field.
 func (r *mutationResolver) PublishDraft(ctx context.Context, policyID string) (*PolicyVersion, error) {
-	panic(fmt.Errorf("not implemented: PublishDraft - publishDraft"))
+	return PublishDraft(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.CollabRoomClient, policyID)
 }
 
 // DiscardDraft is the resolver for the discardDraft field.
 func (r *mutationResolver) DiscardDraft(ctx context.Context, policyID string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DiscardDraft - discardDraft"))
+	return DiscardDraft(ctx, r.PolicyClient, r.CategoryClient, policyID)
 }
 
 // DeletePolicy is the resolver for the deletePolicy field.
 func (r *mutationResolver) DeletePolicy(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeletePolicy - deletePolicy"))
+	return DeletePolicy(ctx, r.PolicyClient, r.CategoryClient, id)
 }
 
 // RetirePolicy is the resolver for the retirePolicy field.
 func (r *mutationResolver) RetirePolicy(ctx context.Context, id string) (*Policy, error) {
-	panic(fmt.Errorf("not implemented: RetirePolicy - retirePolicy"))
+	return RetirePolicy(ctx, r.PolicyClient, r.CategoryClient, id)
 }
 
 // SetPolicyOwner is the resolver for the setPolicyOwner field.
 func (r *mutationResolver) SetPolicyOwner(ctx context.Context, policyID string, ownerUserID string) (*Policy, error) {
-	panic(fmt.Errorf("not implemented: SetPolicyOwner - setPolicyOwner"))
+	return SetPolicyOwner(ctx, r.PolicyClient, policyID, ownerUserID)
 }
 
 // MovePolicy is the resolver for the movePolicy field.
-func (r *mutationResolver) MovePolicy(ctx context.Context, policyID string, homeGroupID string) (*Policy, error) {
-	panic(fmt.Errorf("not implemented: MovePolicy - movePolicy"))
+func (r *mutationResolver) MovePolicy(ctx context.Context, policyID string, homeCategoryID string) (*Policy, error) {
+	return MovePolicy(ctx, r.PolicyClient, policyID, homeCategoryID)
 }
 
 // SetPolicySensitivity is the resolver for the setPolicySensitivity field.
 func (r *mutationResolver) SetPolicySensitivity(ctx context.Context, policyID string, sensitivity Sensitivity) (*Policy, error) {
-	panic(fmt.Errorf("not implemented: SetPolicySensitivity - setPolicySensitivity"))
+	return SetPolicySensitivity(ctx, r.PolicyClient, r.CategoryClient, policyID, sensitivity)
 }
 
 // RenamePolicy is the resolver for the renamePolicy field.
 func (r *mutationResolver) RenamePolicy(ctx context.Context, policyID string, newTitle string) (*RenamePolicyResult, error) {
-	panic(fmt.Errorf("not implemented: RenamePolicy - renamePolicy"))
+	return RenamePolicy(ctx, r.PolicyClient, r.CategoryClient, r.WorkflowClient, policyID, newTitle)
 }
 
 // BreakGlassReveal is the resolver for the breakGlassReveal field.
 func (r *mutationResolver) BreakGlassReveal(ctx context.Context, policyID string, reason string) (*BreakGlassResult, error) {
-	panic(fmt.Errorf("not implemented: BreakGlassReveal - breakGlassReveal"))
+	return BreakGlassRevealResolver(ctx, r.IdentityAdminClient, r.PolicyClient, policyID, reason)
 }
 
 // ReindexPolicy is the resolver for the reindexPolicy field.
 func (r *mutationResolver) ReindexPolicy(ctx context.Context, policyID string) (*ReindexResult, error) {
-	panic(fmt.Errorf("not implemented: ReindexPolicy - reindexPolicy"))
+	return ReindexPolicy(ctx, r.PolicyClient, policyID)
 }
 
 // ReindexPolicyVersion is the resolver for the reindexPolicyVersion field.
 func (r *mutationResolver) ReindexPolicyVersion(ctx context.Context, policyVersionID string) (*ReindexResult, error) {
-	panic(fmt.Errorf("not implemented: ReindexPolicyVersion - reindexPolicyVersion"))
+	return ReindexPolicyVersion(ctx, r.PolicyClient, policyVersionID)
 }
 
-// SetGroupGovernance is the resolver for the setGroupGovernance field.
-func (r *mutationResolver) SetGroupGovernance(ctx context.Context, id string, owners []string, adGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) (*Group, error) {
-	panic(fmt.Errorf("not implemented: SetGroupGovernance - setGroupGovernance"))
+// SetCategoryGovernance is the resolver for the setCategoryGovernance field.
+func (r *mutationResolver) SetCategoryGovernance(ctx context.Context, id string, owners []string, idpGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) (*Category, error) {
+	return SetCategoryGovernance(ctx, r.CategoryClient, id, owners, idpGroupIds, exclusionGroupIds, ackTriggers, reviewCadence, reviewDate, ackEveryone)
 }
 
 // SetPolicyAck is the resolver for the setPolicyAck field.
 func (r *mutationResolver) SetPolicyAck(ctx context.Context, policyID string, ackTriggers *AckTrigger, ackAudienceOverride []string) (*Policy, error) {
-	panic(fmt.Errorf("not implemented: SetPolicyAck - setPolicyAck"))
+	return SetPolicyAck(ctx, r.PolicyClient, policyID, ackTriggers, ackAudienceOverride)
 }
 
 // SetGlobalSettings is the resolver for the setGlobalSettings field.
@@ -162,9 +174,9 @@ func (r *mutationResolver) SetGlobalSettings(ctx context.Context, input GlobalSe
 	panic(fmt.Errorf("not implemented: SetGlobalSettings - setGlobalSettings"))
 }
 
-// SetMailgunConfig is the resolver for the setMailgunConfig field.
-func (r *mutationResolver) SetMailgunConfig(ctx context.Context, input MailgunConfigInput) (*MailgunConfigStatus, error) {
-	panic(fmt.Errorf("not implemented: SetMailgunConfig - setMailgunConfig"))
+// SetEmailServiceConfig is the resolver for the setEmailServiceConfig field.
+func (r *mutationResolver) SetEmailServiceConfig(ctx context.Context, input EmailServiceConfigInput) (*EmailServiceConfigStatus, error) {
+	panic(fmt.Errorf("not implemented: SetEmailServiceConfig - setEmailServiceConfig"))
 }
 
 // AddAppendix is the resolver for the addAppendix field.
@@ -277,64 +289,64 @@ func (r *policyVersionResolver) Appendices(ctx context.Context, obj *PolicyVersi
 	panic(fmt.Errorf("not implemented: Appendices - appendices"))
 }
 
-// Group is the resolver for the group field.
-func (r *queryResolver) Group(ctx context.Context, id string) (*Group, error) {
-	panic(fmt.Errorf("not implemented: Group - group"))
+// Category is the resolver for the category field.
+func (r *queryResolver) Category(ctx context.Context, id string) (*Category, error) {
+	return GetCategory(ctx, r.CategoryClient, id)
 }
 
-// GroupChildren is the resolver for the groupChildren field.
-func (r *queryResolver) GroupChildren(ctx context.Context, parentID *string) ([]*Group, error) {
-	panic(fmt.Errorf("not implemented: GroupChildren - groupChildren"))
+// CategoryChildren is the resolver for the categoryChildren field.
+func (r *queryResolver) CategoryChildren(ctx context.Context, parentID *string) ([]*Category, error) {
+	return ListCategoryChildren(ctx, r.CategoryClient, parentID)
 }
 
 // Templates is the resolver for the templates field.
-func (r *queryResolver) Templates(ctx context.Context, ownerGroupID *string) ([]*Template, error) {
-	panic(fmt.Errorf("not implemented: Templates - templates"))
+func (r *queryResolver) Templates(ctx context.Context, ownerCategoryID *string) ([]*Template, error) {
+	return ListTemplates(ctx, r.TemplateClient, r.CategoryClient, ownerCategoryID)
 }
 
 // LatestTemplateVersion is the resolver for the latestTemplateVersion field.
 func (r *queryResolver) LatestTemplateVersion(ctx context.Context, templateID string) (*TemplateVersion, error) {
-	panic(fmt.Errorf("not implemented: LatestTemplateVersion - latestTemplateVersion"))
+	return LatestTemplateVersion(ctx, r.TemplateClient, r.CategoryClient, templateID)
 }
 
 // TemplateVersions is the resolver for the templateVersions field.
 func (r *queryResolver) TemplateVersions(ctx context.Context, templateID string) ([]*TemplateVersion, error) {
-	panic(fmt.Errorf("not implemented: TemplateVersions - templateVersions"))
+	return ListTemplateVersions(ctx, r.TemplateClient, r.CategoryClient, templateID)
 }
 
 // Policy is the resolver for the policy field.
 func (r *queryResolver) Policy(ctx context.Context, id string) (*Policy, error) {
-	panic(fmt.Errorf("not implemented: Policy - policy"))
+	return GetPolicy(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, id)
 }
 
 // Policies is the resolver for the policies field.
-func (r *queryResolver) Policies(ctx context.Context, groupID string, includeDescendants *bool, documentType *DocumentType) ([]*Policy, error) {
-	panic(fmt.Errorf("not implemented: Policies - policies"))
+func (r *queryResolver) Policies(ctx context.Context, categoryID string, includeDescendants *bool, documentType *DocumentType) ([]*Policy, error) {
+	return ListPolicies(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, categoryID, includeDescendants, documentType)
 }
 
 // PolicyVersion is the resolver for the policyVersion field.
 func (r *queryResolver) PolicyVersion(ctx context.Context, id string) (*PolicyVersion, error) {
-	panic(fmt.Errorf("not implemented: PolicyVersion - policyVersion"))
+	return GetPolicyVersion(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, id)
 }
 
 // PolicyVersions is the resolver for the policyVersions field.
 func (r *queryResolver) PolicyVersions(ctx context.Context, policyID string) ([]*PolicyVersion, error) {
-	panic(fmt.Errorf("not implemented: PolicyVersions - policyVersions"))
+	return ListPolicyVersions(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, policyID)
 }
 
 // DiffVersions is the resolver for the diffVersions field.
 func (r *queryResolver) DiffVersions(ctx context.Context, fromVersionID string, toVersionID string) ([]*SectionDiff, error) {
-	panic(fmt.Errorf("not implemented: DiffVersions - diffVersions"))
+	return DiffVersions(ctx, r.PolicyClient, fromVersionID, toVersionID)
 }
 
 // EffectiveTemplate is the resolver for the effectiveTemplate field.
 func (r *queryResolver) EffectiveTemplate(ctx context.Context, policyID string) (*EffectiveTemplate, error) {
-	panic(fmt.Errorf("not implemented: EffectiveTemplate - effectiveTemplate"))
+	return GetEffectiveTemplate(ctx, r.PolicyClient, policyID)
 }
 
 // EffectiveGovernance is the resolver for the effectiveGovernance field.
-func (r *queryResolver) EffectiveGovernance(ctx context.Context, groupID string) (*EffectiveGovernance, error) {
-	panic(fmt.Errorf("not implemented: EffectiveGovernance - effectiveGovernance"))
+func (r *queryResolver) EffectiveGovernance(ctx context.Context, categoryID string) (*EffectiveGovernance, error) {
+	return GetEffectiveGovernance(ctx, r.CategoryClient, categoryID)
 }
 
 // GlobalSettings is the resolver for the globalSettings field.
@@ -342,9 +354,9 @@ func (r *queryResolver) GlobalSettings(ctx context.Context) (*GlobalSettings, er
 	panic(fmt.Errorf("not implemented: GlobalSettings - globalSettings"))
 }
 
-// MailgunConfig is the resolver for the mailgunConfig field.
-func (r *queryResolver) MailgunConfig(ctx context.Context) (*MailgunConfigStatus, error) {
-	panic(fmt.Errorf("not implemented: MailgunConfig - mailgunConfig"))
+// EmailServiceConfig is the resolver for the emailServiceConfig field.
+func (r *queryResolver) EmailServiceConfig(ctx context.Context) (*EmailServiceConfigStatus, error) {
+	panic(fmt.Errorf("not implemented: EmailServiceConfig - emailServiceConfig"))
 }
 
 // RelatedPolicies is the resolver for the relatedPolicies field.

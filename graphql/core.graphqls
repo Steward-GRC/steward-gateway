@@ -1,20 +1,20 @@
 extend type Query {
 
-  # Groups
-  group(id: ID!): Group
-  groupChildren(parentId: ID): [Group!]!
+  # Categories
+  category(id: ID!): Category
+  categoryChildren(parentId: ID): [Category!]!
 
   # Templates
-  templates(ownerGroupId: ID): [Template!]!
+  templates(ownerCategoryId: ID): [Template!]!
   latestTemplateVersion(templateId: ID!): TemplateVersion
   # All versions of a template (newest first), incl. drafts — admin authoring.
   templateVersions(templateId: ID!): [TemplateVersion!]!
 
   # Policies
   policy(id: ID!): Policy
-  # documentType filters by kind (core#26): null => policies-only (back-compat,
-  # spec §2.8); POLICY or PROCEDURE filters to that kind explicitly.
-  policies(groupId: ID!, includeDescendants: Boolean, documentType: DocumentType): [Policy!]!
+  # documentType filters by kind: null lists policies only; POLICY or PROCEDURE
+  # filters to that kind.
+  policies(categoryId: ID!, includeDescendants: Boolean, documentType: DocumentType): [Policy!]!
   policyVersion(id: ID!): PolicyVersion
   policyVersions(policyId: ID!): [PolicyVersion!]!   # published versions, oldest-first
   diffVersions(fromVersionId: ID!, toVersionId: ID!): [SectionDiff!]!
@@ -22,29 +22,29 @@ extend type Query {
 }
 
 extend type Mutation {
-  # Groups
-  createGroup(name: String!, slug: String!, parentId: ID): Group!
-  # Template tri-state: pass defaultTemplateNone=true to set the group's default
+  # Categories
+  createCategory(name: String!, slug: String!, parentId: ID): Category!
+  # Template tri-state: pass defaultTemplateNone=true to set the category's default
   # template to explicit NONE (freeform); defaultTemplateId is then ignored.
   # defaultTemplateNone=false with a defaultTemplateId sets that specific
   # template; false with a null id means inherit from the ancestor chain.
-  setGroupDefaults(id: ID!, defaultTemplateId: ID, defaultWorkflowId: ID, defaultTemplateNone: Boolean): Group!
-  # Rename a taxonomy group (name + slug). Does NOT renumber existing policies.
-  renameGroup(id: ID!, name: String!, slug: String!): Group!
-  # Delete a taxonomy group and its policy-free descendants. Refused
-  # (FAILED_PRECONDITION) when the group or any descendant owns policies.
-  deleteGroup(id: ID!): Boolean!
-  # Move a taxonomy group (and its whole descendant subtree) under a new parent.
-  # A null newParentId promotes the group to a root (top-level). Re-parents only
-  # the group row: policies keep their home_group_id and effective governance is
-  # computed live from the ancestor chain, so there is no per-policy rewrite.
+  setCategoryDefaults(id: ID!, defaultTemplateId: ID, defaultWorkflowId: ID, defaultTemplateNone: Boolean): Category!
+  # Rename a category (name + slug). Does NOT renumber existing policies.
+  renameCategory(id: ID!, name: String!, slug: String!): Category!
+  # Delete a category and its policy-free descendants. Refused
+  # (FAILED_PRECONDITION) when the category or any descendant owns policies.
+  deleteCategory(id: ID!): Boolean!
+  # Move a category (and its whole descendant subtree) under a new parent.
+  # A null newParentId promotes the category to a root (top-level). Re-parents
+  # only the category: policies keep their home category and effective governance
+  # is computed live from the ancestor chain, so there is no per-policy rewrite.
   # Refused (FAILED_PRECONDITION) when the move would exceed max depth 3 or create
-  # a cycle (moving a group under itself or one of its descendants); nothing is
+  # a cycle (moving a category under itself or one of its descendants); nothing is
   # applied on failure.
-  moveGroup(groupId: ID!, newParentId: ID): Group!
+  moveCategory(categoryId: ID!, newParentId: ID): Category!
 
   # Templates
-  createTemplate(name: String!, ownerGroupId: ID): Template!
+  createTemplate(name: String!, ownerCategoryId: ID): Template!
   createTemplateVersion(templateId: ID!, sections: [SectionInput!]!): TemplateVersion!
   # Save edits to a draft version's sections (the authoring "Save"). Published
   # versions are immutable.
@@ -59,15 +59,14 @@ extend type Mutation {
   # template. Fails if any policy references it — retire those instead.
   deleteTemplate(id: ID!): Boolean!
   # Rename a template's display name. Template-level, NON-VERSIONED (like
-  # renameGroup): does NOT create a new template version — the version list and
+  # renameCategory): does NOT create a new template version — the version list and
   # count are unchanged. Templates have no slug, so this is name-only.
   renameTemplate(id: ID!, name: String!): Template!
 
   # Policies
-  # The owner/actor user is bound at the gateway from authmw claims;
-  # NEVER trusted from input. See docs/auth-flow.md.
-  # documentType is OPTIONAL (core#26): null => POLICY.
-  createPolicy(homeGroupId: ID!, title: String!, sensitivity: Sensitivity!, templateId: ID, documentType: DocumentType): Policy!
+  # The owner/actor user is the signed-in user, never taken from input.
+  # documentType is OPTIONAL: null => POLICY.
+  createPolicy(homeCategoryId: ID!, title: String!, sensitivity: Sensitivity!, templateId: ID, documentType: DocumentType): Policy!
   # templateVersionId is OPTIONAL: pass null or "" for a freeform (no-template)
   # draft — the draft is saved with no pinned template version and template/
   # section validation is skipped. A non-null id pins that template version and
@@ -76,7 +75,7 @@ extend type Mutation {
   # setPolicyTemplate sets the policy-level template tri-state override. none=true
   # → explicit NONE (freeform), templateId ignored; none=false with a templateId
   # → that specific template; none=false with null templateId → inherit from the
-  # owning group chain.
+  # owning category chain.
   setPolicyTemplate(policyId: ID!, templateId: ID, none: Boolean!): Policy!
   # publishDraft cuts the policy's working draft as a published version. Gated
   # on the effective-author model, like saveDraft. The order is:
@@ -111,7 +110,7 @@ extend type Mutation {
   # Site-admin: reassign a policy's owner (author).
   setPolicyOwner(policyId: ID!, ownerUserId: ID!): Policy!
   # Site-admin: move a policy to another section; renumbers to the target's sequence.
-  movePolicy(policyId: ID!, homeGroupId: ID!): Policy!
+  movePolicy(policyId: ID!, homeCategoryId: ID!): Policy!
   # Flip a policy's classification (STANDARD <-> SENSITIVE) in place. This is a
   # direct metadata change — it does NOT create a new version and does NOT trigger
   # the approval workflow. Allowed for any user with edit access to the policy.
@@ -124,13 +123,13 @@ extend type Mutation {
   renamePolicy(policyId: ID!, newTitle: String!): RenamePolicyResult!
 
   # Break-glass: a site-admin requests a time-boxed, audited reveal of a policy
-  # whose content they would otherwise see obfuscated (excluded from its group).
+  # whose content they would otherwise see obfuscated (excluded from it).
   # A non-empty reason is required. The grant flips subsequent reads to real
   # content until grantedUntil.
   breakGlassReveal(policyId: ID!, reason: String!): BreakGlassResult!
 
   # Site-admin: re-index a policy's current published version into the AI search
-  # corpus. A first-class backend re-index trigger (ai#22): it re-runs section
+  # corpus. A first-class backend re-index trigger: it re-runs section
   # extraction through the current extractor and re-emits ONLY to the AI indexer
   # — it does NOT re-send the compliance review email. Audited as policy.reindexed.
   reindexPolicy(policyId: ID!): ReindexResult!
@@ -152,14 +151,14 @@ type ReindexResult {
 
 enum Sensitivity { STANDARD SENSITIVE }
 
-# Policy vs procedure discriminator (core#26). Procedures are excluded from the
+# Policy vs procedure discriminator. Procedures are excluded from the
 # ack pipeline; otherwise they share the policies surface and lifecycle.
 enum DocumentType { POLICY PROCEDURE }
 
 enum AckTrigger { NONE ON_PUBLISH ON_CHANGE }
 enum ReviewCadence { NONE ANNUAL BIENNIAL ON_DATE }
 
-type Group {
+type Category {
   id: ID!
   name: String!
   slug: String!
@@ -171,19 +170,19 @@ type Group {
   defaultTemplateNone: Boolean!
   defaultWorkflowId: ID
   owners: [ID!]!
-  # Per-group ack-audience AD group names. Empty list = "no audience" (explicit
-  # override, treat as everyone per compliance service). Not-set is represented
-  # as null here (inherit from ancestor). Parallels exclusionGroupIds semantics.
-  adGroupIds: [String!]
+  # Per-category ack-audience IdP group names. Empty list = "no audience"
+  # (explicit override, treated as everyone by obligations). Not-set is null here
+  # (inherit from ancestor). Parallels exclusionGroupIds semantics.
+  idpGroupIds: [String!]
   ackTriggers: AckTrigger!
   reviewCadence: ReviewCadence!
   reviewDate: String
-  # Per-group exclusion group names. Empty list = "no exclusions" (explicit
+  # Per-category exclusion IdP group names. Empty list = "no exclusions" (explicit
   # override). Not-set is represented as null here (inherit from ancestor).
   exclusionGroupIds: [String!]
-  # Ack-audience "Everyone" tri-state (parallels adGroupIds nullability). When
+  # Ack-audience "Everyone" tri-state (parallels idpGroupIds nullability). When
   # the resolved value is true, every user must ack (the trigger still decides
-  # WHETHER an ack is required). ackEveryoneSet=false means this group inherits
+  # WHETHER an ack is required). ackEveryoneSet=false means this category inherits
   # from its ancestor chain; true means it carries its own value.
   ackEveryone: Boolean!
   ackEveryoneSet: Boolean!
@@ -191,14 +190,14 @@ type Group {
 
 # EffectiveGovernance carries the inherited ack-audience and exclusion group
 # names resolved by walking the ancestor chain with the leaf-wins rule. null
-# means no group in the chain has set a value (i.e. "unset / inherit from
-# system default", which is treated as everyone for audience or nobody for
-# exclusions by the compliance service).
+# means no category in the chain has set a value (i.e. "unset / inherit from
+# system default", which obligations treats as everyone for audience and
+# nobody for exclusions).
 type EffectiveGovernance {
   ackAudienceGroups: [String!]
   exclusionGroups: [String!]
   # Resolved ack-audience "Everyone" flag after nearest-ancestor-wins
-  # inheritance (false when no group in the chain sets it). When true, the ack
+  # inheritance (false when no category in the chain sets it). When true, the ack
   # audience is ALL users and ackAudienceGroups is irrelevant.
   ackEveryone: Boolean!
 }
@@ -207,7 +206,7 @@ type Template {
   id: ID!
   code: String!          # human-readable display code, TPL-NNN
   name: String!
-  ownerGroupId: ID
+  ownerCategoryId: ID
   retiredAt: String      # RFC3339; null = active. Set = retired (soft-deleted).
 }
 
@@ -249,11 +248,11 @@ input BlockInput {
 
 type Policy {
   id: ID!
-  homeGroupId: ID!
+  homeCategoryId: ID!
   number: String!
   title: String!
   sensitivity: Sensitivity!
-  # Policy vs procedure (core#26). Non-null: UNSPECIFIED from core maps to POLICY.
+  # Policy vs procedure. Non-null: UNSPECIFIED from core maps to POLICY.
   documentType: DocumentType!
   ownerUserId: ID!
   ownerName: String       # resolved from identity service; null when lookup unavailable
@@ -261,26 +260,26 @@ type Policy {
   currentPublishedVersionId: ID
   currentDraftVersionId: ID
   # Template tri-state. templateNone=true → explicit NONE (freeform), overrides
-  # the group chain; templateId set → that specific template; both unset
-  # (none=false, id=null) → inherit from the owning group chain.
+  # the category chain; templateId set → that specific template; both unset
+  # (none=false, id=null) → inherit from the owning category chain.
   templateId: ID
   templateNone: Boolean!
   templateUpdateAvailable: Boolean!
-  ackTriggers: AckTrigger      # null = inherit owning group's
-  ackAudienceOverride: [ID!]   # null = subtree(owning group)
+  ackTriggers: AckTrigger      # null = inherit the owning category's
+  ackAudienceOverride: [ID!]   # null = the owning category's audience
   viewerCan: PolicyViewerCan!  # per-viewer authorization decision (server-computed)
   retiredAt: String            # RFC3339; null = active. Set = retired (soft-deleted).
 }
 
 # PolicyViewerCan is the per-viewer authorization projection of a Policy,
-# computed server-side by the authz decision core. The UI mirrors these for
+# computed server-side by steward-authz. The UI mirrors these for
 # UX only; the gateway is the real enforcement boundary.
 type PolicyViewerCan {
   read: Boolean!              # the viewer may see this policy at all
   edit: Boolean!             # the viewer may author/edit (scoped, in-category)
   submit: Boolean!           # the viewer may submit for approval (scoped)
   approve: Boolean!          # the viewer may approve (scoped)
-  contentObfuscated: Boolean! # body is served obfuscated (excluded site-admin)
+  contentObfuscated: Boolean! # body is served obfuscated (excluded site admin)
   canBreakGlass: Boolean!    # the viewer may break-glass to reveal real content
   # ack: true when the RACI chart places the viewer in this policy's ack
   # audience (ack rule match, merit-evaluated, read-gated; per-policy
@@ -340,37 +339,36 @@ type EffectiveTemplate {
   none: Boolean!
 }
 
-# --- Group governance + policy ack (ADM-06 / #3b) ---
+# --- Category governance + policy ack ---
 extend type Query {
   """
   Returns the effective (inherited) ack-audience and exclusion groups for a
-  category group by applying the leaf-wins ancestor-chain rule. Use this for
-  read-only display of inherited values and for the directory picker affordance
+  category by applying the leaf-wins ancestor-chain rule. Use this for
+  read-only display of inherited values and for the group picker affordance
   ("override" vs. "inherited from <ancestor>").
   """
-  effectiveGovernance(groupId: ID!): EffectiveGovernance!
+  effectiveGovernance(categoryId: ID!): EffectiveGovernance!
 }
 
 extend type Mutation {
   """
-  Persists governance fields on a category group. adGroupIds and
-  exclusionGroupIds are validated against the live lldap directory groups. Pass
-  an empty list to explicitly set "no audience" / "no exclusions" (overriding
-  any ancestor value); pass null (or omit) to leave the field unchanged so an
-  inherited value is preserved. The stored per-group values (not the inherited
-  effective values) are returned in the Group response. ackEveryone is
-  tri-state like adGroupIds: pass true/false to set this group's own value,
-  pass null (or omit) to leave it inheriting from the ancestor chain.
+  Persists governance fields on a category. idpGroupIds and exclusionGroupIds
+  are IdP group names. Pass an empty list to explicitly set "no audience" /
+  "no exclusions" (overriding any ancestor value); pass null (or omit) to leave
+  the field unchanged so an inherited value is preserved. The stored
+  per-category values (not the inherited effective values) are returned in the
+  Category response. ackEveryone is tri-state like idpGroupIds: pass true/false
+  to set this category's own value, pass null (or omit) to leave it inheriting
+  from the ancestor chain.
   """
-  setGroupGovernance(id: ID!, owners: [ID!]!, adGroupIds: [String!], exclusionGroupIds: [String!], ackTriggers: AckTrigger!, reviewCadence: ReviewCadence!, reviewDate: String, ackEveryone: Boolean): Group!
+  setCategoryGovernance(id: ID!, owners: [ID!]!, idpGroupIds: [String!], exclusionGroupIds: [String!], ackTriggers: AckTrigger!, reviewCadence: ReviewCadence!, reviewDate: String, ackEveryone: Boolean): Category!
   setPolicyAck(policyId: ID!, ackTriggers: AckTrigger, ackAudienceOverride: [ID!]): Policy!
 }
 
 
 # --- Global settings (cross-app banners) ---
-# Persisted server-side so a site-admin's Announcement + Maintenance notice
-# render as top banners in BOTH apps (platform ui + ui-admin). Backed by
-# policy-core SettingsService.
+# Persisted server-side so a site admin's announcement and maintenance notice
+# render as top banners in the web app. Backed by core SettingsService.
 type Announcement {
   enabled: Boolean!
   level: String!
@@ -403,43 +401,43 @@ input GlobalSettingsInput {
   maintenance: MaintenanceInput!
 }
 
-# Readable by both apps (unauthenticated read is fine; goes through authmw).
+# Readable by any signed-in user.
 extend type Query { globalSettings: GlobalSettings! }
 
 # Site-admin only.
 extend type Mutation { setGlobalSettings(input: GlobalSettingsInput!): GlobalSettings! }
 
-# --- Mailgun transport configuration (site-admin) ---
-# The Mailgun sending configuration for the platform email transport, persisted
-# server-side and backed by policy-core SettingsService. WRITE-ONLY credential:
-# setMailgunConfig accepts the api key, but NO field ever returns it — the only
-# thing the GraphQL surface reveals about the key is apiKeySet (a presence
-# flag), mirroring aiTokenSet. The key-bearing read path lives on an
-# internal-only service that the gateway never references, so the secret cannot
-# leak through this surface.
-type MailgunConfigStatus {
+# --- Email service configuration (site-admin) ---
+# The sending configuration for the platform email transport, persisted
+# server-side by core SettingsService. WRITE-ONLY credential:
+# setEmailServiceConfig accepts the api key, but NO field ever returns it; the
+# only thing this surface reveals about the key is apiKeySet (a presence flag).
+type EmailServiceConfigStatus {
   """
-  Whether a Mailgun sending key is currently stored. The key's value is never
-  returned by any query — only this presence flag, so the admin Settings page
-  can show "a key is stored and not retrievable — you can only replace it"
-  versus "no key set" without the value ever leaving the database.
+  Whether a sending key is currently stored. The key's value is never returned
+  by any query, only this presence flag, so the admin Settings page can show
+  "a key is stored and not retrievable; you can only replace it" versus "no key
+  set" without the value ever leaving core.
   """
   apiKeySet: Boolean!
+  "The provider the configuration is for; empty until an admin sets one."
+  provider: String!
   domain: String!
   region: String!
   fromAddress: String!
   enabled: Boolean!
 }
 
-input MailgunConfigInput {
+input EmailServiceConfigInput {
   """
-  WRITE-ONLY, presence-tracked. The Mailgun sending api key. Stored server-side
-  and never read back — there is no query that returns it, not even masked (see
-  apiKeySet). Nullable so the field carries three states on save: omitted/null
-  leaves the stored key unchanged (persist non-secret fields without re-sending
-  the key); an empty string "" clears the stored key; a non-empty value sets it.
+  WRITE-ONLY, presence-tracked. The sending api key. Stored server-side and
+  never read back (see apiKeySet). Nullable so the field carries three states
+  on save: omitted/null leaves the stored key unchanged (persist non-secret
+  fields without re-sending the key); an empty string "" clears the stored key;
+  a non-empty value sets it.
   """
   apiKey: String
+  provider: String!
   domain: String!
   region: String!
   fromAddress: String!
@@ -447,11 +445,11 @@ input MailgunConfigInput {
 }
 
 # Site-admin only. Presence + non-secret configuration view; never the key.
-extend type Query { mailgunConfig: MailgunConfigStatus! }
+extend type Query { emailServiceConfig: EmailServiceConfigStatus! }
 
 # Site-admin only. Stores the api key together with the non-secret config and
 # returns the keyless status.
-extend type Mutation { setMailgunConfig(input: MailgunConfigInput!): MailgunConfigStatus! }
+extend type Mutation { setEmailServiceConfig(input: EmailServiceConfigInput!): EmailServiceConfigStatus! }
 
 
 # --- Appendices ---
@@ -463,7 +461,7 @@ extend type Mutation {
 }
 
 # --- Related policies (structured links) ---
-# Per-policy NON-VERSIONED structured links to other policies (core#9): stored
+# Per-policy NON-VERSIONED structured links to other policies: stored
 # one-way by id and resolved live to the related policy's number+title, so
 # relationships are data rather than free text in the body. Editing them does
 # not create a new policy version. setRelatedPolicies is a full replace.
@@ -474,7 +472,7 @@ type RelatedPolicy {
 }
 extend type Query {
   relatedPolicies(policyId: ID!): [RelatedPolicy!]!
-  # Policies eligible to be linked as related to the given policy (core#22).
+  # Policies eligible to be linked as related to the given policy.
   # A candidate B is offered only when every user who can READ the subject
   # policy can also read B (readers(subject) ⊆ readers(B)) — the same RACI read
   # decision + sensitivity gate the read model uses — so a link can never create
@@ -492,7 +490,7 @@ extend type Mutation {
 }
 
 # --- Reusable contact blocks (library object) ---
-# A reusable contact-information block (core#13) defined once (admin-managed
+# A reusable contact-information block defined once (admin-managed
 # library) and referenced by many policies. A policy references blocks by id and
 # renders them LIVE (track-latest): editing a block centrally updates every
 # referencing policy. Attach/detach is a per-policy NON-VERSIONED change
@@ -541,7 +539,7 @@ extend type Mutation {
 }
 
 # --- References / Standards library (library object) ---
-# A reusable References/Standards entry (core#20) defined once (admin-managed
+# A reusable References/Standards entry defined once (admin-managed
 # library) and referenced by many policies, mirroring the reusable contact-block
 # library above. A policy references entries by id and renders them LIVE
 # (track-latest): editing an entry centrally updates every referencing policy.
@@ -589,9 +587,9 @@ extend type Mutation {
 }
 
 # --- Definitions library (category-scoped library object) ---
-# A reusable, CATEGORY-SCOPED glossary entry (core#25) defined once and attached
+# A reusable, CATEGORY-SCOPED glossary entry defined once and attached
 # by many policies, mirroring the References/Standards library above with one
-# addition: a categoryId scope. A definition belongs to a category (a group);
+# addition: a categoryId scope. A definition belongs to a category;
 # the staff attach picker for a policy offers definitions whose categoryId is in
 # that policy's ancestor chain (leaf -> root). A policy attaches entries by id
 # and renders them LIVE (track-latest): editing an entry centrally updates every
@@ -599,7 +597,7 @@ extend type Mutation {
 # (setPolicyDefinitionEntries is a full replace). Definition text is PLAIN.
 type DefinitionEntry {
   id: ID!
-  # owning category (group) — the sharing scope.
+  # owning category, the sharing scope.
   categoryId: ID!
   term: String!
   definition: String!

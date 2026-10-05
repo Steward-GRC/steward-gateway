@@ -9,12 +9,11 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 )
 
 // Health is the resolver for the health field.
 func (r *queryResolver) Health(ctx context.Context) (*HealthStatus, error) {
-	panic(fmt.Errorf("not implemented: Health - health"))
+	return &HealthStatus{Status: "ok"}, nil
 }
 
 // Mutation returns MutationResolver implementation.

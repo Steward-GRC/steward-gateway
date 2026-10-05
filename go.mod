@@ -11,6 +11,7 @@ require (
 	github.com/Bugs5382/go-log v1.3.0
 	github.com/Bugs5382/go-otel v1.3.2
 	github.com/Bugs5382/go-redis v1.2.0
+	github.com/Steward-GRC/steward-authz v0.0.0-20261005231355-d19c8e206a95
 	github.com/alicebob/miniredis/v2 v2.39.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/stretchr/testify v1.11.1
@@ -20,6 +21,7 @@ require (
 )
 
 require (
+	github.com/Bugs5382/go-authz v1.0.0 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

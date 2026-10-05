@@ -12,6 +12,8 @@ package resolvers
 import (
 	"context"
 
+	log "github.com/Bugs5382/go-log"
+
 	"github.com/Steward-GRC/steward-gateway/internal/backend"
 	"github.com/Steward-GRC/steward-gateway/internal/bff"
 
@@ -84,6 +86,17 @@ type Resolver struct {
 	AllowHardDelete bool
 
 	// Area-owned dependencies go below, one block per area.
+
+	// core (and every area): the request logger. Nil logs nothing.
+	Log log.Logger
+}
+
+// logger returns r.Log, or a logger that writes nothing.
+func (r *Resolver) logger() log.Logger {
+	if r.Log == nil {
+		return log.Nop()
+	}
+	return r.Log
 }
 
 // AuditEmitter publishes one steward-audit AuditEvent.

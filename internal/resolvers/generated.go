@@ -234,6 +234,24 @@ type ComplexityRoot struct {
 		Results     func(childComplexity int) int
 	}
 
+	Category struct {
+		AckEveryone         func(childComplexity int) int
+		AckEveryoneSet      func(childComplexity int) int
+		AckTriggers         func(childComplexity int) int
+		DefaultTemplateID   func(childComplexity int) int
+		DefaultTemplateNone func(childComplexity int) int
+		DefaultWorkflowID   func(childComplexity int) int
+		ExclusionGroupIds   func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		IdpGroupIds         func(childComplexity int) int
+		Name                func(childComplexity int) int
+		Owners              func(childComplexity int) int
+		ParentID            func(childComplexity int) int
+		ReviewCadence       func(childComplexity int) int
+		ReviewDate          func(childComplexity int) int
+		Slug                func(childComplexity int) int
+	}
+
 	CategoryPref struct {
 		Cadence   func(childComplexity int) int
 		Category  func(childComplexity int) int
@@ -334,27 +352,18 @@ type ComplexityRoot struct {
 		WorkflowDefID       func(childComplexity int) int
 	}
 
+	EmailServiceConfigStatus struct {
+		APIKeySet   func(childComplexity int) int
+		Domain      func(childComplexity int) int
+		Enabled     func(childComplexity int) int
+		FromAddress func(childComplexity int) int
+		Provider    func(childComplexity int) int
+		Region      func(childComplexity int) int
+	}
+
 	GlobalSettings struct {
 		Announcement func(childComplexity int) int
 		Maintenance  func(childComplexity int) int
-	}
-
-	Group struct {
-		AckEveryone         func(childComplexity int) int
-		AckEveryoneSet      func(childComplexity int) int
-		AckTriggers         func(childComplexity int) int
-		AdGroupIds          func(childComplexity int) int
-		DefaultTemplateID   func(childComplexity int) int
-		DefaultTemplateNone func(childComplexity int) int
-		DefaultWorkflowID   func(childComplexity int) int
-		ExclusionGroupIds   func(childComplexity int) int
-		ID                  func(childComplexity int) int
-		Name                func(childComplexity int) int
-		Owners              func(childComplexity int) int
-		ParentID            func(childComplexity int) int
-		ReviewCadence       func(childComplexity int) int
-		ReviewDate          func(childComplexity int) int
-		Slug                func(childComplexity int) int
 	}
 
 	GroupApprovers struct {
@@ -405,14 +414,6 @@ type ComplexityRoot struct {
 	MagicLink struct {
 		ExpiresAt func(childComplexity int) int
 		Token     func(childComplexity int) int
-	}
-
-	MailgunConfigStatus struct {
-		APIKeySet   func(childComplexity int) int
-		Domain      func(childComplexity int) int
-		Enabled     func(childComplexity int) int
-		FromAddress func(childComplexity int) int
-		Region      func(childComplexity int) int
 	}
 
 	Maintenance struct {
@@ -474,22 +475,22 @@ type ComplexityRoot struct {
 		BulkDecide                    func(childComplexity int, input BulkDecideInput) int
 		ChangeOrgProtocol             func(childComplexity int, domain string, protocol string, config []*KeyValueInput, secretRef *string) int
 		CompleteOnboarding            func(childComplexity int, acceptTerms bool, username *string, firstName *string, lastName *string, email *string) int
+		CreateCategory                func(childComplexity int, name string, slug string, parentID *string) int
 		CreateContactBlock            func(childComplexity int, block ContactBlockInput) int
 		CreateDefinition              func(childComplexity int, input DefinitionEntryInput) int
 		CreateDirectoryGroup          func(childComplexity int, name string) int
-		CreateGroup                   func(childComplexity int, name string, slug string, parentID *string) int
 		CreateLocalUser               func(childComplexity int, username string, email string, name string, password string) int
 		CreateMagicLink               func(childComplexity int, policyVersionID string, sensitive bool) int
-		CreatePolicy                  func(childComplexity int, homeGroupID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) int
+		CreatePolicy                  func(childComplexity int, homeCategoryID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) int
 		CreateReference               func(childComplexity int, input ReferenceInput) int
-		CreateTemplate                func(childComplexity int, name string, ownerGroupID *string) int
+		CreateTemplate                func(childComplexity int, name string, ownerCategoryID *string) int
 		CreateTemplateVersion         func(childComplexity int, templateID string, sections []*SectionInput) int
 		CreateWorkflowDef             func(childComplexity int, name string, description *string, stages []*WorkflowStageInput) int
 		DeleteAppendix                func(childComplexity int, id string) int
+		DeleteCategory                func(childComplexity int, id string) int
 		DeleteContactBlock            func(childComplexity int, id string) int
 		DeleteDefinition              func(childComplexity int, id string) int
 		DeleteDirectoryGroup          func(childComplexity int, groupID int) int
-		DeleteGroup                   func(childComplexity int, id string) int
 		DeleteGroupMapping            func(childComplexity int, mappingID string) int
 		DeleteOrganization            func(childComplexity int, domain string) int
 		DeletePolicy                  func(childComplexity int, id string) int
@@ -508,8 +509,8 @@ type ComplexityRoot struct {
 		GrantRole                     func(childComplexity int, userID string, role string, category *string) int
 		IssueCollabToken              func(childComplexity int, input IssueCollabTokenInput) int
 		MergeAccounts                 func(childComplexity int, sourceUserID string, targetUserID string, confirmPrivileged *bool, idempotencyKey *string) int
-		MoveGroup                     func(childComplexity int, groupID string, newParentID *string) int
-		MovePolicy                    func(childComplexity int, policyID string, homeGroupID string) int
+		MoveCategory                  func(childComplexity int, categoryID string, newParentID *string) int
+		MovePolicy                    func(childComplexity int, policyID string, homeCategoryID string) int
 		PublishDraft                  func(childComplexity int, policyID string) int
 		PublishTemplateVersion        func(childComplexity int, id string) int
 		ReassignUserPolicies          func(childComplexity int, fromUserID string, toUserID string) int
@@ -522,8 +523,8 @@ type ComplexityRoot struct {
 		RemoveUserFromGroup           func(childComplexity int, userID string, groupID string) int
 		RemoveUserMfaFactor           func(childComplexity int, userID string, methodID string) int
 		RemoveWebauthnCredential      func(childComplexity int, credentialID string) int
+		RenameCategory                func(childComplexity int, id string, name string, slug string) int
 		RenameDirectoryGroup          func(childComplexity int, groupID int, name string) int
-		RenameGroup                   func(childComplexity int, id string, name string, slug string) int
 		RenameMfaMethod               func(childComplexity int, methodID string, label string) int
 		RenamePolicy                  func(childComplexity int, policyID string, newTitle string) int
 		RenameTemplate                func(childComplexity int, id string, name string) int
@@ -547,14 +548,14 @@ type ComplexityRoot struct {
 		SetAIRetrievalConfig          func(childComplexity int, topK int) int
 		SetAIToken                    func(childComplexity int, token string) int
 		SetCategoryCadence            func(childComplexity int, category NotifCategory, cadence NotifCadence) int
+		SetCategoryDefaults           func(childComplexity int, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) int
+		SetCategoryGovernance         func(childComplexity int, id string, owners []string, idpGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) int
 		SetCategoryRuleset            func(childComplexity int, categoryID string, rules []*RaciRuleInput) int
 		SetContactBlockArchived       func(childComplexity int, id string, archived bool) int
 		SetDefinitionArchived         func(childComplexity int, id string, archived bool) int
 		SetDigestWindow               func(childComplexity int, dailyHour int, weeklyDow int) int
+		SetEmailServiceConfig         func(childComplexity int, input EmailServiceConfigInput) int
 		SetGlobalSettings             func(childComplexity int, input GlobalSettingsInput) int
-		SetGroupDefaults              func(childComplexity int, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) int
-		SetGroupGovernance            func(childComplexity int, id string, owners []string, adGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) int
-		SetMailgunConfig              func(childComplexity int, input MailgunConfigInput) int
 		SetNotificationChannels       func(childComplexity int, input NotificationPrefInput) int
 		SetPolicyAck                  func(childComplexity int, policyID string, ackTriggers *AckTrigger, ackAudienceOverride []string) int
 		SetPolicyContactBlocks        func(childComplexity int, policyID string, contactBlockIds []string) int
@@ -669,7 +670,7 @@ type ComplexityRoot struct {
 		CurrentDraftVersionID     func(childComplexity int) int
 		CurrentPublishedVersionID func(childComplexity int) int
 		DocumentType              func(childComplexity int) int
-		HomeGroupID               func(childComplexity int) int
+		HomeCategoryID            func(childComplexity int) int
 		ID                        func(childComplexity int) int
 		Number                    func(childComplexity int) int
 		OwnerName                 func(childComplexity int) int
@@ -732,27 +733,27 @@ type ComplexityRoot struct {
 		AuditLog                   func(childComplexity int, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) int
 		AuditSegment               func(childComplexity int, fromRecordID string, toRecordID string) int
 		AuthoringAssist            func(childComplexity int, input AuthoringAssistInput) int
+		Category                   func(childComplexity int, id string) int
 		CategoryApprovers          func(childComplexity int, categoryID string) int
+		CategoryChildren           func(childComplexity int, parentID *string) int
 		CategoryRuleset            func(childComplexity int, categoryID string) int
 		CompletionReport           func(childComplexity int, policyVersionID string, groupID *string) int
 		ContactBlocks              func(childComplexity int, includeArchived *bool) int
 		Definitions                func(childComplexity int, categoryID *string, includeArchived *bool) int
 		DiffVersions               func(childComplexity int, fromVersionID string, toVersionID string) int
 		DirectoryGroups            func(childComplexity int) int
-		EffectiveGovernance        func(childComplexity int, groupID string) int
+		EffectiveGovernance        func(childComplexity int, categoryID string) int
 		EffectiveTemplate          func(childComplexity int, policyID string) int
 		EffectiveWorkflow          func(childComplexity int, policyID string) int
+		EmailServiceConfig         func(childComplexity int) int
 		ExportAcks                 func(childComplexity int, policyVersionID string, format string) int
 		GlobalSettings             func(childComplexity int) int
-		Group                      func(childComplexity int, id string) int
-		GroupChildren              func(childComplexity int, parentID *string) int
 		GroupMappings              func(childComplexity int, connectionID string) int
 		GroupMembers               func(childComplexity int, groupID int) int
 		Health                     func(childComplexity int) int
 		ImpersonationStatus        func(childComplexity int) int
 		LatestTemplateVersion      func(childComplexity int, templateID string) int
 		ListUserSessions           func(childComplexity int, userID string) int
-		MailgunConfig              func(childComplexity int) int
 		ManagedGroupMembers        func(childComplexity int, groupID string) int
 		Me                         func(childComplexity int) int
 		MyAckSummary               func(childComplexity int) int
@@ -767,7 +768,7 @@ type ComplexityRoot struct {
 		Organizations              func(childComplexity int) int
 		PDFDownloadLink            func(childComplexity int, jobID string) int
 		PendingTasks               func(childComplexity int) int
-		Policies                   func(childComplexity int, groupID string, includeDescendants *bool, documentType *DocumentType) int
+		Policies                   func(childComplexity int, categoryID string, includeDescendants *bool, documentType *DocumentType) int
 		PoliciesByOwner            func(childComplexity int, userID string, includeRetired *bool) int
 		Policy                     func(childComplexity int, id string) int
 		PolicyContactBlocks        func(childComplexity int, policyID string) int
@@ -793,7 +794,7 @@ type ComplexityRoot struct {
 		SpCertificates             func(childComplexity int) int
 		StageEligibleAssignees     func(childComplexity int, policyVersionID string, stageIndex int) int
 		TemplateVersions           func(childComplexity int, templateID string) int
-		Templates                  func(childComplexity int, ownerGroupID *string) int
+		Templates                  func(childComplexity int, ownerCategoryID *string) int
 		TopPolicyQuestions         func(childComplexity int, limit *int) int
 		UpcomingApprovals          func(childComplexity int) int
 		UserFactors                func(childComplexity int, userID string) int
@@ -976,11 +977,11 @@ type ComplexityRoot struct {
 	}
 
 	Template struct {
-		Code         func(childComplexity int) int
-		ID           func(childComplexity int) int
-		Name         func(childComplexity int) int
-		OwnerGroupID func(childComplexity int) int
-		RetiredAt    func(childComplexity int) int
+		Code            func(childComplexity int) int
+		ID              func(childComplexity int) int
+		Name            func(childComplexity int) int
+		OwnerCategoryID func(childComplexity int) int
+		RetiredAt       func(childComplexity int) int
 	}
 
 	TemplateVersion struct {
@@ -1148,12 +1149,12 @@ type MutationResolver interface {
 	SetAIRetrievalConfig(ctx context.Context, topK int) (*AIRetrievalConfig, error)
 	SetUserAiQueryLimit(ctx context.Context, userID string, limit int) (*AIUserQueryLimit, error)
 	IssueCollabToken(ctx context.Context, input IssueCollabTokenInput) (*IssueCollabTokenPayload, error)
-	CreateGroup(ctx context.Context, name string, slug string, parentID *string) (*Group, error)
-	SetGroupDefaults(ctx context.Context, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) (*Group, error)
-	RenameGroup(ctx context.Context, id string, name string, slug string) (*Group, error)
-	DeleteGroup(ctx context.Context, id string) (bool, error)
-	MoveGroup(ctx context.Context, groupID string, newParentID *string) (*Group, error)
-	CreateTemplate(ctx context.Context, name string, ownerGroupID *string) (*Template, error)
+	CreateCategory(ctx context.Context, name string, slug string, parentID *string) (*Category, error)
+	SetCategoryDefaults(ctx context.Context, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) (*Category, error)
+	RenameCategory(ctx context.Context, id string, name string, slug string) (*Category, error)
+	DeleteCategory(ctx context.Context, id string) (bool, error)
+	MoveCategory(ctx context.Context, categoryID string, newParentID *string) (*Category, error)
+	CreateTemplate(ctx context.Context, name string, ownerCategoryID *string) (*Template, error)
 	CreateTemplateVersion(ctx context.Context, templateID string, sections []*SectionInput) (*TemplateVersion, error)
 	UpdateTemplateVersionSections(ctx context.Context, id string, sections []*SectionInput) (*TemplateVersion, error)
 	PublishTemplateVersion(ctx context.Context, id string) (*TemplateVersion, error)
@@ -1161,7 +1162,7 @@ type MutationResolver interface {
 	RetireTemplate(ctx context.Context, id string) (*Template, error)
 	DeleteTemplate(ctx context.Context, id string) (bool, error)
 	RenameTemplate(ctx context.Context, id string, name string) (*Template, error)
-	CreatePolicy(ctx context.Context, homeGroupID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) (*Policy, error)
+	CreatePolicy(ctx context.Context, homeCategoryID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) (*Policy, error)
 	SaveDraft(ctx context.Context, policyID string, contentJSON string, templateVersionID *string) (*PolicyVersion, error)
 	SetPolicyTemplate(ctx context.Context, policyID string, templateID *string, none bool) (*Policy, error)
 	PublishDraft(ctx context.Context, policyID string) (*PolicyVersion, error)
@@ -1169,16 +1170,16 @@ type MutationResolver interface {
 	DeletePolicy(ctx context.Context, id string) (bool, error)
 	RetirePolicy(ctx context.Context, id string) (*Policy, error)
 	SetPolicyOwner(ctx context.Context, policyID string, ownerUserID string) (*Policy, error)
-	MovePolicy(ctx context.Context, policyID string, homeGroupID string) (*Policy, error)
+	MovePolicy(ctx context.Context, policyID string, homeCategoryID string) (*Policy, error)
 	SetPolicySensitivity(ctx context.Context, policyID string, sensitivity Sensitivity) (*Policy, error)
 	RenamePolicy(ctx context.Context, policyID string, newTitle string) (*RenamePolicyResult, error)
 	BreakGlassReveal(ctx context.Context, policyID string, reason string) (*BreakGlassResult, error)
 	ReindexPolicy(ctx context.Context, policyID string) (*ReindexResult, error)
 	ReindexPolicyVersion(ctx context.Context, policyVersionID string) (*ReindexResult, error)
-	SetGroupGovernance(ctx context.Context, id string, owners []string, adGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) (*Group, error)
+	SetCategoryGovernance(ctx context.Context, id string, owners []string, idpGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) (*Category, error)
 	SetPolicyAck(ctx context.Context, policyID string, ackTriggers *AckTrigger, ackAudienceOverride []string) (*Policy, error)
 	SetGlobalSettings(ctx context.Context, input GlobalSettingsInput) (*GlobalSettings, error)
-	SetMailgunConfig(ctx context.Context, input MailgunConfigInput) (*MailgunConfigStatus, error)
+	SetEmailServiceConfig(ctx context.Context, input EmailServiceConfigInput) (*EmailServiceConfigStatus, error)
 	AddAppendix(ctx context.Context, policyVersionID string, title string, contentJSON string) (*Appendix, error)
 	UpdateAppendix(ctx context.Context, id string, title string, contentJSON string) (*Appendix, error)
 	ReorderAppendices(ctx context.Context, policyVersionID string, orderedIds []string) ([]*Appendix, error)
@@ -1289,20 +1290,20 @@ type QueryResolver interface {
 	AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) (*AuditQueryPage, error)
 	AuditSegment(ctx context.Context, fromRecordID string, toRecordID string) (*AuditSegment, error)
 	VerifyAuditChain(ctx context.Context, fromRecordID string, toRecordID string) (*AuditChainVerification, error)
-	Group(ctx context.Context, id string) (*Group, error)
-	GroupChildren(ctx context.Context, parentID *string) ([]*Group, error)
-	Templates(ctx context.Context, ownerGroupID *string) ([]*Template, error)
+	Category(ctx context.Context, id string) (*Category, error)
+	CategoryChildren(ctx context.Context, parentID *string) ([]*Category, error)
+	Templates(ctx context.Context, ownerCategoryID *string) ([]*Template, error)
 	LatestTemplateVersion(ctx context.Context, templateID string) (*TemplateVersion, error)
 	TemplateVersions(ctx context.Context, templateID string) ([]*TemplateVersion, error)
 	Policy(ctx context.Context, id string) (*Policy, error)
-	Policies(ctx context.Context, groupID string, includeDescendants *bool, documentType *DocumentType) ([]*Policy, error)
+	Policies(ctx context.Context, categoryID string, includeDescendants *bool, documentType *DocumentType) ([]*Policy, error)
 	PolicyVersion(ctx context.Context, id string) (*PolicyVersion, error)
 	PolicyVersions(ctx context.Context, policyID string) ([]*PolicyVersion, error)
 	DiffVersions(ctx context.Context, fromVersionID string, toVersionID string) ([]*SectionDiff, error)
 	EffectiveTemplate(ctx context.Context, policyID string) (*EffectiveTemplate, error)
-	EffectiveGovernance(ctx context.Context, groupID string) (*EffectiveGovernance, error)
+	EffectiveGovernance(ctx context.Context, categoryID string) (*EffectiveGovernance, error)
 	GlobalSettings(ctx context.Context) (*GlobalSettings, error)
-	MailgunConfig(ctx context.Context) (*MailgunConfigStatus, error)
+	EmailServiceConfig(ctx context.Context) (*EmailServiceConfigStatus, error)
 	RelatedPolicies(ctx context.Context, policyID string) ([]*RelatedPolicy, error)
 	RelatedPolicyCandidates(ctx context.Context, policyID string) ([]*Policy, error)
 	ContactBlocks(ctx context.Context, includeArchived *bool) ([]*ContactBlock, error)
@@ -2076,6 +2077,97 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.BulkDecideResult.Results(childComplexity), true
 
+	case "Category.ackEveryone":
+		if e.ComplexityRoot.Category.AckEveryone == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.AckEveryone(childComplexity), true
+	case "Category.ackEveryoneSet":
+		if e.ComplexityRoot.Category.AckEveryoneSet == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.AckEveryoneSet(childComplexity), true
+	case "Category.ackTriggers":
+		if e.ComplexityRoot.Category.AckTriggers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.AckTriggers(childComplexity), true
+	case "Category.defaultTemplateId":
+		if e.ComplexityRoot.Category.DefaultTemplateID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.DefaultTemplateID(childComplexity), true
+	case "Category.defaultTemplateNone":
+		if e.ComplexityRoot.Category.DefaultTemplateNone == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.DefaultTemplateNone(childComplexity), true
+	case "Category.defaultWorkflowId":
+		if e.ComplexityRoot.Category.DefaultWorkflowID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.DefaultWorkflowID(childComplexity), true
+	case "Category.exclusionGroupIds":
+		if e.ComplexityRoot.Category.ExclusionGroupIds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.ExclusionGroupIds(childComplexity), true
+	case "Category.id":
+		if e.ComplexityRoot.Category.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.ID(childComplexity), true
+	case "Category.idpGroupIds":
+		if e.ComplexityRoot.Category.IdpGroupIds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.IdpGroupIds(childComplexity), true
+	case "Category.name":
+		if e.ComplexityRoot.Category.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.Name(childComplexity), true
+	case "Category.owners":
+		if e.ComplexityRoot.Category.Owners == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.Owners(childComplexity), true
+	case "Category.parentId":
+		if e.ComplexityRoot.Category.ParentID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.ParentID(childComplexity), true
+	case "Category.reviewCadence":
+		if e.ComplexityRoot.Category.ReviewCadence == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.ReviewCadence(childComplexity), true
+	case "Category.reviewDate":
+		if e.ComplexityRoot.Category.ReviewDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.ReviewDate(childComplexity), true
+	case "Category.slug":
+		if e.ComplexityRoot.Category.Slug == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.Slug(childComplexity), true
+
 	case "CategoryPref.cadence":
 		if e.ComplexityRoot.CategoryPref.Cadence == nil {
 			break
@@ -2438,6 +2530,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.EffectiveWorkflow.WorkflowDefID(childComplexity), true
 
+	case "EmailServiceConfigStatus.apiKeySet":
+		if e.ComplexityRoot.EmailServiceConfigStatus.APIKeySet == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EmailServiceConfigStatus.APIKeySet(childComplexity), true
+	case "EmailServiceConfigStatus.domain":
+		if e.ComplexityRoot.EmailServiceConfigStatus.Domain == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EmailServiceConfigStatus.Domain(childComplexity), true
+	case "EmailServiceConfigStatus.enabled":
+		if e.ComplexityRoot.EmailServiceConfigStatus.Enabled == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EmailServiceConfigStatus.Enabled(childComplexity), true
+	case "EmailServiceConfigStatus.fromAddress":
+		if e.ComplexityRoot.EmailServiceConfigStatus.FromAddress == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EmailServiceConfigStatus.FromAddress(childComplexity), true
+	case "EmailServiceConfigStatus.provider":
+		if e.ComplexityRoot.EmailServiceConfigStatus.Provider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EmailServiceConfigStatus.Provider(childComplexity), true
+	case "EmailServiceConfigStatus.region":
+		if e.ComplexityRoot.EmailServiceConfigStatus.Region == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EmailServiceConfigStatus.Region(childComplexity), true
+
 	case "GlobalSettings.announcement":
 		if e.ComplexityRoot.GlobalSettings.Announcement == nil {
 			break
@@ -2450,97 +2579,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.GlobalSettings.Maintenance(childComplexity), true
-
-	case "Group.ackEveryone":
-		if e.ComplexityRoot.Group.AckEveryone == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.AckEveryone(childComplexity), true
-	case "Group.ackEveryoneSet":
-		if e.ComplexityRoot.Group.AckEveryoneSet == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.AckEveryoneSet(childComplexity), true
-	case "Group.ackTriggers":
-		if e.ComplexityRoot.Group.AckTriggers == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.AckTriggers(childComplexity), true
-	case "Group.adGroupIds":
-		if e.ComplexityRoot.Group.AdGroupIds == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.AdGroupIds(childComplexity), true
-	case "Group.defaultTemplateId":
-		if e.ComplexityRoot.Group.DefaultTemplateID == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.DefaultTemplateID(childComplexity), true
-	case "Group.defaultTemplateNone":
-		if e.ComplexityRoot.Group.DefaultTemplateNone == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.DefaultTemplateNone(childComplexity), true
-	case "Group.defaultWorkflowId":
-		if e.ComplexityRoot.Group.DefaultWorkflowID == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.DefaultWorkflowID(childComplexity), true
-	case "Group.exclusionGroupIds":
-		if e.ComplexityRoot.Group.ExclusionGroupIds == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.ExclusionGroupIds(childComplexity), true
-	case "Group.id":
-		if e.ComplexityRoot.Group.ID == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.ID(childComplexity), true
-	case "Group.name":
-		if e.ComplexityRoot.Group.Name == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.Name(childComplexity), true
-	case "Group.owners":
-		if e.ComplexityRoot.Group.Owners == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.Owners(childComplexity), true
-	case "Group.parentId":
-		if e.ComplexityRoot.Group.ParentID == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.ParentID(childComplexity), true
-	case "Group.reviewCadence":
-		if e.ComplexityRoot.Group.ReviewCadence == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.ReviewCadence(childComplexity), true
-	case "Group.reviewDate":
-		if e.ComplexityRoot.Group.ReviewDate == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.ReviewDate(childComplexity), true
-	case "Group.slug":
-		if e.ComplexityRoot.Group.Slug == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Group.Slug(childComplexity), true
 
 	case "GroupApprovers.approverIds":
 		if e.ComplexityRoot.GroupApprovers.ApproverIds == nil {
@@ -2705,37 +2743,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.MagicLink.Token(childComplexity), true
-
-	case "MailgunConfigStatus.apiKeySet":
-		if e.ComplexityRoot.MailgunConfigStatus.APIKeySet == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MailgunConfigStatus.APIKeySet(childComplexity), true
-	case "MailgunConfigStatus.domain":
-		if e.ComplexityRoot.MailgunConfigStatus.Domain == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MailgunConfigStatus.Domain(childComplexity), true
-	case "MailgunConfigStatus.enabled":
-		if e.ComplexityRoot.MailgunConfigStatus.Enabled == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MailgunConfigStatus.Enabled(childComplexity), true
-	case "MailgunConfigStatus.fromAddress":
-		if e.ComplexityRoot.MailgunConfigStatus.FromAddress == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MailgunConfigStatus.FromAddress(childComplexity), true
-	case "MailgunConfigStatus.region":
-		if e.ComplexityRoot.MailgunConfigStatus.Region == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MailgunConfigStatus.Region(childComplexity), true
 
 	case "Maintenance.enabled":
 		if e.ComplexityRoot.Maintenance.Enabled == nil {
@@ -3021,6 +3028,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CompleteOnboarding(childComplexity, args["acceptTerms"].(bool), args["username"].(*string), args["firstName"].(*string), args["lastName"].(*string), args["email"].(*string)), true
+	case "Mutation.createCategory":
+		if e.ComplexityRoot.Mutation.CreateCategory == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createCategory_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateCategory(childComplexity, args["name"].(string), args["slug"].(string), args["parentId"].(*string)), true
 	case "Mutation.createContactBlock":
 		if e.ComplexityRoot.Mutation.CreateContactBlock == nil {
 			break
@@ -3054,17 +3072,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateDirectoryGroup(childComplexity, args["name"].(string)), true
-	case "Mutation.createGroup":
-		if e.ComplexityRoot.Mutation.CreateGroup == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_createGroup_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.CreateGroup(childComplexity, args["name"].(string), args["slug"].(string), args["parentId"].(*string)), true
 	case "Mutation.createLocalUser":
 		if e.ComplexityRoot.Mutation.CreateLocalUser == nil {
 			break
@@ -3097,7 +3104,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.CreatePolicy(childComplexity, args["homeGroupId"].(string), args["title"].(string), args["sensitivity"].(Sensitivity), args["templateId"].(*string), args["documentType"].(*DocumentType)), true
+		return e.ComplexityRoot.Mutation.CreatePolicy(childComplexity, args["homeCategoryId"].(string), args["title"].(string), args["sensitivity"].(Sensitivity), args["templateId"].(*string), args["documentType"].(*DocumentType)), true
 	case "Mutation.createReference":
 		if e.ComplexityRoot.Mutation.CreateReference == nil {
 			break
@@ -3119,7 +3126,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.CreateTemplate(childComplexity, args["name"].(string), args["ownerGroupId"].(*string)), true
+		return e.ComplexityRoot.Mutation.CreateTemplate(childComplexity, args["name"].(string), args["ownerCategoryId"].(*string)), true
 	case "Mutation.createTemplateVersion":
 		if e.ComplexityRoot.Mutation.CreateTemplateVersion == nil {
 			break
@@ -3153,6 +3160,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteAppendix(childComplexity, args["id"].(string)), true
+	case "Mutation.deleteCategory":
+		if e.ComplexityRoot.Mutation.DeleteCategory == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteCategory_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteCategory(childComplexity, args["id"].(string)), true
 	case "Mutation.deleteContactBlock":
 		if e.ComplexityRoot.Mutation.DeleteContactBlock == nil {
 			break
@@ -3186,17 +3204,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteDirectoryGroup(childComplexity, args["groupId"].(int)), true
-	case "Mutation.deleteGroup":
-		if e.ComplexityRoot.Mutation.DeleteGroup == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_deleteGroup_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.DeleteGroup(childComplexity, args["id"].(string)), true
 	case "Mutation.deleteGroupMapping":
 		if e.ComplexityRoot.Mutation.DeleteGroupMapping == nil {
 			break
@@ -3385,17 +3392,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.MergeAccounts(childComplexity, args["sourceUserId"].(string), args["targetUserId"].(string), args["confirmPrivileged"].(*bool), args["idempotencyKey"].(*string)), true
-	case "Mutation.moveGroup":
-		if e.ComplexityRoot.Mutation.MoveGroup == nil {
+	case "Mutation.moveCategory":
+		if e.ComplexityRoot.Mutation.MoveCategory == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_moveGroup_args(ctx, rawArgs)
+		args, err := ec.field_Mutation_moveCategory_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.MoveGroup(childComplexity, args["groupId"].(string), args["newParentId"].(*string)), true
+		return e.ComplexityRoot.Mutation.MoveCategory(childComplexity, args["categoryId"].(string), args["newParentId"].(*string)), true
 	case "Mutation.movePolicy":
 		if e.ComplexityRoot.Mutation.MovePolicy == nil {
 			break
@@ -3406,7 +3413,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.MovePolicy(childComplexity, args["policyId"].(string), args["homeGroupId"].(string)), true
+		return e.ComplexityRoot.Mutation.MovePolicy(childComplexity, args["policyId"].(string), args["homeCategoryId"].(string)), true
 	case "Mutation.publishDraft":
 		if e.ComplexityRoot.Mutation.PublishDraft == nil {
 			break
@@ -3539,6 +3546,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RemoveWebauthnCredential(childComplexity, args["credentialId"].(string)), true
+	case "Mutation.renameCategory":
+		if e.ComplexityRoot.Mutation.RenameCategory == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_renameCategory_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RenameCategory(childComplexity, args["id"].(string), args["name"].(string), args["slug"].(string)), true
 	case "Mutation.renameDirectoryGroup":
 		if e.ComplexityRoot.Mutation.RenameDirectoryGroup == nil {
 			break
@@ -3550,17 +3568,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RenameDirectoryGroup(childComplexity, args["groupId"].(int), args["name"].(string)), true
-	case "Mutation.renameGroup":
-		if e.ComplexityRoot.Mutation.RenameGroup == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_renameGroup_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.RenameGroup(childComplexity, args["id"].(string), args["name"].(string), args["slug"].(string)), true
 	case "Mutation.renameMfaMethod":
 		if e.ComplexityRoot.Mutation.RenameMfaMethod == nil {
 			break
@@ -3799,6 +3806,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetCategoryCadence(childComplexity, args["category"].(NotifCategory), args["cadence"].(NotifCadence)), true
+	case "Mutation.setCategoryDefaults":
+		if e.ComplexityRoot.Mutation.SetCategoryDefaults == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setCategoryDefaults_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetCategoryDefaults(childComplexity, args["id"].(string), args["defaultTemplateId"].(*string), args["defaultWorkflowId"].(*string), args["defaultTemplateNone"].(*bool)), true
+	case "Mutation.setCategoryGovernance":
+		if e.ComplexityRoot.Mutation.SetCategoryGovernance == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setCategoryGovernance_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetCategoryGovernance(childComplexity, args["id"].(string), args["owners"].([]string), args["idpGroupIds"].([]string), args["exclusionGroupIds"].([]string), args["ackTriggers"].(AckTrigger), args["reviewCadence"].(ReviewCadence), args["reviewDate"].(*string), args["ackEveryone"].(*bool)), true
 	case "Mutation.setCategoryRuleset":
 		if e.ComplexityRoot.Mutation.SetCategoryRuleset == nil {
 			break
@@ -3843,6 +3872,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetDigestWindow(childComplexity, args["dailyHour"].(int), args["weeklyDow"].(int)), true
+	case "Mutation.setEmailServiceConfig":
+		if e.ComplexityRoot.Mutation.SetEmailServiceConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setEmailServiceConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetEmailServiceConfig(childComplexity, args["input"].(EmailServiceConfigInput)), true
 	case "Mutation.setGlobalSettings":
 		if e.ComplexityRoot.Mutation.SetGlobalSettings == nil {
 			break
@@ -3854,39 +3894,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetGlobalSettings(childComplexity, args["input"].(GlobalSettingsInput)), true
-	case "Mutation.setGroupDefaults":
-		if e.ComplexityRoot.Mutation.SetGroupDefaults == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_setGroupDefaults_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.SetGroupDefaults(childComplexity, args["id"].(string), args["defaultTemplateId"].(*string), args["defaultWorkflowId"].(*string), args["defaultTemplateNone"].(*bool)), true
-	case "Mutation.setGroupGovernance":
-		if e.ComplexityRoot.Mutation.SetGroupGovernance == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_setGroupGovernance_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.SetGroupGovernance(childComplexity, args["id"].(string), args["owners"].([]string), args["adGroupIds"].([]string), args["exclusionGroupIds"].([]string), args["ackTriggers"].(AckTrigger), args["reviewCadence"].(ReviewCadence), args["reviewDate"].(*string), args["ackEveryone"].(*bool)), true
-	case "Mutation.setMailgunConfig":
-		if e.ComplexityRoot.Mutation.SetMailgunConfig == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_setMailgunConfig_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.SetMailgunConfig(childComplexity, args["input"].(MailgunConfigInput)), true
 	case "Mutation.setNotificationChannels":
 		if e.ComplexityRoot.Mutation.SetNotificationChannels == nil {
 			break
@@ -4581,12 +4588,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Policy.DocumentType(childComplexity), true
-	case "Policy.homeGroupId":
-		if e.ComplexityRoot.Policy.HomeGroupID == nil {
+	case "Policy.homeCategoryId":
+		if e.ComplexityRoot.Policy.HomeCategoryID == nil {
 			break
 		}
 
-		return e.ComplexityRoot.Policy.HomeGroupID(childComplexity), true
+		return e.ComplexityRoot.Policy.HomeCategoryID(childComplexity), true
 	case "Policy.id":
 		if e.ComplexityRoot.Policy.ID == nil {
 			break
@@ -4902,6 +4909,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.AuthoringAssist(childComplexity, args["input"].(AuthoringAssistInput)), true
+	case "Query.category":
+		if e.ComplexityRoot.Query.Category == nil {
+			break
+		}
+
+		args, err := ec.field_Query_category_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.Category(childComplexity, args["id"].(string)), true
 	case "Query.categoryApprovers":
 		if e.ComplexityRoot.Query.CategoryApprovers == nil {
 			break
@@ -4913,6 +4931,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.CategoryApprovers(childComplexity, args["categoryId"].(string)), true
+	case "Query.categoryChildren":
+		if e.ComplexityRoot.Query.CategoryChildren == nil {
+			break
+		}
+
+		args, err := ec.field_Query_categoryChildren_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CategoryChildren(childComplexity, args["parentId"].(*string)), true
 	case "Query.categoryRuleset":
 		if e.ComplexityRoot.Query.CategoryRuleset == nil {
 			break
@@ -4984,7 +5013,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.EffectiveGovernance(childComplexity, args["groupId"].(string)), true
+		return e.ComplexityRoot.Query.EffectiveGovernance(childComplexity, args["categoryId"].(string)), true
 	case "Query.effectiveTemplate":
 		if e.ComplexityRoot.Query.EffectiveTemplate == nil {
 			break
@@ -5007,6 +5036,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.EffectiveWorkflow(childComplexity, args["policyId"].(string)), true
+	case "Query.emailServiceConfig":
+		if e.ComplexityRoot.Query.EmailServiceConfig == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.EmailServiceConfig(childComplexity), true
 	case "Query.exportAcks":
 		if e.ComplexityRoot.Query.ExportAcks == nil {
 			break
@@ -5024,28 +5059,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GlobalSettings(childComplexity), true
-	case "Query.group":
-		if e.ComplexityRoot.Query.Group == nil {
-			break
-		}
-
-		args, err := ec.field_Query_group_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Query.Group(childComplexity, args["id"].(string)), true
-	case "Query.groupChildren":
-		if e.ComplexityRoot.Query.GroupChildren == nil {
-			break
-		}
-
-		args, err := ec.field_Query_groupChildren_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Query.GroupChildren(childComplexity, args["parentId"].(*string)), true
 	case "Query.groupMappings":
 		if e.ComplexityRoot.Query.GroupMappings == nil {
 			break
@@ -5103,12 +5116,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.ListUserSessions(childComplexity, args["userId"].(string)), true
-	case "Query.mailgunConfig":
-		if e.ComplexityRoot.Query.MailgunConfig == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Query.MailgunConfig(childComplexity), true
 	case "Query.managedGroupMembers":
 		if e.ComplexityRoot.Query.ManagedGroupMembers == nil {
 			break
@@ -5223,7 +5230,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Policies(childComplexity, args["groupId"].(string), args["includeDescendants"].(*bool), args["documentType"].(*DocumentType)), true
+		return e.ComplexityRoot.Query.Policies(childComplexity, args["categoryId"].(string), args["includeDescendants"].(*bool), args["documentType"].(*DocumentType)), true
 	case "Query.policiesByOwner":
 		if e.ComplexityRoot.Query.PoliciesByOwner == nil {
 			break
@@ -5499,7 +5506,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.Templates(childComplexity, args["ownerGroupId"].(*string)), true
+		return e.ComplexityRoot.Query.Templates(childComplexity, args["ownerCategoryId"].(*string)), true
 	case "Query.topPolicyQuestions":
 		if e.ComplexityRoot.Query.TopPolicyQuestions == nil {
 			break
@@ -6242,12 +6249,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Template.Name(childComplexity), true
-	case "Template.ownerGroupId":
-		if e.ComplexityRoot.Template.OwnerGroupID == nil {
+	case "Template.ownerCategoryId":
+		if e.ComplexityRoot.Template.OwnerCategoryID == nil {
 			break
 		}
 
-		return e.ComplexityRoot.Template.OwnerGroupID(childComplexity), true
+		return e.ComplexityRoot.Template.OwnerCategoryID(childComplexity), true
 	case "Template.retiredAt":
 		if e.ComplexityRoot.Template.RetiredAt == nil {
 			break
@@ -6859,12 +6866,12 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputContactBlockInput,
 		ec.unmarshalInputDecisionInput,
 		ec.unmarshalInputDefinitionEntryInput,
+		ec.unmarshalInputEmailServiceConfigInput,
 		ec.unmarshalInputEnrichmentOptOutInput,
 		ec.unmarshalInputGlobalSettingsInput,
 		ec.unmarshalInputGroupApproversInput,
 		ec.unmarshalInputIssueCollabTokenInput,
 		ec.unmarshalInputKeyValueInput,
-		ec.unmarshalInputMailgunConfigInput,
 		ec.unmarshalInputMaintenanceInput,
 		ec.unmarshalInputNotificationPrefInput,
 		ec.unmarshalInputPolicyRevisionSectionInput,
@@ -7581,7 +7588,8 @@ extend type Query {
 	{Name: "../../graphql/collab.graphqls", Input: `extend type Mutation {
   """
   Issue a short-lived websocket token for the Collaboration service.
-  The caller must be authenticated and have at least Editor access to the draft's policy group.
+  The caller must be signed in and be able to edit the policy (collab checks
+  the edit grant again before minting).
   """
   issueCollabToken(input: IssueCollabTokenInput!): IssueCollabTokenPayload!
 }
@@ -7589,12 +7597,9 @@ extend type Query {
 input IssueCollabTokenInput {
   policyId:          ID!
   draftId:           ID!
-  # Optional (collab#13): the pinned TemplateVersion.id, embedded in the collab
-  # JWT. Free-form policies have no template — which is most policies — so this
-  # is nullable and null/omitted is passed through to collab as empty. It was
-  # ID!, which made "no template" inexpressible and left co-editing unavailable
-  # for the normal case. core reads an empty value as "no pin" and still
-  # rejects a mismatched or omitted id on a templated draft.
+  # The draft's pinned TemplateVersion.id; null for a freeform draft. core reads
+  # an empty value as "no pin" and still rejects a mismatched or omitted id on a
+  # templated draft.
   templateVersionId: ID
 }
 
@@ -7608,21 +7613,21 @@ type IssueCollabTokenPayload {
 `, BuiltIn: false},
 	{Name: "../../graphql/core.graphqls", Input: `extend type Query {
 
-  # Groups
-  group(id: ID!): Group
-  groupChildren(parentId: ID): [Group!]!
+  # Categories
+  category(id: ID!): Category
+  categoryChildren(parentId: ID): [Category!]!
 
   # Templates
-  templates(ownerGroupId: ID): [Template!]!
+  templates(ownerCategoryId: ID): [Template!]!
   latestTemplateVersion(templateId: ID!): TemplateVersion
   # All versions of a template (newest first), incl. drafts — admin authoring.
   templateVersions(templateId: ID!): [TemplateVersion!]!
 
   # Policies
   policy(id: ID!): Policy
-  # documentType filters by kind (core#26): null => policies-only (back-compat,
-  # spec §2.8); POLICY or PROCEDURE filters to that kind explicitly.
-  policies(groupId: ID!, includeDescendants: Boolean, documentType: DocumentType): [Policy!]!
+  # documentType filters by kind: null lists policies only; POLICY or PROCEDURE
+  # filters to that kind.
+  policies(categoryId: ID!, includeDescendants: Boolean, documentType: DocumentType): [Policy!]!
   policyVersion(id: ID!): PolicyVersion
   policyVersions(policyId: ID!): [PolicyVersion!]!   # published versions, oldest-first
   diffVersions(fromVersionId: ID!, toVersionId: ID!): [SectionDiff!]!
@@ -7630,29 +7635,29 @@ type IssueCollabTokenPayload {
 }
 
 extend type Mutation {
-  # Groups
-  createGroup(name: String!, slug: String!, parentId: ID): Group!
-  # Template tri-state: pass defaultTemplateNone=true to set the group's default
+  # Categories
+  createCategory(name: String!, slug: String!, parentId: ID): Category!
+  # Template tri-state: pass defaultTemplateNone=true to set the category's default
   # template to explicit NONE (freeform); defaultTemplateId is then ignored.
   # defaultTemplateNone=false with a defaultTemplateId sets that specific
   # template; false with a null id means inherit from the ancestor chain.
-  setGroupDefaults(id: ID!, defaultTemplateId: ID, defaultWorkflowId: ID, defaultTemplateNone: Boolean): Group!
-  # Rename a taxonomy group (name + slug). Does NOT renumber existing policies.
-  renameGroup(id: ID!, name: String!, slug: String!): Group!
-  # Delete a taxonomy group and its policy-free descendants. Refused
-  # (FAILED_PRECONDITION) when the group or any descendant owns policies.
-  deleteGroup(id: ID!): Boolean!
-  # Move a taxonomy group (and its whole descendant subtree) under a new parent.
-  # A null newParentId promotes the group to a root (top-level). Re-parents only
-  # the group row: policies keep their home_group_id and effective governance is
-  # computed live from the ancestor chain, so there is no per-policy rewrite.
+  setCategoryDefaults(id: ID!, defaultTemplateId: ID, defaultWorkflowId: ID, defaultTemplateNone: Boolean): Category!
+  # Rename a category (name + slug). Does NOT renumber existing policies.
+  renameCategory(id: ID!, name: String!, slug: String!): Category!
+  # Delete a category and its policy-free descendants. Refused
+  # (FAILED_PRECONDITION) when the category or any descendant owns policies.
+  deleteCategory(id: ID!): Boolean!
+  # Move a category (and its whole descendant subtree) under a new parent.
+  # A null newParentId promotes the category to a root (top-level). Re-parents
+  # only the category: policies keep their home category and effective governance
+  # is computed live from the ancestor chain, so there is no per-policy rewrite.
   # Refused (FAILED_PRECONDITION) when the move would exceed max depth 3 or create
-  # a cycle (moving a group under itself or one of its descendants); nothing is
+  # a cycle (moving a category under itself or one of its descendants); nothing is
   # applied on failure.
-  moveGroup(groupId: ID!, newParentId: ID): Group!
+  moveCategory(categoryId: ID!, newParentId: ID): Category!
 
   # Templates
-  createTemplate(name: String!, ownerGroupId: ID): Template!
+  createTemplate(name: String!, ownerCategoryId: ID): Template!
   createTemplateVersion(templateId: ID!, sections: [SectionInput!]!): TemplateVersion!
   # Save edits to a draft version's sections (the authoring "Save"). Published
   # versions are immutable.
@@ -7667,15 +7672,14 @@ extend type Mutation {
   # template. Fails if any policy references it — retire those instead.
   deleteTemplate(id: ID!): Boolean!
   # Rename a template's display name. Template-level, NON-VERSIONED (like
-  # renameGroup): does NOT create a new template version — the version list and
+  # renameCategory): does NOT create a new template version — the version list and
   # count are unchanged. Templates have no slug, so this is name-only.
   renameTemplate(id: ID!, name: String!): Template!
 
   # Policies
-  # The owner/actor user is bound at the gateway from authmw claims;
-  # NEVER trusted from input. See docs/auth-flow.md.
-  # documentType is OPTIONAL (core#26): null => POLICY.
-  createPolicy(homeGroupId: ID!, title: String!, sensitivity: Sensitivity!, templateId: ID, documentType: DocumentType): Policy!
+  # The owner/actor user is the signed-in user, never taken from input.
+  # documentType is OPTIONAL: null => POLICY.
+  createPolicy(homeCategoryId: ID!, title: String!, sensitivity: Sensitivity!, templateId: ID, documentType: DocumentType): Policy!
   # templateVersionId is OPTIONAL: pass null or "" for a freeform (no-template)
   # draft — the draft is saved with no pinned template version and template/
   # section validation is skipped. A non-null id pins that template version and
@@ -7684,7 +7688,7 @@ extend type Mutation {
   # setPolicyTemplate sets the policy-level template tri-state override. none=true
   # → explicit NONE (freeform), templateId ignored; none=false with a templateId
   # → that specific template; none=false with null templateId → inherit from the
-  # owning group chain.
+  # owning category chain.
   setPolicyTemplate(policyId: ID!, templateId: ID, none: Boolean!): Policy!
   # publishDraft cuts the policy's working draft as a published version. Gated
   # on the effective-author model, like saveDraft. The order is:
@@ -7719,7 +7723,7 @@ extend type Mutation {
   # Site-admin: reassign a policy's owner (author).
   setPolicyOwner(policyId: ID!, ownerUserId: ID!): Policy!
   # Site-admin: move a policy to another section; renumbers to the target's sequence.
-  movePolicy(policyId: ID!, homeGroupId: ID!): Policy!
+  movePolicy(policyId: ID!, homeCategoryId: ID!): Policy!
   # Flip a policy's classification (STANDARD <-> SENSITIVE) in place. This is a
   # direct metadata change — it does NOT create a new version and does NOT trigger
   # the approval workflow. Allowed for any user with edit access to the policy.
@@ -7732,13 +7736,13 @@ extend type Mutation {
   renamePolicy(policyId: ID!, newTitle: String!): RenamePolicyResult!
 
   # Break-glass: a site-admin requests a time-boxed, audited reveal of a policy
-  # whose content they would otherwise see obfuscated (excluded from its group).
+  # whose content they would otherwise see obfuscated (excluded from it).
   # A non-empty reason is required. The grant flips subsequent reads to real
   # content until grantedUntil.
   breakGlassReveal(policyId: ID!, reason: String!): BreakGlassResult!
 
   # Site-admin: re-index a policy's current published version into the AI search
-  # corpus. A first-class backend re-index trigger (ai#22): it re-runs section
+  # corpus. A first-class backend re-index trigger: it re-runs section
   # extraction through the current extractor and re-emits ONLY to the AI indexer
   # — it does NOT re-send the compliance review email. Audited as policy.reindexed.
   reindexPolicy(policyId: ID!): ReindexResult!
@@ -7760,14 +7764,14 @@ type ReindexResult {
 
 enum Sensitivity { STANDARD SENSITIVE }
 
-# Policy vs procedure discriminator (core#26). Procedures are excluded from the
+# Policy vs procedure discriminator. Procedures are excluded from the
 # ack pipeline; otherwise they share the policies surface and lifecycle.
 enum DocumentType { POLICY PROCEDURE }
 
 enum AckTrigger { NONE ON_PUBLISH ON_CHANGE }
 enum ReviewCadence { NONE ANNUAL BIENNIAL ON_DATE }
 
-type Group {
+type Category {
   id: ID!
   name: String!
   slug: String!
@@ -7779,19 +7783,19 @@ type Group {
   defaultTemplateNone: Boolean!
   defaultWorkflowId: ID
   owners: [ID!]!
-  # Per-group ack-audience AD group names. Empty list = "no audience" (explicit
-  # override, treat as everyone per compliance service). Not-set is represented
-  # as null here (inherit from ancestor). Parallels exclusionGroupIds semantics.
-  adGroupIds: [String!]
+  # Per-category ack-audience IdP group names. Empty list = "no audience"
+  # (explicit override, treated as everyone by obligations). Not-set is null here
+  # (inherit from ancestor). Parallels exclusionGroupIds semantics.
+  idpGroupIds: [String!]
   ackTriggers: AckTrigger!
   reviewCadence: ReviewCadence!
   reviewDate: String
-  # Per-group exclusion group names. Empty list = "no exclusions" (explicit
+  # Per-category exclusion IdP group names. Empty list = "no exclusions" (explicit
   # override). Not-set is represented as null here (inherit from ancestor).
   exclusionGroupIds: [String!]
-  # Ack-audience "Everyone" tri-state (parallels adGroupIds nullability). When
+  # Ack-audience "Everyone" tri-state (parallels idpGroupIds nullability). When
   # the resolved value is true, every user must ack (the trigger still decides
-  # WHETHER an ack is required). ackEveryoneSet=false means this group inherits
+  # WHETHER an ack is required). ackEveryoneSet=false means this category inherits
   # from its ancestor chain; true means it carries its own value.
   ackEveryone: Boolean!
   ackEveryoneSet: Boolean!
@@ -7799,14 +7803,14 @@ type Group {
 
 # EffectiveGovernance carries the inherited ack-audience and exclusion group
 # names resolved by walking the ancestor chain with the leaf-wins rule. null
-# means no group in the chain has set a value (i.e. "unset / inherit from
-# system default", which is treated as everyone for audience or nobody for
-# exclusions by the compliance service).
+# means no category in the chain has set a value (i.e. "unset / inherit from
+# system default", which obligations treats as everyone for audience and
+# nobody for exclusions).
 type EffectiveGovernance {
   ackAudienceGroups: [String!]
   exclusionGroups: [String!]
   # Resolved ack-audience "Everyone" flag after nearest-ancestor-wins
-  # inheritance (false when no group in the chain sets it). When true, the ack
+  # inheritance (false when no category in the chain sets it). When true, the ack
   # audience is ALL users and ackAudienceGroups is irrelevant.
   ackEveryone: Boolean!
 }
@@ -7815,7 +7819,7 @@ type Template {
   id: ID!
   code: String!          # human-readable display code, TPL-NNN
   name: String!
-  ownerGroupId: ID
+  ownerCategoryId: ID
   retiredAt: String      # RFC3339; null = active. Set = retired (soft-deleted).
 }
 
@@ -7857,11 +7861,11 @@ input BlockInput {
 
 type Policy {
   id: ID!
-  homeGroupId: ID!
+  homeCategoryId: ID!
   number: String!
   title: String!
   sensitivity: Sensitivity!
-  # Policy vs procedure (core#26). Non-null: UNSPECIFIED from core maps to POLICY.
+  # Policy vs procedure. Non-null: UNSPECIFIED from core maps to POLICY.
   documentType: DocumentType!
   ownerUserId: ID!
   ownerName: String       # resolved from identity service; null when lookup unavailable
@@ -7869,26 +7873,26 @@ type Policy {
   currentPublishedVersionId: ID
   currentDraftVersionId: ID
   # Template tri-state. templateNone=true → explicit NONE (freeform), overrides
-  # the group chain; templateId set → that specific template; both unset
-  # (none=false, id=null) → inherit from the owning group chain.
+  # the category chain; templateId set → that specific template; both unset
+  # (none=false, id=null) → inherit from the owning category chain.
   templateId: ID
   templateNone: Boolean!
   templateUpdateAvailable: Boolean!
-  ackTriggers: AckTrigger      # null = inherit owning group's
-  ackAudienceOverride: [ID!]   # null = subtree(owning group)
+  ackTriggers: AckTrigger      # null = inherit the owning category's
+  ackAudienceOverride: [ID!]   # null = the owning category's audience
   viewerCan: PolicyViewerCan!  # per-viewer authorization decision (server-computed)
   retiredAt: String            # RFC3339; null = active. Set = retired (soft-deleted).
 }
 
 # PolicyViewerCan is the per-viewer authorization projection of a Policy,
-# computed server-side by the authz decision core. The UI mirrors these for
+# computed server-side by steward-authz. The UI mirrors these for
 # UX only; the gateway is the real enforcement boundary.
 type PolicyViewerCan {
   read: Boolean!              # the viewer may see this policy at all
   edit: Boolean!             # the viewer may author/edit (scoped, in-category)
   submit: Boolean!           # the viewer may submit for approval (scoped)
   approve: Boolean!          # the viewer may approve (scoped)
-  contentObfuscated: Boolean! # body is served obfuscated (excluded site-admin)
+  contentObfuscated: Boolean! # body is served obfuscated (excluded site admin)
   canBreakGlass: Boolean!    # the viewer may break-glass to reveal real content
   # ack: true when the RACI chart places the viewer in this policy's ack
   # audience (ack rule match, merit-evaluated, read-gated; per-policy
@@ -7948,37 +7952,36 @@ type EffectiveTemplate {
   none: Boolean!
 }
 
-# --- Group governance + policy ack (ADM-06 / #3b) ---
+# --- Category governance + policy ack ---
 extend type Query {
   """
   Returns the effective (inherited) ack-audience and exclusion groups for a
-  category group by applying the leaf-wins ancestor-chain rule. Use this for
-  read-only display of inherited values and for the directory picker affordance
+  category by applying the leaf-wins ancestor-chain rule. Use this for
+  read-only display of inherited values and for the group picker affordance
   ("override" vs. "inherited from <ancestor>").
   """
-  effectiveGovernance(groupId: ID!): EffectiveGovernance!
+  effectiveGovernance(categoryId: ID!): EffectiveGovernance!
 }
 
 extend type Mutation {
   """
-  Persists governance fields on a category group. adGroupIds and
-  exclusionGroupIds are validated against the live lldap directory groups. Pass
-  an empty list to explicitly set "no audience" / "no exclusions" (overriding
-  any ancestor value); pass null (or omit) to leave the field unchanged so an
-  inherited value is preserved. The stored per-group values (not the inherited
-  effective values) are returned in the Group response. ackEveryone is
-  tri-state like adGroupIds: pass true/false to set this group's own value,
-  pass null (or omit) to leave it inheriting from the ancestor chain.
+  Persists governance fields on a category. idpGroupIds and exclusionGroupIds
+  are IdP group names. Pass an empty list to explicitly set "no audience" /
+  "no exclusions" (overriding any ancestor value); pass null (or omit) to leave
+  the field unchanged so an inherited value is preserved. The stored
+  per-category values (not the inherited effective values) are returned in the
+  Category response. ackEveryone is tri-state like idpGroupIds: pass true/false
+  to set this category's own value, pass null (or omit) to leave it inheriting
+  from the ancestor chain.
   """
-  setGroupGovernance(id: ID!, owners: [ID!]!, adGroupIds: [String!], exclusionGroupIds: [String!], ackTriggers: AckTrigger!, reviewCadence: ReviewCadence!, reviewDate: String, ackEveryone: Boolean): Group!
+  setCategoryGovernance(id: ID!, owners: [ID!]!, idpGroupIds: [String!], exclusionGroupIds: [String!], ackTriggers: AckTrigger!, reviewCadence: ReviewCadence!, reviewDate: String, ackEveryone: Boolean): Category!
   setPolicyAck(policyId: ID!, ackTriggers: AckTrigger, ackAudienceOverride: [ID!]): Policy!
 }
 
 
 # --- Global settings (cross-app banners) ---
-# Persisted server-side so a site-admin's Announcement + Maintenance notice
-# render as top banners in BOTH apps (platform ui + ui-admin). Backed by
-# policy-core SettingsService.
+# Persisted server-side so a site admin's announcement and maintenance notice
+# render as top banners in the web app. Backed by core SettingsService.
 type Announcement {
   enabled: Boolean!
   level: String!
@@ -8011,43 +8014,43 @@ input GlobalSettingsInput {
   maintenance: MaintenanceInput!
 }
 
-# Readable by both apps (unauthenticated read is fine; goes through authmw).
+# Readable by any signed-in user.
 extend type Query { globalSettings: GlobalSettings! }
 
 # Site-admin only.
 extend type Mutation { setGlobalSettings(input: GlobalSettingsInput!): GlobalSettings! }
 
-# --- Mailgun transport configuration (site-admin) ---
-# The Mailgun sending configuration for the platform email transport, persisted
-# server-side and backed by policy-core SettingsService. WRITE-ONLY credential:
-# setMailgunConfig accepts the api key, but NO field ever returns it — the only
-# thing the GraphQL surface reveals about the key is apiKeySet (a presence
-# flag), mirroring aiTokenSet. The key-bearing read path lives on an
-# internal-only service that the gateway never references, so the secret cannot
-# leak through this surface.
-type MailgunConfigStatus {
+# --- Email service configuration (site-admin) ---
+# The sending configuration for the platform email transport, persisted
+# server-side by core SettingsService. WRITE-ONLY credential:
+# setEmailServiceConfig accepts the api key, but NO field ever returns it; the
+# only thing this surface reveals about the key is apiKeySet (a presence flag).
+type EmailServiceConfigStatus {
   """
-  Whether a Mailgun sending key is currently stored. The key's value is never
-  returned by any query — only this presence flag, so the admin Settings page
-  can show "a key is stored and not retrievable — you can only replace it"
-  versus "no key set" without the value ever leaving the database.
+  Whether a sending key is currently stored. The key's value is never returned
+  by any query, only this presence flag, so the admin Settings page can show
+  "a key is stored and not retrievable; you can only replace it" versus "no key
+  set" without the value ever leaving core.
   """
   apiKeySet: Boolean!
+  "The provider the configuration is for; empty until an admin sets one."
+  provider: String!
   domain: String!
   region: String!
   fromAddress: String!
   enabled: Boolean!
 }
 
-input MailgunConfigInput {
+input EmailServiceConfigInput {
   """
-  WRITE-ONLY, presence-tracked. The Mailgun sending api key. Stored server-side
-  and never read back — there is no query that returns it, not even masked (see
-  apiKeySet). Nullable so the field carries three states on save: omitted/null
-  leaves the stored key unchanged (persist non-secret fields without re-sending
-  the key); an empty string "" clears the stored key; a non-empty value sets it.
+  WRITE-ONLY, presence-tracked. The sending api key. Stored server-side and
+  never read back (see apiKeySet). Nullable so the field carries three states
+  on save: omitted/null leaves the stored key unchanged (persist non-secret
+  fields without re-sending the key); an empty string "" clears the stored key;
+  a non-empty value sets it.
   """
   apiKey: String
+  provider: String!
   domain: String!
   region: String!
   fromAddress: String!
@@ -8055,11 +8058,11 @@ input MailgunConfigInput {
 }
 
 # Site-admin only. Presence + non-secret configuration view; never the key.
-extend type Query { mailgunConfig: MailgunConfigStatus! }
+extend type Query { emailServiceConfig: EmailServiceConfigStatus! }
 
 # Site-admin only. Stores the api key together with the non-secret config and
 # returns the keyless status.
-extend type Mutation { setMailgunConfig(input: MailgunConfigInput!): MailgunConfigStatus! }
+extend type Mutation { setEmailServiceConfig(input: EmailServiceConfigInput!): EmailServiceConfigStatus! }
 
 
 # --- Appendices ---
@@ -8071,7 +8074,7 @@ extend type Mutation {
 }
 
 # --- Related policies (structured links) ---
-# Per-policy NON-VERSIONED structured links to other policies (core#9): stored
+# Per-policy NON-VERSIONED structured links to other policies: stored
 # one-way by id and resolved live to the related policy's number+title, so
 # relationships are data rather than free text in the body. Editing them does
 # not create a new policy version. setRelatedPolicies is a full replace.
@@ -8082,7 +8085,7 @@ type RelatedPolicy {
 }
 extend type Query {
   relatedPolicies(policyId: ID!): [RelatedPolicy!]!
-  # Policies eligible to be linked as related to the given policy (core#22).
+  # Policies eligible to be linked as related to the given policy.
   # A candidate B is offered only when every user who can READ the subject
   # policy can also read B (readers(subject) ⊆ readers(B)) — the same RACI read
   # decision + sensitivity gate the read model uses — so a link can never create
@@ -8100,7 +8103,7 @@ extend type Mutation {
 }
 
 # --- Reusable contact blocks (library object) ---
-# A reusable contact-information block (core#13) defined once (admin-managed
+# A reusable contact-information block defined once (admin-managed
 # library) and referenced by many policies. A policy references blocks by id and
 # renders them LIVE (track-latest): editing a block centrally updates every
 # referencing policy. Attach/detach is a per-policy NON-VERSIONED change
@@ -8149,7 +8152,7 @@ extend type Mutation {
 }
 
 # --- References / Standards library (library object) ---
-# A reusable References/Standards entry (core#20) defined once (admin-managed
+# A reusable References/Standards entry defined once (admin-managed
 # library) and referenced by many policies, mirroring the reusable contact-block
 # library above. A policy references entries by id and renders them LIVE
 # (track-latest): editing an entry centrally updates every referencing policy.
@@ -8197,9 +8200,9 @@ extend type Mutation {
 }
 
 # --- Definitions library (category-scoped library object) ---
-# A reusable, CATEGORY-SCOPED glossary entry (core#25) defined once and attached
+# A reusable, CATEGORY-SCOPED glossary entry defined once and attached
 # by many policies, mirroring the References/Standards library above with one
-# addition: a categoryId scope. A definition belongs to a category (a group);
+# addition: a categoryId scope. A definition belongs to a category;
 # the staff attach picker for a policy offers definitions whose categoryId is in
 # that policy's ancestor chain (leaf -> root). A policy attaches entries by id
 # and renders them LIVE (track-latest): editing an entry centrally updates every
@@ -8207,7 +8210,7 @@ extend type Mutation {
 # (setPolicyDefinitionEntries is a full replace). Definition text is PLAIN.
 type DefinitionEntry {
   id: ID!
-  # owning category (group) — the sharing scope.
+  # owning category, the sharing scope.
   categoryId: ID!
   term: String!
   definition: String!
@@ -8285,13 +8288,10 @@ extend type Mutation {
 
 
 `, BuiltIn: false},
-	{Name: "../../graphql/delivery.graphqls", Input: `# --- Phase 4: Delivery types ---
-# NOTE: The Phase 4 plan specifies a SectionDiff with fields
-# (sectionKey, changeType, diffHtml, boilerplate). The Phase 1 SectionDiff
-# (declared above) is the canonical type; PolicyDiff reuses it rather than
-# redefining the SDL type. Field semantics map cleanly:
-#   plan.diffHtml    -> existing.wordDiffHtml
-#   plan.boilerplate -> existing.isBoilerplate
+	{Name: "../../graphql/delivery.graphqls", Input: `# --- Delivery ---
+# PolicyDiff reuses core's SectionDiff: delivery's diff_html is wordDiffHtml and
+# its boilerplate flag is isBoilerplate. Delivery sends no section title, so
+# sectionTitle is the section key.
 
 type RenderedContent { html: String! }
 
@@ -9907,6 +9907,42 @@ func (ec *executionContext) childFields_BulkDecideResult(ctx context.Context, fi
 	return nil, fmt.Errorf("no field named %q was found under type BulkDecideResult", field.Name)
 }
 
+func (ec *executionContext) childFields_Category(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_Category_id(ctx, field)
+	case "name":
+		return ec.fieldContext_Category_name(ctx, field)
+	case "slug":
+		return ec.fieldContext_Category_slug(ctx, field)
+	case "parentId":
+		return ec.fieldContext_Category_parentId(ctx, field)
+	case "defaultTemplateId":
+		return ec.fieldContext_Category_defaultTemplateId(ctx, field)
+	case "defaultTemplateNone":
+		return ec.fieldContext_Category_defaultTemplateNone(ctx, field)
+	case "defaultWorkflowId":
+		return ec.fieldContext_Category_defaultWorkflowId(ctx, field)
+	case "owners":
+		return ec.fieldContext_Category_owners(ctx, field)
+	case "idpGroupIds":
+		return ec.fieldContext_Category_idpGroupIds(ctx, field)
+	case "ackTriggers":
+		return ec.fieldContext_Category_ackTriggers(ctx, field)
+	case "reviewCadence":
+		return ec.fieldContext_Category_reviewCadence(ctx, field)
+	case "reviewDate":
+		return ec.fieldContext_Category_reviewDate(ctx, field)
+	case "exclusionGroupIds":
+		return ec.fieldContext_Category_exclusionGroupIds(ctx, field)
+	case "ackEveryone":
+		return ec.fieldContext_Category_ackEveryone(ctx, field)
+	case "ackEveryoneSet":
+		return ec.fieldContext_Category_ackEveryoneSet(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
+}
+
 func (ec *executionContext) childFields_CategoryPref(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "category":
@@ -10107,6 +10143,24 @@ func (ec *executionContext) childFields_EffectiveWorkflow(ctx context.Context, f
 	return nil, fmt.Errorf("no field named %q was found under type EffectiveWorkflow", field.Name)
 }
 
+func (ec *executionContext) childFields_EmailServiceConfigStatus(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "apiKeySet":
+		return ec.fieldContext_EmailServiceConfigStatus_apiKeySet(ctx, field)
+	case "provider":
+		return ec.fieldContext_EmailServiceConfigStatus_provider(ctx, field)
+	case "domain":
+		return ec.fieldContext_EmailServiceConfigStatus_domain(ctx, field)
+	case "region":
+		return ec.fieldContext_EmailServiceConfigStatus_region(ctx, field)
+	case "fromAddress":
+		return ec.fieldContext_EmailServiceConfigStatus_fromAddress(ctx, field)
+	case "enabled":
+		return ec.fieldContext_EmailServiceConfigStatus_enabled(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type EmailServiceConfigStatus", field.Name)
+}
+
 func (ec *executionContext) childFields_GlobalSettings(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "announcement":
@@ -10115,42 +10169,6 @@ func (ec *executionContext) childFields_GlobalSettings(ctx context.Context, fiel
 		return ec.fieldContext_GlobalSettings_maintenance(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type GlobalSettings", field.Name)
-}
-
-func (ec *executionContext) childFields_Group(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-	switch field.Name {
-	case "id":
-		return ec.fieldContext_Group_id(ctx, field)
-	case "name":
-		return ec.fieldContext_Group_name(ctx, field)
-	case "slug":
-		return ec.fieldContext_Group_slug(ctx, field)
-	case "parentId":
-		return ec.fieldContext_Group_parentId(ctx, field)
-	case "defaultTemplateId":
-		return ec.fieldContext_Group_defaultTemplateId(ctx, field)
-	case "defaultTemplateNone":
-		return ec.fieldContext_Group_defaultTemplateNone(ctx, field)
-	case "defaultWorkflowId":
-		return ec.fieldContext_Group_defaultWorkflowId(ctx, field)
-	case "owners":
-		return ec.fieldContext_Group_owners(ctx, field)
-	case "adGroupIds":
-		return ec.fieldContext_Group_adGroupIds(ctx, field)
-	case "ackTriggers":
-		return ec.fieldContext_Group_ackTriggers(ctx, field)
-	case "reviewCadence":
-		return ec.fieldContext_Group_reviewCadence(ctx, field)
-	case "reviewDate":
-		return ec.fieldContext_Group_reviewDate(ctx, field)
-	case "exclusionGroupIds":
-		return ec.fieldContext_Group_exclusionGroupIds(ctx, field)
-	case "ackEveryone":
-		return ec.fieldContext_Group_ackEveryone(ctx, field)
-	case "ackEveryoneSet":
-		return ec.fieldContext_Group_ackEveryoneSet(ctx, field)
-	}
-	return nil, fmt.Errorf("no field named %q was found under type Group", field.Name)
 }
 
 func (ec *executionContext) childFields_GroupApprovers(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -10251,22 +10269,6 @@ func (ec *executionContext) childFields_MagicLink(ctx context.Context, field gra
 		return ec.fieldContext_MagicLink_expiresAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type MagicLink", field.Name)
-}
-
-func (ec *executionContext) childFields_MailgunConfigStatus(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-	switch field.Name {
-	case "apiKeySet":
-		return ec.fieldContext_MailgunConfigStatus_apiKeySet(ctx, field)
-	case "domain":
-		return ec.fieldContext_MailgunConfigStatus_domain(ctx, field)
-	case "region":
-		return ec.fieldContext_MailgunConfigStatus_region(ctx, field)
-	case "fromAddress":
-		return ec.fieldContext_MailgunConfigStatus_fromAddress(ctx, field)
-	case "enabled":
-		return ec.fieldContext_MailgunConfigStatus_enabled(ctx, field)
-	}
-	return nil, fmt.Errorf("no field named %q was found under type MailgunConfigStatus", field.Name)
 }
 
 func (ec *executionContext) childFields_Maintenance(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -10501,8 +10503,8 @@ func (ec *executionContext) childFields_Policy(ctx context.Context, field graphq
 	switch field.Name {
 	case "id":
 		return ec.fieldContext_Policy_id(ctx, field)
-	case "homeGroupId":
-		return ec.fieldContext_Policy_homeGroupId(ctx, field)
+	case "homeCategoryId":
+		return ec.fieldContext_Policy_homeCategoryId(ctx, field)
 	case "number":
 		return ec.fieldContext_Policy_number(ctx, field)
 	case "title":
@@ -10945,8 +10947,8 @@ func (ec *executionContext) childFields_Template(ctx context.Context, field grap
 		return ec.fieldContext_Template_code(ctx, field)
 	case "name":
 		return ec.fieldContext_Template_name(ctx, field)
-	case "ownerGroupId":
-		return ec.fieldContext_Template_ownerGroupId(ctx, field)
+	case "ownerCategoryId":
+		return ec.fieldContext_Template_ownerCategoryId(ctx, field)
 	case "retiredAt":
 		return ec.fieldContext_Template_retiredAt(ctx, field)
 	}
@@ -11633,6 +11635,36 @@ func (ec *executionContext) field_Mutation_completeOnboarding_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createCategory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "name",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "slug",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["slug"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "parentId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["parentId"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createContactBlock_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11672,36 +11704,6 @@ func (ec *executionContext) field_Mutation_createDirectoryGroup_args(ctx context
 		return nil, err
 	}
 	args["name"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_createGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "name",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["name"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "slug",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["slug"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "parentId",
-		func(ctx context.Context, v any) (*string, error) {
-			return ec.unmarshalOID2ᚖstring(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["parentId"] = arg2
 	return args, nil
 }
 
@@ -11768,14 +11770,14 @@ func (ec *executionContext) field_Mutation_createMagicLink_args(ctx context.Cont
 func (ec *executionContext) field_Mutation_createPolicy_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "homeGroupId",
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "homeCategoryId",
 		func(ctx context.Context, v any) (string, error) {
 			return ec.unmarshalNID2string(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["homeGroupId"] = arg0
+	args["homeCategoryId"] = arg0
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "title",
 		func(ctx context.Context, v any) (string, error) {
 			return ec.unmarshalNString2string(ctx, v)
@@ -11858,14 +11860,14 @@ func (ec *executionContext) field_Mutation_createTemplate_args(ctx context.Conte
 		return nil, err
 	}
 	args["name"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "ownerGroupId",
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "ownerCategoryId",
 		func(ctx context.Context, v any) (*string, error) {
 			return ec.unmarshalOID2ᚖstring(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["ownerGroupId"] = arg1
+	args["ownerCategoryId"] = arg1
 	return args, nil
 }
 
@@ -11900,6 +11902,20 @@ func (ec *executionContext) field_Mutation_createWorkflowDef_args(ctx context.Co
 }
 
 func (ec *executionContext) field_Mutation_deleteAppendix_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteCategory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
@@ -11966,20 +11982,6 @@ func (ec *executionContext) field_Mutation_deleteGroupMapping_args(ctx context.C
 		return nil, err
 	}
 	args["mappingId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_deleteGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNID2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
 	return args, nil
 }
 
@@ -12241,17 +12243,17 @@ func (ec *executionContext) field_Mutation_mergeAccounts_args(ctx context.Contex
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_moveGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_moveCategory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "categoryId",
 		func(ctx context.Context, v any) (string, error) {
 			return ec.unmarshalNID2string(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["groupId"] = arg0
+	args["categoryId"] = arg0
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "newParentId",
 		func(ctx context.Context, v any) (*string, error) {
 			return ec.unmarshalOID2ᚖstring(ctx, v)
@@ -12274,14 +12276,14 @@ func (ec *executionContext) field_Mutation_movePolicy_args(ctx context.Context, 
 		return nil, err
 	}
 	args["policyId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "homeGroupId",
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "homeCategoryId",
 		func(ctx context.Context, v any) (string, error) {
 			return ec.unmarshalNID2string(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["homeGroupId"] = arg1
+	args["homeCategoryId"] = arg1
 	return args, nil
 }
 
@@ -12485,29 +12487,7 @@ func (ec *executionContext) field_Mutation_removeWebauthnCredential_args(ctx con
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_renameDirectoryGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
-		func(ctx context.Context, v any) (int, error) {
-			return ec.unmarshalNInt2int(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["groupId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "name",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["name"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_renameGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_renameCategory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
@@ -12534,6 +12514,28 @@ func (ec *executionContext) field_Mutation_renameGroup_args(ctx context.Context,
 		return nil, err
 	}
 	args["slug"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_renameDirectoryGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "name",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg1
 	return args, nil
 }
 
@@ -12929,6 +12931,114 @@ func (ec *executionContext) field_Mutation_setCategoryCadence_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setCategoryDefaults_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "defaultTemplateId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["defaultTemplateId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "defaultWorkflowId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["defaultWorkflowId"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "defaultTemplateNone",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["defaultTemplateNone"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setCategoryGovernance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "owners",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["owners"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "idpGroupIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["idpGroupIds"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "exclusionGroupIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["exclusionGroupIds"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "ackTriggers",
+		func(ctx context.Context, v any) (AckTrigger, error) {
+			return ec.unmarshalNAckTrigger2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAckTrigger(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["ackTriggers"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "reviewCadence",
+		func(ctx context.Context, v any) (ReviewCadence, error) {
+			return ec.unmarshalNReviewCadence2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewCadence(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["reviewCadence"] = arg5
+	arg6, err := graphql.ProcessArgField(ctx, rawArgs, "reviewDate",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["reviewDate"] = arg6
+	arg7, err := graphql.ProcessArgField(ctx, rawArgs, "ackEveryone",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["ackEveryone"] = arg7
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_setCategoryRuleset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -13017,12 +13127,12 @@ func (ec *executionContext) field_Mutation_setDigestWindow_args(ctx context.Cont
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_setGlobalSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_setEmailServiceConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
-		func(ctx context.Context, v any) (GlobalSettingsInput, error) {
-			return ec.unmarshalNGlobalSettingsInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGlobalSettingsInput(ctx, v)
+		func(ctx context.Context, v any) (EmailServiceConfigInput, error) {
+			return ec.unmarshalNEmailServiceConfigInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐEmailServiceConfigInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -13031,120 +13141,12 @@ func (ec *executionContext) field_Mutation_setGlobalSettings_args(ctx context.Co
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_setGroupDefaults_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNID2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "defaultTemplateId",
-		func(ctx context.Context, v any) (*string, error) {
-			return ec.unmarshalOID2ᚖstring(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["defaultTemplateId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "defaultWorkflowId",
-		func(ctx context.Context, v any) (*string, error) {
-			return ec.unmarshalOID2ᚖstring(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["defaultWorkflowId"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "defaultTemplateNone",
-		func(ctx context.Context, v any) (*bool, error) {
-			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["defaultTemplateNone"] = arg3
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_setGroupGovernance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNID2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "owners",
-		func(ctx context.Context, v any) ([]string, error) {
-			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["owners"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "adGroupIds",
-		func(ctx context.Context, v any) ([]string, error) {
-			return ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["adGroupIds"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "exclusionGroupIds",
-		func(ctx context.Context, v any) ([]string, error) {
-			return ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["exclusionGroupIds"] = arg3
-	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "ackTriggers",
-		func(ctx context.Context, v any) (AckTrigger, error) {
-			return ec.unmarshalNAckTrigger2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAckTrigger(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["ackTriggers"] = arg4
-	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "reviewCadence",
-		func(ctx context.Context, v any) (ReviewCadence, error) {
-			return ec.unmarshalNReviewCadence2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewCadence(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["reviewCadence"] = arg5
-	arg6, err := graphql.ProcessArgField(ctx, rawArgs, "reviewDate",
-		func(ctx context.Context, v any) (*string, error) {
-			return ec.unmarshalOString2ᚖstring(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["reviewDate"] = arg6
-	arg7, err := graphql.ProcessArgField(ctx, rawArgs, "ackEveryone",
-		func(ctx context.Context, v any) (*bool, error) {
-			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["ackEveryone"] = arg7
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_setMailgunConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Mutation_setGlobalSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
-		func(ctx context.Context, v any) (MailgunConfigInput, error) {
-			return ec.unmarshalNMailgunConfigInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMailgunConfigInput(ctx, v)
+		func(ctx context.Context, v any) (GlobalSettingsInput, error) {
+			return ec.unmarshalNGlobalSettingsInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGlobalSettingsInput(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -14227,6 +14229,20 @@ func (ec *executionContext) field_Query_categoryApprovers_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_categoryChildren_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "parentId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["parentId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_categoryRuleset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14238,6 +14254,20 @@ func (ec *executionContext) field_Query_categoryRuleset_args(ctx context.Context
 		return nil, err
 	}
 	args["categoryId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_category_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -14324,14 +14354,14 @@ func (ec *executionContext) field_Query_diffVersions_args(ctx context.Context, r
 func (ec *executionContext) field_Query_effectiveGovernance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "categoryId",
 		func(ctx context.Context, v any) (string, error) {
 			return ec.unmarshalNID2string(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["groupId"] = arg0
+	args["categoryId"] = arg0
 	return args, nil
 }
 
@@ -14385,20 +14415,6 @@ func (ec *executionContext) field_Query_exportAcks_args(ctx context.Context, raw
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_groupChildren_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "parentId",
-		func(ctx context.Context, v any) (*string, error) {
-			return ec.unmarshalOID2ᚖstring(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["parentId"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_groupMappings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14424,20 +14440,6 @@ func (ec *executionContext) field_Query_groupMembers_args(ctx context.Context, r
 		return nil, err
 	}
 	args["groupId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_group_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNID2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
 	return args, nil
 }
 
@@ -14550,14 +14552,14 @@ func (ec *executionContext) field_Query_policiesByOwner_args(ctx context.Context
 func (ec *executionContext) field_Query_policies_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "categoryId",
 		func(ctx context.Context, v any) (string, error) {
 			return ec.unmarshalNID2string(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["groupId"] = arg0
+	args["categoryId"] = arg0
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "includeDescendants",
 		func(ctx context.Context, v any) (*bool, error) {
 			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -14960,14 +14962,14 @@ func (ec *executionContext) field_Query_templateVersions_args(ctx context.Contex
 func (ec *executionContext) field_Query_templates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "ownerGroupId",
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "ownerCategoryId",
 		func(ctx context.Context, v any) (*string, error) {
 			return ec.unmarshalOID2ᚖstring(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["ownerGroupId"] = arg0
+	args["ownerCategoryId"] = arg0
 	return args, nil
 }
 
@@ -17818,6 +17820,351 @@ func (ec *executionContext) fieldContext_BulkDecideResult_bulkBatchId(_ context.
 	return graphql.NewScalarFieldContext("BulkDecideResult", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
+func (ec *executionContext) _Category_id(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Category_name(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Category_slug(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_slug(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Slug, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_slug(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Category_parentId(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_parentId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ParentID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Category_parentId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Category_defaultTemplateId(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_defaultTemplateId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultTemplateID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Category_defaultTemplateId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Category_defaultTemplateNone(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_defaultTemplateNone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultTemplateNone, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_defaultTemplateNone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Category_defaultWorkflowId(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_defaultWorkflowId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultWorkflowID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Category_defaultWorkflowId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Category_owners(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_owners(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Owners, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNID2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_owners(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Category_idpGroupIds(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_idpGroupIds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IdpGroupIds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalOString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Category_idpGroupIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Category_ackTriggers(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_ackTriggers(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AckTriggers, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v AckTrigger) graphql.Marshaler {
+			return ec.marshalNAckTrigger2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAckTrigger(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_ackTriggers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type AckTrigger does not have child fields"))
+}
+
+func (ec *executionContext) _Category_reviewCadence(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_reviewCadence(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReviewCadence, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ReviewCadence) graphql.Marshaler {
+			return ec.marshalNReviewCadence2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewCadence(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_reviewCadence(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type ReviewCadence does not have child fields"))
+}
+
+func (ec *executionContext) _Category_reviewDate(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_reviewDate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReviewDate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Category_reviewDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Category_exclusionGroupIds(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_exclusionGroupIds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExclusionGroupIds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalOString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Category_exclusionGroupIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Category_ackEveryone(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_ackEveryone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AckEveryone, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_ackEveryone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Category_ackEveryoneSet(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_ackEveryoneSet(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AckEveryoneSet, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_ackEveryoneSet(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _CategoryPref_category(ctx context.Context, field graphql.CollectedField, obj *CategoryPref) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19170,6 +19517,144 @@ func (ec *executionContext) fieldContext_EffectiveWorkflow_firstUnstaffedStage(_
 	return graphql.NewScalarFieldContext("EffectiveWorkflow", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _EmailServiceConfigStatus_apiKeySet(ctx context.Context, field graphql.CollectedField, obj *EmailServiceConfigStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_EmailServiceConfigStatus_apiKeySet(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeySet, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_EmailServiceConfigStatus_apiKeySet(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("EmailServiceConfigStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _EmailServiceConfigStatus_provider(ctx context.Context, field graphql.CollectedField, obj *EmailServiceConfigStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_EmailServiceConfigStatus_provider(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Provider, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_EmailServiceConfigStatus_provider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("EmailServiceConfigStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _EmailServiceConfigStatus_domain(ctx context.Context, field graphql.CollectedField, obj *EmailServiceConfigStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_EmailServiceConfigStatus_domain(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Domain, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_EmailServiceConfigStatus_domain(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("EmailServiceConfigStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _EmailServiceConfigStatus_region(ctx context.Context, field graphql.CollectedField, obj *EmailServiceConfigStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_EmailServiceConfigStatus_region(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Region, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_EmailServiceConfigStatus_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("EmailServiceConfigStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _EmailServiceConfigStatus_fromAddress(ctx context.Context, field graphql.CollectedField, obj *EmailServiceConfigStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_EmailServiceConfigStatus_fromAddress(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.FromAddress, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_EmailServiceConfigStatus_fromAddress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("EmailServiceConfigStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _EmailServiceConfigStatus_enabled(ctx context.Context, field graphql.CollectedField, obj *EmailServiceConfigStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_EmailServiceConfigStatus_enabled(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_EmailServiceConfigStatus_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("EmailServiceConfigStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _GlobalSettings_announcement(ctx context.Context, field graphql.CollectedField, obj *GlobalSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19232,351 +19717,6 @@ func (ec *executionContext) fieldContext_GlobalSettings_maintenance(_ context.Co
 		},
 	}
 	return fc, nil
-}
-
-func (ec *executionContext) _Group_id(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_id(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNID2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Group_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type ID does not have child fields"))
-}
-
-func (ec *executionContext) _Group_name(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_name(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Name, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Group_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _Group_slug(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_slug(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Slug, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Group_slug(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _Group_parentId(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_parentId(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.ParentID, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
-			return ec.marshalOID2ᚖstring(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_Group_parentId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type ID does not have child fields"))
-}
-
-func (ec *executionContext) _Group_defaultTemplateId(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_defaultTemplateId(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.DefaultTemplateID, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
-			return ec.marshalOID2ᚖstring(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_Group_defaultTemplateId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type ID does not have child fields"))
-}
-
-func (ec *executionContext) _Group_defaultTemplateNone(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_defaultTemplateNone(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.DefaultTemplateNone, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Group_defaultTemplateNone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _Group_defaultWorkflowId(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_defaultWorkflowId(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.DefaultWorkflowID, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
-			return ec.marshalOID2ᚖstring(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_Group_defaultWorkflowId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type ID does not have child fields"))
-}
-
-func (ec *executionContext) _Group_owners(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_owners(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Owners, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
-			return ec.marshalNID2ᚕstringᚄ(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Group_owners(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type ID does not have child fields"))
-}
-
-func (ec *executionContext) _Group_adGroupIds(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_adGroupIds(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.AdGroupIds, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
-			return ec.marshalOString2ᚕstringᚄ(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_Group_adGroupIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _Group_ackTriggers(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_ackTriggers(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.AckTriggers, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v AckTrigger) graphql.Marshaler {
-			return ec.marshalNAckTrigger2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAckTrigger(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Group_ackTriggers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type AckTrigger does not have child fields"))
-}
-
-func (ec *executionContext) _Group_reviewCadence(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_reviewCadence(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.ReviewCadence, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v ReviewCadence) graphql.Marshaler {
-			return ec.marshalNReviewCadence2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewCadence(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Group_reviewCadence(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type ReviewCadence does not have child fields"))
-}
-
-func (ec *executionContext) _Group_reviewDate(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_reviewDate(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.ReviewDate, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
-			return ec.marshalOString2ᚖstring(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_Group_reviewDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _Group_exclusionGroupIds(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_exclusionGroupIds(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.ExclusionGroupIds, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
-			return ec.marshalOString2ᚕstringᚄ(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_Group_exclusionGroupIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _Group_ackEveryone(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_ackEveryone(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.AckEveryone, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Group_ackEveryone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _Group_ackEveryoneSet(ctx context.Context, field graphql.CollectedField, obj *Group) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Group_ackEveryoneSet(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.AckEveryoneSet, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Group_ackEveryoneSet(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Group", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _GroupApprovers_groupId(ctx context.Context, field graphql.CollectedField, obj *GroupApprovers) (ret graphql.Marshaler) {
@@ -20175,121 +20315,6 @@ func (ec *executionContext) _MagicLink_expiresAt(ctx context.Context, field grap
 }
 func (ec *executionContext) fieldContext_MagicLink_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("MagicLink", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _MailgunConfigStatus_apiKeySet(ctx context.Context, field graphql.CollectedField, obj *MailgunConfigStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_MailgunConfigStatus_apiKeySet(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.APIKeySet, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_MailgunConfigStatus_apiKeySet(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("MailgunConfigStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _MailgunConfigStatus_domain(ctx context.Context, field graphql.CollectedField, obj *MailgunConfigStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_MailgunConfigStatus_domain(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Domain, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_MailgunConfigStatus_domain(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("MailgunConfigStatus", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _MailgunConfigStatus_region(ctx context.Context, field graphql.CollectedField, obj *MailgunConfigStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_MailgunConfigStatus_region(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Region, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_MailgunConfigStatus_region(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("MailgunConfigStatus", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _MailgunConfigStatus_fromAddress(ctx context.Context, field graphql.CollectedField, obj *MailgunConfigStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_MailgunConfigStatus_fromAddress(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.FromAddress, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_MailgunConfigStatus_fromAddress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("MailgunConfigStatus", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _MailgunConfigStatus_enabled(ctx context.Context, field graphql.CollectedField, obj *MailgunConfigStatus) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_MailgunConfigStatus_enabled(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Enabled, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_MailgunConfigStatus_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("MailgunConfigStatus", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _Maintenance_enabled(ctx context.Context, field graphql.CollectedField, obj *Maintenance) (ret graphql.Marshaler) {
@@ -21348,34 +21373,34 @@ func (ec *executionContext) fieldContext_Mutation_issueCollabToken(ctx context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_createGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_createCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_createGroup(ctx, field)
+			return ec.fieldContext_Mutation_createCategory(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().CreateGroup(ctx, fc.Args["name"].(string), fc.Args["slug"].(string), fc.Args["parentId"].(*string))
+			return ec.Resolvers.Mutation().CreateCategory(ctx, fc.Args["name"].(string), fc.Args["slug"].(string), fc.Args["parentId"].(*string))
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *Group) graphql.Marshaler {
-			return ec.marshalNGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroup(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v *Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_createGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_createCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_Group(ctx, field)
+			return ec.childFields_Category(ctx, field)
 		},
 	}
 	defer func() {
@@ -21385,41 +21410,41 @@ func (ec *executionContext) fieldContext_Mutation_createGroup(ctx context.Contex
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_createGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_createCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_setGroupDefaults(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_setCategoryDefaults(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_setGroupDefaults(ctx, field)
+			return ec.fieldContext_Mutation_setCategoryDefaults(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().SetGroupDefaults(ctx, fc.Args["id"].(string), fc.Args["defaultTemplateId"].(*string), fc.Args["defaultWorkflowId"].(*string), fc.Args["defaultTemplateNone"].(*bool))
+			return ec.Resolvers.Mutation().SetCategoryDefaults(ctx, fc.Args["id"].(string), fc.Args["defaultTemplateId"].(*string), fc.Args["defaultWorkflowId"].(*string), fc.Args["defaultTemplateNone"].(*bool))
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *Group) graphql.Marshaler {
-			return ec.marshalNGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroup(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v *Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_setGroupDefaults(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_setCategoryDefaults(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_Group(ctx, field)
+			return ec.childFields_Category(ctx, field)
 		},
 	}
 	defer func() {
@@ -21429,41 +21454,41 @@ func (ec *executionContext) fieldContext_Mutation_setGroupDefaults(ctx context.C
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_setGroupDefaults_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_setCategoryDefaults_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_renameGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_renameCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_renameGroup(ctx, field)
+			return ec.fieldContext_Mutation_renameCategory(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().RenameGroup(ctx, fc.Args["id"].(string), fc.Args["name"].(string), fc.Args["slug"].(string))
+			return ec.Resolvers.Mutation().RenameCategory(ctx, fc.Args["id"].(string), fc.Args["name"].(string), fc.Args["slug"].(string))
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *Group) graphql.Marshaler {
-			return ec.marshalNGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroup(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v *Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_renameGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_renameCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_Group(ctx, field)
+			return ec.childFields_Category(ctx, field)
 		},
 	}
 	defer func() {
@@ -21473,24 +21498,24 @@ func (ec *executionContext) fieldContext_Mutation_renameGroup(ctx context.Contex
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_renameGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_renameCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_deleteGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_deleteCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_deleteGroup(ctx, field)
+			return ec.fieldContext_Mutation_deleteCategory(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().DeleteGroup(ctx, fc.Args["id"].(string))
+			return ec.Resolvers.Mutation().DeleteCategory(ctx, fc.Args["id"].(string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
@@ -21500,7 +21525,7 @@ func (ec *executionContext) _Mutation_deleteGroup(ctx context.Context, field gra
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_deleteGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_deleteCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -21517,41 +21542,41 @@ func (ec *executionContext) fieldContext_Mutation_deleteGroup(ctx context.Contex
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_deleteGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_deleteCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_moveGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_moveCategory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_moveGroup(ctx, field)
+			return ec.fieldContext_Mutation_moveCategory(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().MoveGroup(ctx, fc.Args["groupId"].(string), fc.Args["newParentId"].(*string))
+			return ec.Resolvers.Mutation().MoveCategory(ctx, fc.Args["categoryId"].(string), fc.Args["newParentId"].(*string))
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *Group) graphql.Marshaler {
-			return ec.marshalNGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroup(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v *Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_moveGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_moveCategory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_Group(ctx, field)
+			return ec.childFields_Category(ctx, field)
 		},
 	}
 	defer func() {
@@ -21561,7 +21586,7 @@ func (ec *executionContext) fieldContext_Mutation_moveGroup(ctx context.Context,
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_moveGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_moveCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -21578,7 +21603,7 @@ func (ec *executionContext) _Mutation_createTemplate(ctx context.Context, field 
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().CreateTemplate(ctx, fc.Args["name"].(string), fc.Args["ownerGroupId"].(*string))
+			return ec.Resolvers.Mutation().CreateTemplate(ctx, fc.Args["name"].(string), fc.Args["ownerCategoryId"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *Template) graphql.Marshaler {
@@ -21930,7 +21955,7 @@ func (ec *executionContext) _Mutation_createPolicy(ctx context.Context, field gr
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().CreatePolicy(ctx, fc.Args["homeGroupId"].(string), fc.Args["title"].(string), fc.Args["sensitivity"].(Sensitivity), fc.Args["templateId"].(*string), fc.Args["documentType"].(*DocumentType))
+			return ec.Resolvers.Mutation().CreatePolicy(ctx, fc.Args["homeCategoryId"].(string), fc.Args["title"].(string), fc.Args["sensitivity"].(Sensitivity), fc.Args["templateId"].(*string), fc.Args["documentType"].(*DocumentType))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *Policy) graphql.Marshaler {
@@ -22282,7 +22307,7 @@ func (ec *executionContext) _Mutation_movePolicy(ctx context.Context, field grap
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().MovePolicy(ctx, fc.Args["policyId"].(string), fc.Args["homeGroupId"].(string))
+			return ec.Resolvers.Mutation().MovePolicy(ctx, fc.Args["policyId"].(string), fc.Args["homeCategoryId"].(string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *Policy) graphql.Marshaler {
@@ -22536,34 +22561,34 @@ func (ec *executionContext) fieldContext_Mutation_reindexPolicyVersion(ctx conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_setGroupGovernance(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_setCategoryGovernance(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_setGroupGovernance(ctx, field)
+			return ec.fieldContext_Mutation_setCategoryGovernance(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().SetGroupGovernance(ctx, fc.Args["id"].(string), fc.Args["owners"].([]string), fc.Args["adGroupIds"].([]string), fc.Args["exclusionGroupIds"].([]string), fc.Args["ackTriggers"].(AckTrigger), fc.Args["reviewCadence"].(ReviewCadence), fc.Args["reviewDate"].(*string), fc.Args["ackEveryone"].(*bool))
+			return ec.Resolvers.Mutation().SetCategoryGovernance(ctx, fc.Args["id"].(string), fc.Args["owners"].([]string), fc.Args["idpGroupIds"].([]string), fc.Args["exclusionGroupIds"].([]string), fc.Args["ackTriggers"].(AckTrigger), fc.Args["reviewCadence"].(ReviewCadence), fc.Args["reviewDate"].(*string), fc.Args["ackEveryone"].(*bool))
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *Group) graphql.Marshaler {
-			return ec.marshalNGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroup(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v *Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_setGroupGovernance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_setCategoryGovernance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_Group(ctx, field)
+			return ec.childFields_Category(ctx, field)
 		},
 	}
 	defer func() {
@@ -22573,7 +22598,7 @@ func (ec *executionContext) fieldContext_Mutation_setGroupGovernance(ctx context
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_setGroupGovernance_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_setCategoryGovernance_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -22668,34 +22693,34 @@ func (ec *executionContext) fieldContext_Mutation_setGlobalSettings(ctx context.
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_setMailgunConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_setEmailServiceConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_setMailgunConfig(ctx, field)
+			return ec.fieldContext_Mutation_setEmailServiceConfig(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().SetMailgunConfig(ctx, fc.Args["input"].(MailgunConfigInput))
+			return ec.Resolvers.Mutation().SetEmailServiceConfig(ctx, fc.Args["input"].(EmailServiceConfigInput))
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *MailgunConfigStatus) graphql.Marshaler {
-			return ec.marshalNMailgunConfigStatus2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMailgunConfigStatus(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v *EmailServiceConfigStatus) graphql.Marshaler {
+			return ec.marshalNEmailServiceConfigStatus2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐEmailServiceConfigStatus(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_setMailgunConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_setEmailServiceConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_MailgunConfigStatus(ctx, field)
+			return ec.childFields_EmailServiceConfigStatus(ctx, field)
 		},
 	}
 	defer func() {
@@ -22705,7 +22730,7 @@ func (ec *executionContext) fieldContext_Mutation_setMailgunConfig(ctx context.C
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_setMailgunConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_setEmailServiceConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -27487,16 +27512,16 @@ func (ec *executionContext) fieldContext_Policy_id(_ context.Context, field grap
 	return graphql.NewScalarFieldContext("Policy", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
-func (ec *executionContext) _Policy_homeGroupId(ctx context.Context, field graphql.CollectedField, obj *Policy) (ret graphql.Marshaler) {
+func (ec *executionContext) _Policy_homeCategoryId(ctx context.Context, field graphql.CollectedField, obj *Policy) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Policy_homeGroupId(ctx, field)
+			return ec.fieldContext_Policy_homeCategoryId(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.HomeGroupID, nil
+			return obj.HomeCategoryID, nil
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
@@ -27506,7 +27531,7 @@ func (ec *executionContext) _Policy_homeGroupId(ctx context.Context, field graph
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Policy_homeGroupId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Policy_homeCategoryId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Policy", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
@@ -28947,34 +28972,34 @@ func (ec *executionContext) fieldContext_Query_verifyAuditChain(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_group(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_category(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_group(ctx, field)
+			return ec.fieldContext_Query_category(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Group(ctx, fc.Args["id"].(string))
+			return ec.Resolvers.Query().Category(ctx, fc.Args["id"].(string))
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *Group) graphql.Marshaler {
-			return ec.marshalOGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroup(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v *Category) graphql.Marshaler {
+			return ec.marshalOCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx, selections, v)
 		},
 		true,
 		false,
 	)
 }
-func (ec *executionContext) fieldContext_Query_group(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_category(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_Group(ctx, field)
+			return ec.childFields_Category(ctx, field)
 		},
 	}
 	defer func() {
@@ -28984,41 +29009,41 @@ func (ec *executionContext) fieldContext_Query_group(ctx context.Context, field 
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_group_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_category_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_groupChildren(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_categoryChildren(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_groupChildren(ctx, field)
+			return ec.fieldContext_Query_categoryChildren(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().GroupChildren(ctx, fc.Args["parentId"].(*string))
+			return ec.Resolvers.Query().CategoryChildren(ctx, fc.Args["parentId"].(*string))
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*Group) graphql.Marshaler {
-			return ec.marshalNGroup2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroupᚄ(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v []*Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryᚄ(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Query_groupChildren(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_categoryChildren(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_Group(ctx, field)
+			return ec.childFields_Category(ctx, field)
 		},
 	}
 	defer func() {
@@ -29028,7 +29053,7 @@ func (ec *executionContext) fieldContext_Query_groupChildren(ctx context.Context
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_groupChildren_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_categoryChildren_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -29045,7 +29070,7 @@ func (ec *executionContext) _Query_templates(ctx context.Context, field graphql.
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Templates(ctx, fc.Args["ownerGroupId"].(*string))
+			return ec.Resolvers.Query().Templates(ctx, fc.Args["ownerCategoryId"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v []*Template) graphql.Marshaler {
@@ -29221,7 +29246,7 @@ func (ec *executionContext) _Query_policies(ctx context.Context, field graphql.C
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Policies(ctx, fc.Args["groupId"].(string), fc.Args["includeDescendants"].(*bool), fc.Args["documentType"].(*DocumentType))
+			return ec.Resolvers.Query().Policies(ctx, fc.Args["categoryId"].(string), fc.Args["includeDescendants"].(*bool), fc.Args["documentType"].(*DocumentType))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v []*Policy) graphql.Marshaler {
@@ -29441,7 +29466,7 @@ func (ec *executionContext) _Query_effectiveGovernance(ctx context.Context, fiel
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().EffectiveGovernance(ctx, fc.Args["groupId"].(string))
+			return ec.Resolvers.Query().EffectiveGovernance(ctx, fc.Args["categoryId"].(string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *EffectiveGovernance) graphql.Marshaler {
@@ -29507,33 +29532,33 @@ func (ec *executionContext) fieldContext_Query_globalSettings(_ context.Context,
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_mailgunConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Query_emailServiceConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_mailgunConfig(ctx, field)
+			return ec.fieldContext_Query_emailServiceConfig(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return ec.Resolvers.Query().MailgunConfig(ctx)
+			return ec.Resolvers.Query().EmailServiceConfig(ctx)
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *MailgunConfigStatus) graphql.Marshaler {
-			return ec.marshalNMailgunConfigStatus2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMailgunConfigStatus(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v *EmailServiceConfigStatus) graphql.Marshaler {
+			return ec.marshalNEmailServiceConfigStatus2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐEmailServiceConfigStatus(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Query_mailgunConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_emailServiceConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_MailgunConfigStatus(ctx, field)
+			return ec.childFields_EmailServiceConfigStatus(ctx, field)
 		},
 	}
 	return fc, nil
@@ -34301,16 +34326,16 @@ func (ec *executionContext) fieldContext_Template_name(_ context.Context, field 
 	return graphql.NewScalarFieldContext("Template", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
-func (ec *executionContext) _Template_ownerGroupId(ctx context.Context, field graphql.CollectedField, obj *Template) (ret graphql.Marshaler) {
+func (ec *executionContext) _Template_ownerCategoryId(ctx context.Context, field graphql.CollectedField, obj *Template) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Template_ownerGroupId(ctx, field)
+			return ec.fieldContext_Template_ownerCategoryId(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.OwnerGroupID, nil
+			return obj.OwnerCategoryID, nil
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
@@ -34320,7 +34345,7 @@ func (ec *executionContext) _Template_ownerGroupId(ctx context.Context, field gr
 		false,
 	)
 }
-func (ec *executionContext) fieldContext_Template_ownerGroupId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Template_ownerCategoryId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Template", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
@@ -38121,6 +38146,71 @@ func (ec *executionContext) unmarshalInputDefinitionEntryInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputEmailServiceConfigInput(ctx context.Context, obj any) (EmailServiceConfigInput, error) {
+	var it EmailServiceConfigInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"apiKey", "provider", "domain", "region", "fromAddress", "enabled"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "apiKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKey = data
+		case "provider":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("provider"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Provider = data
+		case "domain":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("domain"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Domain = data
+		case "region":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("region"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Region = data
+		case "fromAddress":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fromAddress"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FromAddress = data
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputEnrichmentOptOutInput(ctx context.Context, obj any) (EnrichmentOptOutInput, error) {
 	var it EnrichmentOptOutInput
 	if obj == nil {
@@ -38329,64 +38419,6 @@ func (ec *executionContext) unmarshalInputKeyValueInput(ctx context.Context, obj
 				return it, err
 			}
 			it.Value = data
-		}
-	}
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputMailgunConfigInput(ctx context.Context, obj any) (MailgunConfigInput, error) {
-	var it MailgunConfigInput
-	if obj == nil {
-		return it, nil
-	}
-
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"apiKey", "domain", "region", "fromAddress", "enabled"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "apiKey":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.APIKey = data
-		case "domain":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("domain"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Domain = data
-		case "region":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("region"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Region = data
-		case "fromAddress":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fromAddress"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.FromAddress = data
-		case "enabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Enabled = data
 		}
 	}
 	return it, nil
@@ -40793,6 +40825,114 @@ func (ec *executionContext) _BulkDecideResult(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var categoryImplementors = []string{"Category"}
+
+func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet, obj *Category) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, categoryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Category")
+		case "id":
+			out.Values[i] = ec._Category_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._Category_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "slug":
+			out.Values[i] = ec._Category_slug(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "parentId":
+			out.Values[i] = ec._Category_parentId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "defaultTemplateId":
+			out.Values[i] = ec._Category_defaultTemplateId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "defaultTemplateNone":
+			out.Values[i] = ec._Category_defaultTemplateNone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "defaultWorkflowId":
+			out.Values[i] = ec._Category_defaultWorkflowId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "owners":
+			out.Values[i] = ec._Category_owners(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "idpGroupIds":
+			out.Values[i] = ec._Category_idpGroupIds(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "ackTriggers":
+			out.Values[i] = ec._Category_ackTriggers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reviewCadence":
+			out.Values[i] = ec._Category_reviewCadence(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reviewDate":
+			out.Values[i] = ec._Category_reviewDate(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "exclusionGroupIds":
+			out.Values[i] = ec._Category_exclusionGroupIds(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "ackEveryone":
+			out.Values[i] = ec._Category_ackEveryone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ackEveryoneSet":
+			out.Values[i] = ec._Category_ackEveryoneSet(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var categoryPrefImplementors = []string{"CategoryPref"}
 
 func (ec *executionContext) _CategoryPref(ctx context.Context, sel ast.SelectionSet, obj *CategoryPref) graphql.Marshaler {
@@ -41545,10 +41685,10 @@ func (ec *executionContext) _EffectiveWorkflow(ctx context.Context, sel ast.Sele
 	return out
 }
 
-var globalSettingsImplementors = []string{"GlobalSettings"}
+var emailServiceConfigStatusImplementors = []string{"EmailServiceConfigStatus"}
 
-func (ec *executionContext) _GlobalSettings(ctx context.Context, sel ast.SelectionSet, obj *GlobalSettings) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, globalSettingsImplementors)
+func (ec *executionContext) _EmailServiceConfigStatus(ctx context.Context, sel ast.SelectionSet, obj *EmailServiceConfigStatus) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, emailServiceConfigStatusImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferredFieldSet := graphql.NewFieldSet(nil)
@@ -41556,14 +41696,34 @@ func (ec *executionContext) _GlobalSettings(ctx context.Context, sel ast.Selecti
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("GlobalSettings")
-		case "announcement":
-			out.Values[i] = ec._GlobalSettings_announcement(ctx, field, obj)
+			out.Values[i] = graphql.MarshalString("EmailServiceConfigStatus")
+		case "apiKeySet":
+			out.Values[i] = ec._EmailServiceConfigStatus_apiKeySet(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "maintenance":
-			out.Values[i] = ec._GlobalSettings_maintenance(ctx, field, obj)
+		case "provider":
+			out.Values[i] = ec._EmailServiceConfigStatus_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "domain":
+			out.Values[i] = ec._EmailServiceConfigStatus_domain(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "region":
+			out.Values[i] = ec._EmailServiceConfigStatus_region(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fromAddress":
+			out.Values[i] = ec._EmailServiceConfigStatus_fromAddress(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "enabled":
+			out.Values[i] = ec._EmailServiceConfigStatus_enabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -41588,10 +41748,10 @@ func (ec *executionContext) _GlobalSettings(ctx context.Context, sel ast.Selecti
 	return out
 }
 
-var groupImplementors = []string{"Group"}
+var globalSettingsImplementors = []string{"GlobalSettings"}
 
-func (ec *executionContext) _Group(ctx context.Context, sel ast.SelectionSet, obj *Group) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, groupImplementors)
+func (ec *executionContext) _GlobalSettings(ctx context.Context, sel ast.SelectionSet, obj *GlobalSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, globalSettingsImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferredFieldSet := graphql.NewFieldSet(nil)
@@ -41599,79 +41759,14 @@ func (ec *executionContext) _Group(ctx context.Context, sel ast.SelectionSet, ob
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("Group")
-		case "id":
-			out.Values[i] = ec._Group_id(ctx, field, obj)
+			out.Values[i] = graphql.MarshalString("GlobalSettings")
+		case "announcement":
+			out.Values[i] = ec._GlobalSettings_announcement(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "name":
-			out.Values[i] = ec._Group_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "slug":
-			out.Values[i] = ec._Group_slug(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "parentId":
-			out.Values[i] = ec._Group_parentId(ctx, field, obj)
-			if out.Values[i] == graphql.RequiredNull {
-				out.Invalids++
-			}
-		case "defaultTemplateId":
-			out.Values[i] = ec._Group_defaultTemplateId(ctx, field, obj)
-			if out.Values[i] == graphql.RequiredNull {
-				out.Invalids++
-			}
-		case "defaultTemplateNone":
-			out.Values[i] = ec._Group_defaultTemplateNone(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "defaultWorkflowId":
-			out.Values[i] = ec._Group_defaultWorkflowId(ctx, field, obj)
-			if out.Values[i] == graphql.RequiredNull {
-				out.Invalids++
-			}
-		case "owners":
-			out.Values[i] = ec._Group_owners(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "adGroupIds":
-			out.Values[i] = ec._Group_adGroupIds(ctx, field, obj)
-			if out.Values[i] == graphql.RequiredNull {
-				out.Invalids++
-			}
-		case "ackTriggers":
-			out.Values[i] = ec._Group_ackTriggers(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "reviewCadence":
-			out.Values[i] = ec._Group_reviewCadence(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "reviewDate":
-			out.Values[i] = ec._Group_reviewDate(ctx, field, obj)
-			if out.Values[i] == graphql.RequiredNull {
-				out.Invalids++
-			}
-		case "exclusionGroupIds":
-			out.Values[i] = ec._Group_exclusionGroupIds(ctx, field, obj)
-			if out.Values[i] == graphql.RequiredNull {
-				out.Invalids++
-			}
-		case "ackEveryone":
-			out.Values[i] = ec._Group_ackEveryone(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "ackEveryoneSet":
-			out.Values[i] = ec._Group_ackEveryoneSet(ctx, field, obj)
+		case "maintenance":
+			out.Values[i] = ec._GlobalSettings_maintenance(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -42066,64 +42161,6 @@ func (ec *executionContext) _MagicLink(ctx context.Context, sel ast.SelectionSet
 			}
 		case "expiresAt":
 			out.Values[i] = ec._MagicLink_expiresAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
-
-	ec.ProcessDeferredGroup(graphql.DeferredGroup{
-		Defers:   deferLabelToView,
-		Path:     graphql.GetPath(ctx),
-		FieldSet: deferredFieldSet,
-		Context:  ctx,
-	})
-
-	return out
-}
-
-var mailgunConfigStatusImplementors = []string{"MailgunConfigStatus"}
-
-func (ec *executionContext) _MailgunConfigStatus(ctx context.Context, sel ast.SelectionSet, obj *MailgunConfigStatus) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, mailgunConfigStatusImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferredFieldSet := graphql.NewFieldSet(nil)
-	deferLabelToView := make(map[string]*graphql.FieldSetView)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("MailgunConfigStatus")
-		case "apiKeySet":
-			out.Values[i] = ec._MailgunConfigStatus_apiKeySet(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "domain":
-			out.Values[i] = ec._MailgunConfigStatus_domain(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "region":
-			out.Values[i] = ec._MailgunConfigStatus_region(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "fromAddress":
-			out.Values[i] = ec._MailgunConfigStatus_fromAddress(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "enabled":
-			out.Values[i] = ec._MailgunConfigStatus_enabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -42599,37 +42636,37 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "createGroup":
+		case "createCategory":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_createGroup(ctx, field)
+				return ec._Mutation_createCategory(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "setGroupDefaults":
+		case "setCategoryDefaults":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_setGroupDefaults(ctx, field)
+				return ec._Mutation_setCategoryDefaults(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "renameGroup":
+		case "renameCategory":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_renameGroup(ctx, field)
+				return ec._Mutation_renameCategory(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "deleteGroup":
+		case "deleteCategory":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_deleteGroup(ctx, field)
+				return ec._Mutation_deleteCategory(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "moveGroup":
+		case "moveCategory":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_moveGroup(ctx, field)
+				return ec._Mutation_moveCategory(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -42788,9 +42825,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "setGroupGovernance":
+		case "setCategoryGovernance":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_setGroupGovernance(ctx, field)
+				return ec._Mutation_setCategoryGovernance(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -42809,9 +42846,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "setMailgunConfig":
+		case "setEmailServiceConfig":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_setMailgunConfig(ctx, field)
+				return ec._Mutation_setEmailServiceConfig(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -43974,8 +44011,8 @@ func (ec *executionContext) _Policy(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "homeGroupId":
-			out.Values[i] = ec._Policy_homeGroupId(ctx, field, obj)
+		case "homeCategoryId":
+			out.Values[i] = ec._Policy_homeCategoryId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -44745,7 +44782,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "group":
+		case "category":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -44754,7 +44791,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_group(ctx, field)
+				res = ec._Query_category(ctx, field)
 				if res == graphql.RequiredNull {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -44767,7 +44804,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "groupChildren":
+		case "categoryChildren":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -44776,7 +44813,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_groupChildren(ctx, field)
+				res = ec._Query_categoryChildren(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -45031,7 +45068,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "mailgunConfig":
+		case "emailServiceConfig":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -45040,7 +45077,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_mailgunConfig(ctx, field)
+				res = ec._Query_emailServiceConfig(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -47568,8 +47605,8 @@ func (ec *executionContext) _Template(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "ownerGroupId":
-			out.Values[i] = ec._Template_ownerGroupId(ctx, field, obj)
+		case "ownerCategoryId":
+			out.Values[i] = ec._Template_ownerCategoryId(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
@@ -49655,6 +49692,36 @@ func (ec *executionContext) marshalNBulkDecideResult2ᚖgithubᚗcomᚋSteward�
 	return ec._BulkDecideResult(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNCategory2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx context.Context, sel ast.SelectionSet, v Category) graphql.Marshaler {
+	return ec._Category(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCategory2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryᚄ(ctx context.Context, sel ast.SelectionSet, v []*Category) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx context.Context, sel ast.SelectionSet, v *Category) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Category(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNCategoryPref2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryPrefᚄ(ctx context.Context, sel ast.SelectionSet, v []*CategoryPref) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -49976,6 +50043,25 @@ func (ec *executionContext) marshalNEffectiveWorkflow2ᚖgithubᚗcomᚋSteward�
 	return ec._EffectiveWorkflow(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNEmailServiceConfigInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐEmailServiceConfigInput(ctx context.Context, v any) (EmailServiceConfigInput, error) {
+	res, err := ec.unmarshalInputEmailServiceConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNEmailServiceConfigStatus2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐEmailServiceConfigStatus(ctx context.Context, sel ast.SelectionSet, v EmailServiceConfigStatus) graphql.Marshaler {
+	return ec._EmailServiceConfigStatus(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNEmailServiceConfigStatus2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐEmailServiceConfigStatus(ctx context.Context, sel ast.SelectionSet, v *EmailServiceConfigStatus) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._EmailServiceConfigStatus(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -50009,36 +50095,6 @@ func (ec *executionContext) marshalNGlobalSettings2ᚖgithubᚗcomᚋStewardᚑG
 func (ec *executionContext) unmarshalNGlobalSettingsInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGlobalSettingsInput(ctx context.Context, v any) (GlobalSettingsInput, error) {
 	res, err := ec.unmarshalInputGlobalSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNGroup2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroup(ctx context.Context, sel ast.SelectionSet, v Group) graphql.Marshaler {
-	return ec._Group(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNGroup2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []*Group) graphql.Marshaler {
-	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
-		fc := graphql.GetFieldContext(ctx)
-		fc.Result = &v[i]
-		return ec.marshalNGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroup(ctx, sel, v[i])
-	})
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroup(ctx context.Context, sel ast.SelectionSet, v *Group) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._Group(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNGroupApprovers2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroupApproversᚄ(ctx context.Context, sel ast.SelectionSet, v []*GroupApprovers) graphql.Marshaler {
@@ -50267,25 +50323,6 @@ func (ec *executionContext) marshalNMagicLink2ᚖgithubᚗcomᚋStewardᚑGRCᚋ
 		return graphql.Null
 	}
 	return ec._MagicLink(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNMailgunConfigInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMailgunConfigInput(ctx context.Context, v any) (MailgunConfigInput, error) {
-	res, err := ec.unmarshalInputMailgunConfigInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNMailgunConfigStatus2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMailgunConfigStatus(ctx context.Context, sel ast.SelectionSet, v MailgunConfigStatus) graphql.Marshaler {
-	return ec._MailgunConfigStatus(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNMailgunConfigStatus2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMailgunConfigStatus(ctx context.Context, sel ast.SelectionSet, v *MailgunConfigStatus) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._MailgunConfigStatus(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNMaintenance2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMaintenance(ctx context.Context, sel ast.SelectionSet, v *Maintenance) graphql.Marshaler {
@@ -52163,6 +52200,13 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) marshalOCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx context.Context, sel ast.SelectionSet, v *Category) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Category(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalODocumentType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDocumentType(ctx context.Context, v any) (*DocumentType, error) {
 	if v == nil {
 		return nil, nil
@@ -52192,13 +52236,6 @@ func (ec *executionContext) unmarshalOEnrichmentOptOutInput2ᚖgithubᚗcomᚋSt
 	}
 	res, err := ec.unmarshalInputEnrichmentOptOutInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroup(ctx context.Context, sel ast.SelectionSet, v *Group) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Group(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOGroupApproversInput2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroupApproversInputᚄ(ctx context.Context, v any) ([]*GroupApproversInput, error) {

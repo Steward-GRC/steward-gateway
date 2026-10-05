@@ -126,7 +126,9 @@ func (s *Store) Get(ctx context.Context, id string) (Session, bool, error) {
 	return sess, true, nil
 }
 
-func (s *Store) Delete(ctx context.Context, id string) error { return s.c.Redis().Del(ctx, key(id)).Err() }
+func (s *Store) Delete(ctx context.Context, id string) error {
+	return s.c.Redis().Del(ctx, key(id)).Err()
+}
 
 func refreshLockKey(id string) string { return "refreshlock:" + id }
 

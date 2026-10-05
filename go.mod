@@ -13,6 +13,7 @@ require (
 	github.com/Bugs5382/go-redis v1.2.0
 	github.com/alicebob/miniredis/v2 v2.39.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/stretchr/testify v1.11.1
 	github.com/vektah/gqlparser/v2 v2.5.36
 	google.golang.org/grpc v1.84.0

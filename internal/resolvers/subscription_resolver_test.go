@@ -8,13 +8,16 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/Steward-GRC/steward-gateway/internal/live"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
 )
 
 func TestLiveEvents_FiltersByTopicPrefix(t *testing.T) {
 	bus := live.NewBus()
-	ctx, cancel := context.WithCancel(ctxWithUser(t, "erin"))
+	ctx, cancel := context.WithCancel(ctxWithRoles(t, "erin", []string{"compliance-admin"}))
 	defer cancel()
 	out, err := resolvers.LiveEventsResolver(ctx, bus, []string{"policy."})
 	if err != nil {
@@ -35,5 +38,21 @@ func TestLiveEvents_FiltersByTopicPrefix(t *testing.T) {
 func TestLiveEvents_RequiresASignedInUser(t *testing.T) {
 	if _, err := resolvers.LiveEventsResolver(context.Background(), live.NewBus(), nil); err == nil {
 		t.Fatal("a signed-out subscriber must be refused")
+	}
+}
+
+// The stream carries every audit event, sensitive-policy activity included,
+// so only a caller who may read the audit log gets it.
+func TestLiveEvents_RequiresAuditRead(t *testing.T) {
+	_, err := resolvers.LiveEventsResolver(ctxWithUser(t, "frank"), live.NewBus(), nil)
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("err = %v, want PermissionDenied for a caller without audit.read", err)
+	}
+	for _, role := range []string{"compliance-admin", "site-admin"} {
+		ctx, cancel := context.WithCancel(ctxWithRoles(t, "grace", []string{role}))
+		if _, err := resolvers.LiveEventsResolver(ctx, live.NewBus(), nil); err != nil {
+			t.Errorf("%s: %v, want the stream", role, err)
+		}
+		cancel()
 	}
 }

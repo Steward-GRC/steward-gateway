@@ -1,0 +1,49 @@
+# The diagnostics read behind the web's Copy diagnostics button.
+
+scalar DateTime
+
+extend type Query {
+  "Build and version facts for a bug report. Any signed-in user."
+  diagnostics: Diagnostics!
+}
+
+type Diagnostics {
+  generatedAt: DateTime!
+  "This read's own trace id."
+  traceId: String!
+  actor: DiagnosticsActor!
+  gateway: ComponentVersion!
+  "Null when unknown."
+  release: String
+  "Null when not on the appliance."
+  appliance: String
+  services: [ComponentVersion!]!
+  thirdParty: [ComponentVersion!]!
+}
+
+type DiagnosticsActor {
+  id: ID!
+  username: String!
+  roles: [String!]!
+  "Set during act-as: the user the signed-in admin is acting as."
+  actingAs: DiagnosticsActingAs
+}
+
+type DiagnosticsActingAs {
+  id: ID!
+  username: String!
+  roles: [String!]!
+}
+
+type ComponentVersion {
+  name: String!
+  "unavailable or unknown when it can't be read."
+  version: String!
+  commit: String
+  status: ComponentStatus!
+}
+
+enum ComponentStatus {
+  OK
+  UNAVAILABLE
+}

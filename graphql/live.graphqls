@@ -9,8 +9,10 @@ type LiveEvent {
 
 extend type Subscription {
   # Streams domain-change events so clients can refetch affected data live.
-  # `topics` filters by prefix on `type` (e.g. ["group.", "policy."]); omit or
-  # pass empty for all events.
+  # It carries every audit event, so it needs the audit log's read permission
+  # (audit.read); anyone else is refused with PermissionDenied. `topics`
+  # filters by prefix on `type` (e.g. ["category.", "policy."]); omit or pass
+  # empty for all events.
   liveEvents(topics: [String!]): LiveEvent!
 }
 

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 
+	authz "github.com/Steward-GRC/steward-authz"
+
 	"github.com/Steward-GRC/steward-gateway/internal/live"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -19,6 +21,11 @@ import (
 func liveEventsResolver(ctx context.Context, bus *live.Bus, topics []string) (<-chan *LiveEvent, error) {
 	if c, ok := subscriberClaims(ctx); !ok || c.UserID() == "" {
 		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
+	}
+	// Every audit event goes out on this stream, sensitive-policy activity
+	// included, so it takes the audit log's own read permission.
+	if err := authorizeOp(ctx, authz.AuditRead); err != nil {
+		return nil, err
 	}
 	if bus == nil {
 		return nil, fmt.Errorf("live events unavailable")

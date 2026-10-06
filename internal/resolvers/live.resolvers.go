@@ -9,10 +9,9 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 )
 
 // LiveEvents is the resolver for the liveEvents field.
 func (r *subscriptionResolver) LiveEvents(ctx context.Context, topics []string) (<-chan *LiveEvent, error) {
-	panic(fmt.Errorf("not implemented: LiveEvents - liveEvents"))
+	return liveEventsResolver(ctx, r.Bus, topics)
 }

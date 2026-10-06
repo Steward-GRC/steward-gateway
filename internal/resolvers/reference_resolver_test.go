@@ -124,7 +124,7 @@ func TestCreateReferenceResolver_AnyAuthenticatedAuthor(t *testing.T) {
 	t.Run("plain author may create", func(t *testing.T) {
 		c := &fakeReferenceClient{}
 		ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "author-u", RolesValue: []string{"reader"}})
-		_, err := resolvers.CreateReferenceResolver(ctx, c, &resolvers.ReferenceInput{Label: "NIST", Kind: resolvers.ReferenceKindStandard})
+		_, err := resolvers.CreateReferenceResolver(ctx, c, &resolvers.ReferenceInput{Label: "Sample Standard A", Kind: resolvers.ReferenceKindStandard})
 		if err != nil {
 			t.Fatalf("expected create allowed for author, got %v", err)
 		}

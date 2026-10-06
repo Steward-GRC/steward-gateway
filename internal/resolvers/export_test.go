@@ -5,3 +5,6 @@ package resolvers
 
 // BuildCategoryChain exposes buildCategoryChain to the external test package.
 var BuildCategoryChain = buildCategoryChain
+
+// LiveEventsResolver exposes liveEventsResolver to the external test package.
+var LiveEventsResolver = liveEventsResolver

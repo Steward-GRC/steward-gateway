@@ -8860,10 +8860,10 @@ extend type Mutation {
 }
 
 `, BuiltIn: false},
-	{Name: "../../graphql/live.graphqls", Input: `# --- Live updates (#22): GraphQL subscriptions over websocket ---
+	{Name: "../../graphql/live.graphqls", Input: `# --- Live updates: GraphQL subscriptions over websocket ---
 type LiveEvent {
-  type: String!        # audit action, e.g. "group.created", "policy.published"
-  entityId: String     # subject, e.g. "group:<uuid>" / "policy_version:<uuid>"
+  type: String!        # audit action, e.g. "category.created", "policy.published"
+  entityId: String     # subject, e.g. "category:<uuid>" / "policy_version:<uuid>"
   groupId: String
   actorUserId: String
   at: String!          # RFC3339 timestamp

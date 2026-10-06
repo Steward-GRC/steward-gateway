@@ -17,6 +17,7 @@ import (
 	"github.com/Steward-GRC/steward-gateway/internal/aijobs"
 	"github.com/Steward-GRC/steward-gateway/internal/backend"
 	"github.com/Steward-GRC/steward-gateway/internal/bff"
+	"github.com/Steward-GRC/steward-gateway/internal/live"
 
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
 	auditv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/audit/v1"
@@ -96,6 +97,10 @@ type Resolver struct {
 	// aiJobResult and aiJobResultContent then return an error.
 	AIJobBroker        *aijobs.Broker
 	AIJobContentReader *aijobs.ContentReader
+
+	// live: Bus feeds the liveEvents subscription. Nil makes it return an
+	// error.
+	Bus *live.Bus
 }
 
 // logger returns r.Log, or a logger that writes nothing.

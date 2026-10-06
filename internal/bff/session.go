@@ -25,7 +25,7 @@ type Session struct {
 	UserID       string    `json:"user_id"`
 	// MFAVerified records whether this session was issued after a verified
 	// second factor (2-step login). Server-side marker only — not exposed on
-	// any endpoint yet; P4/authz may distinguish on it later.
+	// any endpoint yet; authorization may distinguish on it later.
 	MFAVerified bool `json:"mfa_verified"`
 	// Impersonation, when set and Active, marks this admin session as acting-as
 	// another user: the impersonation middleware swaps the effective claims to

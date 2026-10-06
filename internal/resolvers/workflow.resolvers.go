@@ -1,3 +1,5 @@
+// Copyright 2026 The Steward Authors
+// SPDX-License-Identifier: Apache-2.0
 package resolvers
 
 // This file will be automatically regenerated based on the schema, any resolver

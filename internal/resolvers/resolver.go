@@ -14,6 +14,7 @@ import (
 
 	log "github.com/Bugs5382/go-log"
 
+	"github.com/Steward-GRC/steward-gateway/internal/aijobs"
 	"github.com/Steward-GRC/steward-gateway/internal/backend"
 	"github.com/Steward-GRC/steward-gateway/internal/bff"
 
@@ -89,6 +90,12 @@ type Resolver struct {
 
 	// core (and every area): the request logger. Nil logs nothing.
 	Log log.Logger
+
+	// ai: AIJobBroker fans job completions out to aiJobResult subscribers;
+	// AIJobContentReader reads job results by resultRef. Either may be nil:
+	// aiJobResult and aiJobResultContent then return an error.
+	AIJobBroker        *aijobs.Broker
+	AIJobContentReader *aijobs.ContentReader
 }
 
 // logger returns r.Log, or a logger that writes nothing.

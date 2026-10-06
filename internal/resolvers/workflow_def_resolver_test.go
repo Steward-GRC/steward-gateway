@@ -335,7 +335,7 @@ func TestWorkflowDefResolver_ApproversByCategoryMappedSorted(t *testing.T) {
 				{
 					Id: "s1", Name: "Review", Quorum: "all",
 					ApproversByCategory: map[string]*workflowv1.ApproverList{
-						"it":     {UserIds: []string{"carol"}},
+						"it":      {UserIds: []string{"carol"}},
 						"finance": {UserIds: []string{"ceo", "owner-fin"}},
 					},
 				},

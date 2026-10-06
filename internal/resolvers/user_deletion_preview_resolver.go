@@ -36,7 +36,7 @@ func deletionCountsFromProto(c *identityv1.UserDeletionCounts) *UserDeletionCoun
 		Roles:            int(c.GetRoles()),
 		Permissions:      int(c.GetPermissions()),
 		GroupMemberships: int(c.GetGroupMemberships()),
-		IdpGroups:         int(c.GetIdpGroups()),
+		IdpGroups:        int(c.GetIdpGroups()),
 		PolicyOverrides:  int(c.GetPolicyOverrides()),
 		BreakGlassGrants: int(c.GetBreakGlassGrants()),
 		ManagedGroups:    int(c.GetManagedGroups()),

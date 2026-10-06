@@ -1,3 +1,5 @@
+// Copyright 2026 The Steward Authors
+// SPDX-License-Identifier: Apache-2.0
 package resolvers
 
 // This file will be automatically regenerated based on the schema, any resolver
@@ -7,115 +9,119 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 )
 
 // SubmitDraftGeneration is the resolver for the submitDraftGeneration field.
 func (r *mutationResolver) SubmitDraftGeneration(ctx context.Context, input SubmitDraftGenerationInput) (*SubmitDraftGenerationResult, error) {
-	panic(fmt.Errorf("not implemented: SubmitDraftGeneration - submitDraftGeneration"))
+	return SubmitDraftGenerationResolver(ctx, r.AIClient, r.CategoryClient, r.enrichmentResolver(), input)
 }
 
 // SubmitPolicyReview is the resolver for the submitPolicyReview field.
 func (r *mutationResolver) SubmitPolicyReview(ctx context.Context, input SubmitPolicyReviewInput) (*SubmitPolicyReviewResult, error) {
-	panic(fmt.Errorf("not implemented: SubmitPolicyReview - submitPolicyReview"))
+	return SubmitPolicyReviewResolver(ctx, r.AIClient, r.CategoryClient, r.enrichmentResolver(), input)
 }
 
 // SubmitPolicyRevision is the resolver for the submitPolicyRevision field.
 func (r *mutationResolver) SubmitPolicyRevision(ctx context.Context, input SubmitPolicyRevisionInput) (*SubmitDraftGenerationResult, error) {
-	panic(fmt.Errorf("not implemented: SubmitPolicyRevision - submitPolicyRevision"))
+	return SubmitPolicyRevisionResolver(ctx, r.AIClient, r.CategoryClient, r.enrichmentResolver(), input)
 }
 
 // SubmitEnrichmentSuggestions is the resolver for the submitEnrichmentSuggestions field.
 func (r *mutationResolver) SubmitEnrichmentSuggestions(ctx context.Context, input SubmitEnrichmentSuggestionsInput) (*SubmitDraftGenerationResult, error) {
-	panic(fmt.Errorf("not implemented: SubmitEnrichmentSuggestions - submitEnrichmentSuggestions"))
+	return SubmitEnrichmentSuggestionsResolver(ctx, r.AIClient, r.CategoryClient, r.enrichmentResolver(), input)
 }
 
 // SetAIEnabled is the resolver for the setAIEnabled field.
 func (r *mutationResolver) SetAIEnabled(ctx context.Context, enabled bool) (bool, error) {
-	panic(fmt.Errorf("not implemented: SetAIEnabled - setAIEnabled"))
+	return SetAIEnabledResolver(ctx, r.AIClient, enabled)
 }
 
-// SetAIToken is the resolver for the setAIToken field.
-func (r *mutationResolver) SetAIToken(ctx context.Context, token string) (bool, error) {
-	panic(fmt.Errorf("not implemented: SetAIToken - setAIToken"))
+// SetAIProviderConfig is the resolver for the setAIProviderConfig field.
+func (r *mutationResolver) SetAIProviderConfig(ctx context.Context, input AIProviderConfigInput) (*AIConfig, error) {
+	return SetAIProviderConfigResolver(ctx, r.AIClient, input)
 }
 
-// SetAIModel is the resolver for the setAIModel field.
-func (r *mutationResolver) SetAIModel(ctx context.Context, modelID string) (bool, error) {
-	panic(fmt.Errorf("not implemented: SetAIModel - setAIModel"))
+// SetAIProviderCredential is the resolver for the setAIProviderCredential field.
+func (r *mutationResolver) SetAIProviderCredential(ctx context.Context, credential string) (*AICredentialStatus, error) {
+	return SetAIProviderCredentialResolver(ctx, r.AIClient, credential)
+}
+
+// TestAIProvider is the resolver for the testAIProvider field.
+func (r *mutationResolver) TestAIProvider(ctx context.Context) (*AIProviderTestResult, error) {
+	return TestAIProviderResolver(ctx, r.AIClient)
+}
+
+// AcceptAIDataNotice is the resolver for the acceptAIDataNotice field.
+func (r *mutationResolver) AcceptAIDataNotice(ctx context.Context, noticeVersion string) (*AIDataNotice, error) {
+	return AcceptAIDataNoticeResolver(ctx, r.AIClient, noticeVersion)
 }
 
 // SetAIRetrievalConfig is the resolver for the setAIRetrievalConfig field.
 func (r *mutationResolver) SetAIRetrievalConfig(ctx context.Context, topK int) (*AIRetrievalConfig, error) {
-	panic(fmt.Errorf("not implemented: SetAIRetrievalConfig - setAIRetrievalConfig"))
+	return SetAIRetrievalConfigResolver(ctx, r.AIClient, topK)
 }
 
 // SetUserAiQueryLimit is the resolver for the setUserAiQueryLimit field.
 func (r *mutationResolver) SetUserAiQueryLimit(ctx context.Context, userID string, limit int) (*AIUserQueryLimit, error) {
-	panic(fmt.Errorf("not implemented: SetUserAiQueryLimit - setUserAiQueryLimit"))
+	return SetUserAiQueryLimitResolver(ctx, r.AIClient, userID, limit)
 }
 
 // SearchAndAnswer is the resolver for the searchAndAnswer field.
-func (r *queryResolver) SearchAndAnswer(ctx context.Context, question string, groupID *string) (*SearchAndAnswerResult, error) {
-	panic(fmt.Errorf("not implemented: SearchAndAnswer - searchAndAnswer"))
+func (r *queryResolver) SearchAndAnswer(ctx context.Context, question string, categoryID *string) (*SearchAndAnswerResult, error) {
+	return SearchAndAnswerResolver(ctx, r.AIClient, r.CategoryClient, question, categoryID)
 }
 
 // AuthoringAssist is the resolver for the authoringAssist field.
 func (r *queryResolver) AuthoringAssist(ctx context.Context, input AuthoringAssistInput) (*AuthoringAssistResult, error) {
-	panic(fmt.Errorf("not implemented: AuthoringAssist - authoringAssist"))
+	return AuthoringAssistResolver(ctx, r.AIClient, input)
 }
 
 // AiJob is the resolver for the aiJob field.
 func (r *queryResolver) AiJob(ctx context.Context, jobID string) (*AIJobStatus, error) {
-	panic(fmt.Errorf("not implemented: AiJob - aiJob"))
+	return AIJobStatusResolver(ctx, r.AIClient, jobID)
 }
 
 // TopPolicyQuestions is the resolver for the topPolicyQuestions field.
 func (r *queryResolver) TopPolicyQuestions(ctx context.Context, limit *int) ([]string, error) {
-	panic(fmt.Errorf("not implemented: TopPolicyQuestions - topPolicyQuestions"))
+	return TopPolicyQuestionsResolver(ctx, r.AIClient, limit)
 }
 
 // PolicyVersionSummary is the resolver for the policyVersionSummary field.
 func (r *queryResolver) PolicyVersionSummary(ctx context.Context, versionID string) (*PolicySummaryResult, error) {
-	panic(fmt.Errorf("not implemented: PolicyVersionSummary - policyVersionSummary"))
+	return PolicyVersionSummaryResolver(ctx, r.AIClient, versionID)
 }
 
 // RelatedPolicySuggestions is the resolver for the relatedPolicySuggestions field.
 func (r *queryResolver) RelatedPolicySuggestions(ctx context.Context, policyID string, first *int) ([]*RelatedPolicySuggestion, error) {
-	panic(fmt.Errorf("not implemented: RelatedPolicySuggestions - relatedPolicySuggestions"))
+	return RelatedPolicySuggestionsResolver(ctx, r.AIClient, r.CategoryClient, policyID, first)
 }
 
 // AiJobResultContent is the resolver for the aiJobResultContent field.
 func (r *queryResolver) AiJobResultContent(ctx context.Context, resultRef string) (*AIJobResultContent, error) {
-	panic(fmt.Errorf("not implemented: AiJobResultContent - aiJobResultContent"))
+	return AIJobResultContentResolver(ctx, r.AIJobContentReader, resultRef)
 }
 
 // AiHealth is the resolver for the aiHealth field.
 func (r *queryResolver) AiHealth(ctx context.Context) (*AIHealth, error) {
-	panic(fmt.Errorf("not implemented: AiHealth - aiHealth"))
+	return AIHealthResolver(ctx, r.AIClient)
 }
 
 // AiEnabled is the resolver for the aiEnabled field.
 func (r *queryResolver) AiEnabled(ctx context.Context) (bool, error) {
-	panic(fmt.Errorf("not implemented: AiEnabled - aiEnabled"))
+	return AIEnabledResolver(ctx, r.AIClient)
 }
 
-// AiTokenSet is the resolver for the aiTokenSet field.
-func (r *queryResolver) AiTokenSet(ctx context.Context) (bool, error) {
-	panic(fmt.Errorf("not implemented: AiTokenSet - aiTokenSet"))
-}
-
-// AiModel is the resolver for the aiModel field.
-func (r *queryResolver) AiModel(ctx context.Context) (string, error) {
-	panic(fmt.Errorf("not implemented: AiModel - aiModel"))
+// AiConfig is the resolver for the aiConfig field.
+func (r *queryResolver) AiConfig(ctx context.Context) (*AIConfig, error) {
+	return AIConfigResolver(ctx, r.AIClient)
 }
 
 // AiRetrievalConfig is the resolver for the aiRetrievalConfig field.
 func (r *queryResolver) AiRetrievalConfig(ctx context.Context) (*AIRetrievalConfig, error) {
-	panic(fmt.Errorf("not implemented: AiRetrievalConfig - aiRetrievalConfig"))
+	return AIRetrievalConfigResolver(ctx, r.AIClient)
 }
 
 // AiJobResult is the resolver for the aiJobResult field.
 func (r *subscriptionResolver) AiJobResult(ctx context.Context, jobID string) (<-chan *AIJobResult, error) {
-	panic(fmt.Errorf("not implemented: AiJobResult - aiJobResult"))
+	return AIJobResultResolver(ctx, r.AIClient, r.AIJobBroker, jobID)
 }

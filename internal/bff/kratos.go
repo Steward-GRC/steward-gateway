@@ -49,11 +49,8 @@ type kratosLoginFlow struct {
 	ID string `json:"id"`
 }
 
-// kratosIdentity is the subset of Ory Kratos's Identity object this client
-// needs: the identity id (Subject) and its email trait. Kratos identity
-// schemas are configurable per deployment; this assumes the identity schema
-// carries an "email" trait, matching the Keycloak "email" claim this
-// replaces.
+// kratosIdentity is the part of a Kratos identity the gateway reads. The
+// identity schema must carry an "email" trait.
 type kratosIdentity struct {
 	ID     string `json:"id"`
 	Traits struct {

@@ -46,7 +46,7 @@ func ssoCallbackReqPublicEdge(state string) *http.Request {
 // mfaRedirect asserts an SSO MFA step-up redirect into the SPA's MFA resume
 // route and returns the carried pending id + offered factor kinds. It proves the
 // callback answered a full-page 302 into the SPA (never JSON) and never minted a
-// session on the way — the security invariant of gateway#59.
+// session on the way.
 func mfaRedirect(t *testing.T, rec *httptest.ResponseRecorder) (pendingID string, factors []string) {
 	t.Helper()
 	require.Equal(t, http.StatusFound, rec.Code, rec.Body.String())
@@ -354,7 +354,7 @@ func TestSSOCallback_TestMode_NoRecorderFailsClosed(t *testing.T) {
 	require.Nil(t, sessionCookie(rec))
 }
 
-// gateway#45 regression guard: the FULL kratos-native admin path end to end under
+// Regression guard: the FULL kratos-native admin path end to end under
 // AUTH_BACKEND=kratos with NO JWT bearer anywhere. SSOStart(mode=test)
 // authenticates the site-admin from the steward_sid SESSION (cookie → Store →
 // UserID → identity GetUser → site-admin) and stashes the UserID; the CROSS-SITE
@@ -390,7 +390,7 @@ func TestSSO_Kratos_TestModeStartThenCallbackRecords(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, testAdminUserID, st.AdminUserID, "SSOStart must stash the admin's platform UserID")
 
-	require.NoError(t, ssoState.Put(context.Background(), state, st, ssoStateTTL))
+	require.NoError(t, ssoState.PutSSOState(context.Background(), state, st, ssoStateTTL))
 
 	cbReq := httptest.NewRequest(http.MethodGet, "/auth/sso/callback?code=c&state="+state, nil)
 	cbRec := httptest.NewRecorder()

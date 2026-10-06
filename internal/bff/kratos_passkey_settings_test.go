@@ -172,7 +172,7 @@ func TestPasskeyLoginAvailable(t *testing.T) {
 		"passkey method not exposed → login not viable → button hidden")
 }
 
-// TestRegisterThenLogin_EndToEnd is the integration proof for issue #65: a
+// TestRegisterThenLogin_EndToEnd is the integration proof: a
 // credential a passkey REGISTER flow persists in Kratos is exactly what a passkey
 // LOGIN flow then accepts. One stateful mock plays Kratos across both ceremonies —
 // registration stores the credential, and login only succeeds once it exists.

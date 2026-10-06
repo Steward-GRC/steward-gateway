@@ -133,7 +133,7 @@ func TestSSOCallback_Polis_HappyPathIssuesSession(t *testing.T) {
 	sess, ok, err := h.Store.Get(context.Background(), c.Value)
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, "polis-at", sess.AccessToken)
+	require.Empty(t, sess.AccessToken, "an SSO session holds no broker token")
 	require.Equal(t, "u1", sess.UserID)
 }
 
@@ -240,7 +240,7 @@ func TestSSOCallback_Polis_MFAStepUp(t *testing.T) {
 	require.False(t, p.Enroll)
 }
 
-// gateway#59, the PROD path: a public-edge Polis SSO login for a user with NO
+// The production path: a public-edge Polis SSO login for a user with NO
 // strong factor (email-only — exactly the pyaraki/krobertson state) must send a
 // login-purpose email OTP to the SSO-verified account email AND redirect the
 // browser into the SPA MFA route with the pending id — NO session yet. Only
@@ -372,7 +372,7 @@ func TestSSOIdpInitiated_Polis_RedirectsAndCallbackResolvesByEmail(t *testing.T)
 	require.NotNil(t, sessionCookie(cbRec))
 }
 
-// gateway#47 (SECURITY): a polis IdP-initiated login for an INACTIVE connection
+// Security: a polis IdP-initiated login for an INACTIVE connection
 // (Discover does not return method=sso for the userinfo email) is rejected at the
 // callback — no session — the same defense-in-depth as the KC path.
 func TestSSOCallback_Polis_IdpInit_InactiveRejected(t *testing.T) {

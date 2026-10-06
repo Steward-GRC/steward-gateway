@@ -18,9 +18,9 @@ func testPolis() *PolisClient {
 	return NewPolisClient("https://edge/sso", "http://unused", "steward")
 }
 
-// Task 13 review: the state parked in Redis must carry the connection alias
+// The state parked in Redis must carry the connection alias
 // and default to Mode=login when the caller omits ?mode, so the callback
-// (Task 14) can look it up by the `state` query param on the redirect.
+// can look it up by the `state` query param on the redirect.
 func TestSSOStart_StoresStateWithConnectionAndDefaultMode(t *testing.T) {
 	store := newTestStore(t)
 	h := &Handler{Polis: testPolis(), SSOState: store, SSORedirectBase: "https://app"}
@@ -43,7 +43,7 @@ func TestSSOStart_StoresStateWithConnectionAndDefaultMode(t *testing.T) {
 }
 
 // A "test" mode probe (admin connection-test) must be recorded as such so the
-// callback (Task 14) can route the result to the admin flow instead of
+// callback can route the result to the admin flow instead of
 // completing a login. Bug 1: a mode=test start now requires an
 // authenticated site-admin SESSION (same-origin, cookie present; resolved
 // kratos-natively cookie→Store→UserID→GetUser→site-admin) and STASHES that
@@ -195,7 +195,7 @@ func TestSSOStart_Login_InactiveConnectionBlocked(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			store := newTestStore(t)
 			h := &Handler{
-				Polis: testPolis(), SSOBackend: backendPolis,
+				Polis: testPolis(),
 				SSOState:        store,
 				SSORedirectBase: "https://app",
 				Identity:        fakeIdentity{discover: disc},
@@ -215,7 +215,7 @@ func TestSSOStart_Login_InactiveConnectionBlocked(t *testing.T) {
 func TestSSOStart_Login_MissingIdentifierBlocked(t *testing.T) {
 	store := newTestStore(t)
 	h := &Handler{
-		Polis: testPolis(), SSOBackend: backendPolis,
+		Polis: testPolis(),
 		SSOState:        store,
 		SSORedirectBase: "https://app",
 		Identity:        fakeIdentity{discover: &identityv1.DiscoverResponse{Method: "sso", ConnectionAlias: "example-sso"}},
@@ -233,7 +233,7 @@ func TestSSOStart_Login_MissingIdentifierBlocked(t *testing.T) {
 func TestSSOStart_Login_ActiveConnectionProceeds(t *testing.T) {
 	store := newTestStore(t)
 	h := &Handler{
-		Polis: testPolis(), SSOBackend: backendPolis,
+		Polis: testPolis(),
 		SSOState:        store,
 		SSORedirectBase: "https://app",
 		Identity:        fakeIdentity{discover: &identityv1.DiscoverResponse{Method: "sso", ConnectionAlias: "example-sso"}},

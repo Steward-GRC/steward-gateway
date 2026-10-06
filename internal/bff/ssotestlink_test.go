@@ -32,7 +32,7 @@ func TestSSOTestLinkStore_RoundTripAllFields(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 	want := testLinkRecord()
-	require.NoError(t, store.Put(ctx, "tok1", want, time.Minute))
+	require.NoError(t, store.PutSSOTestLink(ctx, "tok1", want, time.Minute))
 	got, ok, err := store.GetSSOTestLink(ctx, "tok1")
 	require.NoError(t, err)
 	require.True(t, ok)
@@ -44,7 +44,7 @@ func TestSSOTestLinkStore_RoundTripAllFields(t *testing.T) {
 func TestSSOTestLinkStore_NotSingleUse(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
-	require.NoError(t, store.Put(ctx, "tok1", testLinkRecord(), time.Minute))
+	require.NoError(t, store.PutSSOTestLink(ctx, "tok1", testLinkRecord(), time.Minute))
 	for i := range 3 {
 		_, ok, err := store.GetSSOTestLink(ctx, "tok1")
 		require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestSSOTestLinkStore_GetMiss(t *testing.T) {
 func TestSSOTestLinkStore_TTLExpiry(t *testing.T) {
 	store, mr := newTestStoreClock(t)
 	ctx := context.Background()
-	require.NoError(t, store.Put(ctx, "tok1", testLinkRecord(), time.Minute))
+	require.NoError(t, store.PutSSOTestLink(ctx, "tok1", testLinkRecord(), time.Minute))
 	mr.FastForward(2 * time.Minute)
 	_, ok, err := store.GetSSOTestLink(ctx, "tok1")
 	require.NoError(t, err)
@@ -146,11 +146,11 @@ func TestMintSSOTestLink_CoercesUnsafeReturnPath(t *testing.T) {
 // A shareable-link start (testToken) parks a mode=test state sourced ENTIRELY
 // from the minted record — connection alias, connection UUID, return path, and
 // the minting admin's UserID — WITHOUT any live admin session on the request
-// (the remote user has none). This is the crux of workspace#73.
+// (the remote user has none).
 func TestSSOStart_TestTokenStashesStateWithoutSession(t *testing.T) {
 	linkStore := newTestStore(t)
 	ssoState := newTestStore(t)
-	require.NoError(t, linkStore.Put(context.Background(), "tok1", testLinkRecord(), time.Minute))
+	require.NoError(t, linkStore.PutSSOTestLink(context.Background(), "tok1", testLinkRecord(), time.Minute))
 
 	h := &Handler{
 		Polis:           testPolis(),
@@ -197,13 +197,13 @@ func TestSSOStart_TestTokenExpiredFailsClosed(t *testing.T) {
 // End-to-end: a remote user opens the minted link (SSOStart via testToken) and
 // completes the IdP round trip; the callback records the result via
 // RecordIdPTestResult under the MINTING admin's forwarded site-admin claims,
-// with NO admin cookie anywhere in the flow — the whole point of workspace#73.
+// with NO admin cookie anywhere in the flow.
 func TestSSOTestLink_EndToEnd_RecordsWithoutAdminCookie(t *testing.T) {
 	id := defaultIdentity()
 	id.getUser = adminUser() // callback re-resolves the stashed admin UserID → site-admin
 	h, ssoState := newSSOCallbackHandler(t, "grace@example.net", id, MFAConfig{Mode: MFAModeNever})
 	h.SSOTestLink = newTestStore(t)
-	require.NoError(t, h.SSOTestLink.Put(context.Background(), "tok1", testLinkRecord(), time.Minute))
+	require.NoError(t, h.SSOTestLink.PutSSOTestLink(context.Background(), "tok1", testLinkRecord(), time.Minute))
 
 	var recordedConn string
 	var recordedOK, recorded, ctxHadSiteAdmin bool

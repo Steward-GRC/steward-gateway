@@ -10,30 +10,19 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/redis/go-redis/v9"
+	goredis "github.com/Bugs5382/go-redis"
 	"github.com/stretchr/testify/require"
 )
 
-func newMiniRedis(t *testing.T) redis.UniversalClient {
+// newTestStoreClock is newTestStore plus the miniredis handle, so a test can
+// fast-forward past a TTL.
+func newTestStoreClock(t *testing.T) (*Store, *miniredis.Miniredis) {
 	t.Helper()
-	mr, err := miniredis.Run()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(mr.Close)
-	return redis.NewClient(&redis.Options{Addr: mr.Addr()})
-}
-
-// newMiniRedisClock is like newMiniRedis but also returns the miniredis
-// server handle so tests can fast-forward its clock to exercise TTL expiry.
-func newMiniRedisClock(t *testing.T) (redis.UniversalClient, *miniredis.Miniredis) {
-	t.Helper()
-	mr, err := miniredis.Run()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(mr.Close)
-	return redis.NewClient(&redis.Options{Addr: mr.Addr()}), mr
+	mr := miniredis.RunT(t)
+	c, err := goredis.Connect(context.Background(), goredis.WithAddr(mr.Addr()))
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = c.Close() })
+	return NewStore(c, time.Hour), mr
 }
 
 func TestSSOStateStore_SingleUse(t *testing.T) {
@@ -48,19 +37,19 @@ func TestSSOStateStore_SingleUse(t *testing.T) {
 	require.False(t, ok, "state must be single-use")
 }
 
-// gateway#saml-jit-sso task 12: the full record round-trips, not just the
-// field the single-use test happens to check.
+// The full record round-trips.
 func TestSSOStateStore_RoundTripAllFields(t *testing.T) {
 	st := newTestStore(t)
 	ctx := context.Background()
 	want := SSOState{
-		Connection:   "acme-saml",
+		Connection:   "example-saml",
 		ConnectionID: "conn-123",
-		Nonce:        "nonce-xyz",
-		ReturnTo:     "/dashboard",
 		Mode:         "test",
+		ReturnPath:   "/admin/organizations",
+		Tenant:       "example.org",
+		AdminUserID:  "admin-1",
 	}
-	require.NoError(t, st.Put(ctx, "s2", want, time.Minute))
+	require.NoError(t, st.PutSSOState(ctx, "s2", want, time.Minute))
 	got, ok, err := st.TakeSSOState(ctx, "s2")
 	require.NoError(t, err)
 	require.True(t, ok)

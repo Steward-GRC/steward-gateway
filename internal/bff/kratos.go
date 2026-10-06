@@ -335,7 +335,7 @@ const kratosActionShowSettingsUI = "show_settings_ui"
 // kratosRecoverySubmitResult is the subset of Kratos's response to the recovery
 // CODE submit this client needs to continue into the settings flow. It covers
 // BOTH success shapes Kratos returns, depending on how it classifies the
-// request (proven live on QA, gateway#40 reset-502):
+// request:
 type kratosRecoverySubmitResult struct {
 	RedirectBrowserTo string `json:"redirect_browser_to"`
 	Error             struct {
@@ -427,7 +427,7 @@ func (f kratosSettingsFlow) csrfToken() string {
 // own browser-flow cookies (ory_kratos_session + the anti-CSRF csrf_token_*)
 // back to Kratos across the recovery→settings-flow→settings-submit calls, the
 // way a browser would. It is deliberately NOT net/http/cookiejar, in two ways
-// that matter under QA's secure cookies (COOKIE_INSECURE=false) — where the
+// that matter under secure cookies (COOKIE_INSECURE=false) — where the
 // previous name-keyed map broke while DEV kept working:
 type recoveryCookieJar struct {
 	mu      sync.Mutex
@@ -616,8 +616,8 @@ func (c *KratosClient) CreateRecoveryCode(ctx context.Context, email string) (Re
 }
 
 // SubmitRecoveryCodeAndReset redeems code against the EXISTING self-service
-// recovery flow the code is bound to (flowID, minted+persisted at request time
-// — gateway#46) and sets newPassword. The admin-generated recovery code drives
+// recovery flow the code is bound to (flowID, minted and persisted at request
+// time) and sets newPassword. The admin-generated recovery code drives
 // a BROWSER flow, so this threads cookies + CSRF across three calls exactly as
 // a browser would, using a per-redemption cookie jar (see recoveryCookieJar):
 func (c *KratosClient) SubmitRecoveryCodeAndReset(ctx context.Context, flowID, code, newPassword string) error {

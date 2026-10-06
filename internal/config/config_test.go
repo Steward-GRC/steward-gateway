@@ -65,3 +65,46 @@ func TestBadValuesAreRefused(t *testing.T) {
 		assert.Error(t, err, k)
 	}
 }
+
+func TestAuthSettings(t *testing.T) {
+	c, err := Load(env(map[string]string{"WORKLOAD_AUTH": "disabled"}))
+	require.NoError(t, err)
+	assert.Equal(t, "edge", c.Auth.MFAMode)
+	assert.Equal(t, "X-Steward-Edge", c.Auth.MFAEdgeHeader)
+	assert.Equal(t, "public", c.Auth.MFAEdgePublicValue)
+	assert.True(t, c.Auth.PasskeyLogin)
+	assert.Equal(t, "steward", c.Auth.PolisProduct)
+	assert.Equal(t, 30*time.Minute, c.Auth.SSOTestLinkTTL)
+	assert.Equal(t, "local", c.Auth.DefaultLoginMethod)
+	assert.Equal(t, 5*time.Second, c.Auth.MaintenanceCacheTTL)
+	assert.Empty(t, c.Auth.ReportProblemURL, "the report-a-problem link is off until the adopter sets it")
+	assert.Empty(t, c.Auth.SetupToken)
+	assert.False(t, c.Auth.CookieInsecure)
+
+	c, err = Load(env(map[string]string{"WORKLOAD_AUTH": "disabled", "REPORT_PROBLEM_URL": "https://support.example.org/report",
+		"MFA_ENFORCE": "always", "COOKIE_INSECURE": "true", "PASSKEY_LOGIN_ENABLED": "false"}))
+	require.NoError(t, err)
+	assert.Equal(t, "https://support.example.org/report", c.Auth.ReportProblemURL)
+	assert.Equal(t, "always", c.Auth.MFAMode)
+	assert.True(t, c.Auth.CookieInsecure)
+	assert.False(t, c.Auth.PasskeyLogin)
+}
+
+func TestSSONeedsItsIssuerAndRedirectBase(t *testing.T) {
+	_, err := Load(env(map[string]string{"WORKLOAD_AUTH": "disabled", "POLIS_PUBLIC_URL": "https://sso.example.org"}))
+	require.Error(t, err)
+	c, err := Load(env(map[string]string{"WORKLOAD_AUTH": "disabled", "POLIS_PUBLIC_URL": "https://sso.example.org",
+		"POLIS_ISSUER_URL": "http://polis.example.org:5225", "SSO_REDIRECT_BASE": "https://app.example.org"}))
+	require.NoError(t, err)
+	assert.Equal(t, "http://polis.example.org:5225", c.Auth.PolisIssuerURL)
+}
+
+func TestNotifyLinksNeedThePreferencesURL(t *testing.T) {
+	_, err := Load(env(map[string]string{"WORKLOAD_AUTH": "disabled", "NOTIFY_UNSUB_SECRET": "test-secret-not-real-0123456789"}))
+	require.Error(t, err)
+}
+
+func TestBadMFAModeIsRefused(t *testing.T) {
+	_, err := Load(env(map[string]string{"WORKLOAD_AUTH": "disabled", "MFA_ENFORCE": "sometimes"}))
+	require.Error(t, err)
+}

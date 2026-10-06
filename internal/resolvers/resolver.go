@@ -17,6 +17,7 @@ import (
 	"github.com/Steward-GRC/steward-gateway/internal/aijobs"
 	"github.com/Steward-GRC/steward-gateway/internal/backend"
 	"github.com/Steward-GRC/steward-gateway/internal/bff"
+	"github.com/Steward-GRC/steward-gateway/internal/diagnostics"
 	"github.com/Steward-GRC/steward-gateway/internal/live"
 
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
@@ -105,6 +106,10 @@ type Resolver struct {
 	// reporting: ReportLimiter throttles anonymous report checks and replies.
 	// Nil refuses them.
 	ReportLimiter ReportLimiter
+
+	// diagnostics: the build and version probes behind the diagnostics query.
+	// Nil reports the actor and the gateway only.
+	Diagnostics *diagnostics.Service
 }
 
 // logger returns r.Log, or a logger that writes nothing.

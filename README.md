@@ -15,9 +15,21 @@ and serves editor images.
 - 🩺 **Health**: `/livez` checks the process, `/readyz` follows Valkey and Kratos.
 - 🧾 **Diagnostics**: one signed-in query with every service's version and commit.
 
+## 🚀 Run
+
+```bash
+cp .env.example .env   # Valkey, Kratos, the backend addresses; WORKLOAD_AUTH=disabled locally
+task run
+```
+
+The image: `docker build --build-arg VERSION=<tag> --build-arg COMMIT=<sha> .`
+
 ## 📚 More
 
+- [API, routes and the diagnostics query](docs/api.md)
+- [Configuration](docs/configuration.md)
 - [Sign-in and session routes](docs/auth.md)
+- [Runbook](docs/runbook.md)
 - [Error codes](docs/error-codes.md)
 
 ## 🛠 Develop
@@ -27,7 +39,8 @@ task build    # go build ./...
 task test     # go test ./...
 task lint     # gofmt check + golangci-lint + yamllint
 task license  # check Apache-2.0 headers (golic)
-scripts/proto-generate.sh   # fetch the pinned callee protos and regenerate gen/
+task proto    # fetch the pinned callee protos and regenerate gen/
+task gqlgen   # regenerate the GraphQL code from graphql/
 ```
 
 ## 🙏 Acknowledgements

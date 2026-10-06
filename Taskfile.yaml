@@ -15,6 +15,19 @@ tasks:
     cmds:
       - gofmt -w .
       - goimports -w ./
+  run:
+    desc: Run the gateway with the settings in .env
+    dotenv: ['.env']
+    cmds:
+      - go run ./cmd/server
+  gqlgen:
+    desc: Regenerate the GraphQL code from graphql/ (with the licence header)
+    cmds:
+      - scripts/gqlgen-generate.sh
+  proto:
+    desc: Fetch the pinned callee protos and regenerate gen/
+    cmds:
+      - scripts/proto-generate.sh
   build:
     desc: Build all packages
     cmds:

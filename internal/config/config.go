@@ -37,7 +37,7 @@ type Config struct {
 
 	KratosPublicURL string
 	KratosAdminURL  string
-	// PolisURL is Polis's in-cluster address; empty means no SSO.
+	// PolisURL is Polis's in-cluster address when SSO is on, else empty.
 	PolisURL string
 
 	CollabUpstream        string
@@ -46,7 +46,6 @@ type Config struct {
 	CollabIdleTimeout     time.Duration
 
 	AllowTemplateDelete bool
-	Playground          bool
 
 	// Release is the pinned release version (STEWARD_RELEASE).
 	Release string
@@ -66,7 +65,39 @@ type Config struct {
 }
 
 // Auth is the session and sign-in settings.
-type Auth struct{}
+type Auth struct {
+	// CookieInsecure drops the session cookie's Secure flag, for local HTTP.
+	CookieInsecure bool
+	// MFAMode is edge, always or never: when a sign-in owes a second factor.
+	MFAMode            string
+	MFAEdgeHeader      string
+	MFAEdgePublicValue string
+	// MFARequireStrong makes the email factor alone insufficient.
+	MFARequireStrong bool
+	PasskeyLogin     bool
+
+	// PolisPublicURL is the Polis address the browser reaches; empty turns
+	// SSO off.
+	PolisPublicURL string
+	// PolisIssuerURL is Polis's in-cluster address for the token and
+	// userinfo calls.
+	PolisIssuerURL  string
+	PolisProduct    string
+	SSORedirectBase string
+	SSOTestLinkTTL  time.Duration
+
+	DefaultLoginMethod string
+	// SetupToken guards the first-run bootstrap; empty turns it off.
+	SetupToken          string
+	MaintenanceCacheTTL time.Duration
+	// NotifySecret verifies the signed notification links; empty turns those
+	// routes off. NotifyPreferencesURL is where a browser unsubscribe lands.
+	NotifySecret         string
+	NotifyPreferencesURL string
+	// ReportProblemURL is the adopter's "report a problem" target; empty
+	// hides the link.
+	ReportProblemURL string
+}
 
 // Load reads and validates the settings.
 func Load(getenv func(string) string) (Config, error) {
@@ -98,17 +129,49 @@ func Load(getenv func(string) string) (Config, error) {
 		RabbitMQURL:          getenv("RABBITMQ_URL"),
 		KratosPublicURL:      or("KRATOS_PUBLIC_URL", "http://steward-kratos:4433"),
 		KratosAdminURL:       or("KRATOS_ADMIN_URL", "http://steward-kratos:4434"),
-		PolisURL:             getenv("POLIS_URL"),
 		CollabUpstream:       or("COLLAB_WS_UPSTREAM", "steward-collab:8081"),
 		AllowedOrigins:       list(getenv("ALLOWED_ORIGINS")),
 		CollabIdleTimeout:    duration("COLLAB_WS_IDLE_TIMEOUT", 120*time.Second),
 		AllowTemplateDelete:  getenv("STEWARD_ALLOW_TEMPLATE_DELETE") == "true",
-		Playground:           getenv("GRAPHQL_PLAYGROUND") == "true",
 		Release:              getenv("STEWARD_RELEASE"),
 		ApplianceVersionFile: getenv("STEWARD_APPLIANCE_VERSION_FILE"),
 		HTTPProbes:           map[string]string{},
 		OTLPEndpoint:         getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 	}
+	c.Auth = Auth{
+		CookieInsecure:       getenv("COOKIE_INSECURE") == "true",
+		MFAMode:              or("MFA_ENFORCE", "edge"),
+		MFAEdgeHeader:        or("MFA_EDGE_HEADER", "X-Steward-Edge"),
+		MFAEdgePublicValue:   or("MFA_EDGE_PUBLIC_VALUE", "public"),
+		MFARequireStrong:     getenv("MFA_REQUIRE_STRONG") == "true",
+		PasskeyLogin:         getenv("PASSKEY_LOGIN_ENABLED") != "false",
+		PolisPublicURL:       getenv("POLIS_PUBLIC_URL"),
+		PolisIssuerURL:       getenv("POLIS_ISSUER_URL"),
+		PolisProduct:         or("POLIS_PRODUCT", "steward"),
+		SSORedirectBase:      getenv("SSO_REDIRECT_BASE"),
+		SSOTestLinkTTL:       duration("SSO_TEST_LINK_TTL", 30*time.Minute),
+		DefaultLoginMethod:   or("DEFAULT_LOGIN_METHOD", "local"),
+		SetupToken:           getenv("SETUP_TOKEN"),
+		MaintenanceCacheTTL:  duration("MAINTENANCE_CACHE_TTL", 5*time.Second),
+		NotifySecret:         getenv("NOTIFY_UNSUB_SECRET"),
+		NotifyPreferencesURL: getenv("NOTIFY_PREFERENCES_URL"),
+		ReportProblemURL:     getenv("REPORT_PROBLEM_URL"),
+	}
+	switch c.Auth.MFAMode {
+	case "edge", "always", "never":
+	default:
+		errs = append(errs, fmt.Errorf("config: MFA_ENFORCE=%q: use edge, always or never", c.Auth.MFAMode))
+	}
+	if c.Auth.PolisPublicURL != "" && (c.Auth.PolisIssuerURL == "" || c.Auth.SSORedirectBase == "") {
+		errs = append(errs, errors.New("config: SSO (POLIS_PUBLIC_URL) needs POLIS_ISSUER_URL and SSO_REDIRECT_BASE"))
+	}
+	if c.Auth.NotifySecret != "" && c.Auth.NotifyPreferencesURL == "" {
+		errs = append(errs, errors.New("config: NOTIFY_UNSUB_SECRET needs NOTIFY_PREFERENCES_URL"))
+	}
+	if c.Auth.PolisPublicURL != "" {
+		c.PolisURL = c.Auth.PolisIssuerURL
+	}
+
 	for _, n := range backend.Names() {
 		c.Backends[n] = or("STEWARD_"+strings.ToUpper(n)+"_ADDR", "steward-"+n+":9090")
 	}

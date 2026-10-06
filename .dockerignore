@@ -1,0 +1,10 @@
+.git
+.github
+.claude
+.local
+.protos
+*.md
+docs
+go.work
+go.work.sum
+.env

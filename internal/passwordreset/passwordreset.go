@@ -51,6 +51,7 @@ type Handlers struct {
 	defaultLoginMethod string
 	passkeyLogin       bool
 	passkeyViable      func(ctx context.Context) bool
+	reportProblemURL   string
 }
 
 // Option configures Handlers.
@@ -74,6 +75,12 @@ func WithPasskeyLogin(enabled bool) Option {
 // passkey sign-in can't complete.
 func WithPasskeyViabilityProbe(probe func(ctx context.Context) bool) Option {
 	return func(h *Handlers) { h.passkeyViable = probe }
+}
+
+// WithReportProblemURL sets the adopter's "report a problem" target the web
+// links to; empty hides the link.
+func WithReportProblemURL(url string) Option {
+	return func(h *Handlers) { h.reportProblemURL = url }
 }
 
 // New builds the handlers.
@@ -102,6 +109,7 @@ func (h *Handlers) ConfigHandler() http.HandlerFunc {
 			"ssoAvailable":       false,
 			"defaultLoginMethod": h.defaultLoginMethod,
 			"passkeyEnabled":     h.passkeyEnabled(r.Context()),
+			"reportProblemUrl":   h.reportProblemURL,
 		}
 		resp, err := h.identity.GetAuthConfig(r.Context(), &identityv1.GetAuthConfigRequest{})
 		if err != nil {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 )
 
 type AICitation struct {
@@ -385,6 +386,14 @@ type CompletionReport struct {
 	Overdue             []*OverdueEntry `json:"overdue"`
 }
 
+type ComponentVersion struct {
+	Name string `json:"name"`
+	// unavailable or unknown when it can't be read.
+	Version string          `json:"version"`
+	Commit  *string         `json:"commit,omitempty"`
+	Status  ComponentStatus `json:"status"`
+}
+
 type ContactBlock struct {
 	ID          string  `json:"id"`
 	Label       string  `json:"label"`
@@ -454,6 +463,34 @@ type DefinitionEntryInput struct {
 type DeleteUserResult struct {
 	UserID          string `json:"userId"`
 	RevokedSessions int    `json:"revokedSessions"`
+}
+
+type Diagnostics struct {
+	GeneratedAt time.Time `json:"generatedAt"`
+	// This read's own trace id.
+	TraceID string            `json:"traceId"`
+	Actor   *DiagnosticsActor `json:"actor"`
+	Gateway *ComponentVersion `json:"gateway"`
+	// Null when unknown.
+	Release *string `json:"release,omitempty"`
+	// Null when not on the appliance.
+	Appliance  *string             `json:"appliance,omitempty"`
+	Services   []*ComponentVersion `json:"services"`
+	ThirdParty []*ComponentVersion `json:"thirdParty"`
+}
+
+type DiagnosticsActingAs struct {
+	ID       string   `json:"id"`
+	Username string   `json:"username"`
+	Roles    []string `json:"roles"`
+}
+
+type DiagnosticsActor struct {
+	ID       string   `json:"id"`
+	Username string   `json:"username"`
+	Roles    []string `json:"roles"`
+	// Set during act-as: the user the signed-in admin is acting as.
+	ActingAs *DiagnosticsActingAs `json:"actingAs,omitempty"`
 }
 
 type DigestWindow struct {
@@ -1813,6 +1850,61 @@ func (e *CaseStatus) UnmarshalJSON(b []byte) error {
 }
 
 func (e CaseStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type ComponentStatus string
+
+const (
+	ComponentStatusOk          ComponentStatus = "OK"
+	ComponentStatusUnavailable ComponentStatus = "UNAVAILABLE"
+)
+
+var AllComponentStatus = []ComponentStatus{
+	ComponentStatusOk,
+	ComponentStatusUnavailable,
+}
+
+func (e ComponentStatus) IsValid() bool {
+	switch e {
+	case ComponentStatusOk, ComponentStatusUnavailable:
+		return true
+	}
+	return false
+}
+
+func (e ComponentStatus) String() string {
+	return string(e)
+}
+
+func (e *ComponentStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ComponentStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ComponentStatus", str)
+	}
+	return nil
+}
+
+func (e ComponentStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ComponentStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ComponentStatus) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

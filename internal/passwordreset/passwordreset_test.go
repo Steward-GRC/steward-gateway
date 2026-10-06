@@ -438,3 +438,21 @@ func TestConfirmReset_MissingFields_IsBusiness(t *testing.T) {
 	require.Equal(t, "business", kind)
 	require.Equal(t, "Code and new password are required.", message)
 }
+
+// The "report a problem" target is an adopter setting the sign-in page and the
+// shell read before sign-in; unset, it is empty and the web hides the link.
+func TestConfigHandler_ReportProblemURL(t *testing.T) {
+	read := func(h *passwordreset.Handlers) string {
+		rec := httptest.NewRecorder()
+		h.ConfigHandler()(rec, httptest.NewRequest(http.MethodGet, "/auth/config", nil))
+		require.Equal(t, http.StatusOK, rec.Code)
+		var body map[string]any
+		require.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
+		v, ok := body["reportProblemUrl"].(string)
+		require.True(t, ok, "reportProblemUrl is always present")
+		return v
+	}
+	require.Equal(t, "", read(passwordreset.New(&fakeIdentity{})))
+	require.Equal(t, "https://support.example.org/report",
+		read(passwordreset.New(&fakeIdentity{}, passwordreset.WithReportProblemURL("https://support.example.org/report"))))
+}

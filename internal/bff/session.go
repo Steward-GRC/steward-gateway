@@ -104,7 +104,7 @@ func (s *Store) Create(ctx context.Context, id string, sess Session) error {
 }
 
 func (s *Store) Save(ctx context.Context, id string, sess Session) error {
-	b, err := json.Marshal(sess)
+	b, err := json.Marshal(sess) // #nosec G117 -- the session is stored server-side in Valkey and never sent to a client
 	if err != nil {
 		return err
 	}

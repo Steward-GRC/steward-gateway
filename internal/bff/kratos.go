@@ -274,7 +274,7 @@ func (j *flowCookieJar) Cookies(_ *url.URL) []*http.Cookie {
 	defer j.mu.Unlock()
 	out := make([]*http.Cookie, 0, len(j.cookies))
 	for k, v := range j.cookies {
-		out = append(out, &http.Cookie{Name: k, Value: v})
+		out = append(out, &http.Cookie{Name: k, Value: v}) // #nosec G124 -- relayed to Kratos on the server-side hop, never set on a browser
 	}
 	return out
 }

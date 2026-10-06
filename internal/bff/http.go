@@ -65,6 +65,23 @@ type Handler struct {
 	// turns passkey sign-in off.
 	PasskeyLogin PasskeyLoginStore
 
+	// Polis is the SSO broker; nil turns every SSO route off.
+	Polis    *PolisClient
+	SSOState SSOStateStore
+	// SSORedirectBase is the public origin the browser returns to, at
+	// <base>/auth/sso/callback.
+	SSORedirectBase string
+	SSOTestLink     SSOTestLinkStore
+	// TestLinkTTL is how long a shareable test link lives; zero means 30
+	// minutes.
+	TestLinkTTL time.Duration
+	// IdPTestRecorder records a connection test as the admin on ctx; nil
+	// fails every test closed.
+	IdPTestRecorder func(ctx context.Context, connectionID string, success bool, detail string) error
+	// BreakGlassPublish records an eligible break-glass sign-in; nil skips
+	// the record but still signs the user in.
+	BreakGlassPublish func(ctx context.Context, email string)
+
 	Log        log.Logger
 	AuthMetric metric.Int64Counter
 

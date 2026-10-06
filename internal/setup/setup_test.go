@@ -142,7 +142,7 @@ func TestBootstrapHandler_IdentityInvalidArgument_Returns400(t *testing.T) {
 
 func TestBootstrapHandler_IdentityUnavailable_Returns503(t *testing.T) {
 	fake := &fakeIdentity{
-		bootstrapErr: status.Error(codes.Unavailable, "lldap not configured"),
+		bootstrapErr: status.Error(codes.Unavailable, "sign-in service not configured"),
 	}
 	h := setup.New(fake, "tok")
 	rec := httptest.NewRecorder()

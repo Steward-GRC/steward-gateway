@@ -261,3 +261,12 @@ func writeErr(w http.ResponseWriter, code int, msg string) {
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(map[string]any{"error": msg, "kind": string(kind)})
 }
+
+// Register mounts the routes on mux.
+func (h *Handlers) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /auth/config", h.ConfigHandler())
+	mux.HandleFunc("POST /auth/password-reset/request", h.RequestResetHandler())
+	mux.HandleFunc("POST /auth/password-reset/confirm", h.ConfirmResetHandler())
+	mux.HandleFunc("POST /auth/login-otp/request", h.RequestLoginOtpHandler())
+	mux.HandleFunc("POST /auth/login-otp/verify", h.VerifyLoginOtpHandler())
+}

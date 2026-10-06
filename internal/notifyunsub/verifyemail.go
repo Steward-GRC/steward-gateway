@@ -151,3 +151,8 @@ func verifyResultPage(heading, body string) string {
 </style></head>
 <body><main class="card"><h1>` + heading + `</h1><p>` + body + `</p></main></body></html>`
 }
+
+// Register mounts the email-verification route.
+func (h *VerifyEmailHandlers) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /notify/verify-email", h.Handler())
+}

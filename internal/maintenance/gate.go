@@ -133,3 +133,9 @@ func (g *Gate) allowed(ctx context.Context) bool {
 	}
 	return true
 }
+
+// Register mounts the public status route on mux. The GraphQL gate is added
+// with Middleware.
+func (g *Gate) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /maintenance", g.StatusHandler())
+}

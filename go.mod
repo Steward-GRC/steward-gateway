@@ -14,7 +14,6 @@ require (
 	github.com/Steward-GRC/steward-authz v0.0.0-20261005231355-d19c8e206a95
 	github.com/alicebob/miniredis/v2 v2.39.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/redis/go-redis/v9 v9.22.0
 	github.com/stretchr/testify v1.11.1
 	github.com/vektah/gqlparser/v2 v2.5.36
 	go.opentelemetry.io/otel v1.45.0
@@ -37,6 +36,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.21 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/redis/go-redis/v9 v9.22.0 // indirect
 	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/sosodev/duration v1.4.0 // indirect
 	github.com/urfave/cli/v3 v3.11.0 // indirect

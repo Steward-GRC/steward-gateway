@@ -226,3 +226,10 @@ func writeErr(w http.ResponseWriter, code int, msg string) {
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(map[string]any{"error": msg})
 }
+
+// Register mounts the routes on mux. Both are public: the setup token guards
+// the bootstrap.
+func (h *Handlers) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /setup/state", h.StateHandler())
+	mux.HandleFunc("POST /setup/bootstrap", h.BootstrapHandler())
+}

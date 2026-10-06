@@ -141,3 +141,9 @@ func categoryToProto(cat string) (obligationsv1.NotifCategory, bool) {
 		return obligationsv1.NotifCategory_NOTIF_CATEGORY_UNSPECIFIED, false
 	}
 }
+
+// Register mounts the one-click (POST) and browser (GET) unsubscribe routes.
+func (h *Handlers) Register(mux *http.ServeMux) {
+	mux.HandleFunc("POST /notify/unsubscribe", h.OneClickHandler())
+	mux.HandleFunc("GET /notify/unsubscribe", h.ManageHandler())
+}

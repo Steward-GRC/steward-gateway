@@ -1,0 +1,34 @@
+# --- Delivery ---
+# PolicyDiff reuses core's SectionDiff: delivery's diff_html is wordDiffHtml and
+# its boilerplate flag is isBoilerplate. Delivery sends no section title, so
+# sectionTitle is the section key.
+
+type RenderedContent { html: String! }
+
+type PolicyDiff { sections: [SectionDiff!]! }
+
+type PDFExportJob { jobId: String! }
+
+type PDFDownloadLink {
+  signedUrl: String!
+  expiresAt: String!
+}
+
+type MagicLink {
+  token: String!
+  expiresAt: String!
+}
+
+extend type Query {
+  renderedContent(policyVersionId: ID!): RenderedContent!
+  policyDiff(fromVersionId: ID!, toVersionId: ID!): PolicyDiff!
+  pdfDownloadLink(jobId: ID!): PDFDownloadLink!
+}
+
+extend type Mutation {
+  requestPDFExport(policyVersionId: ID!): PDFExportJob!
+  createMagicLink(policyVersionId: ID!, sensitive: Boolean!): MagicLink!
+  revokeMagicLink(token: String!): Boolean!
+}
+
+

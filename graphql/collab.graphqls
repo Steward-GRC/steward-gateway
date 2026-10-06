@@ -1,0 +1,25 @@
+extend type Mutation {
+  """
+  Issue a short-lived websocket token for the Collaboration service.
+  The caller must be signed in and be able to edit the policy (collab checks
+  the edit grant again before minting).
+  """
+  issueCollabToken(input: IssueCollabTokenInput!): IssueCollabTokenPayload!
+}
+
+input IssueCollabTokenInput {
+  policyId:          ID!
+  draftId:           ID!
+  # The draft's pinned TemplateVersion.id; null for a freeform draft. core reads
+  # an empty value as "no pin" and still rejects a mismatched or omitted id on a
+  # templated draft.
+  templateVersionId: ID
+}
+
+type IssueCollabTokenPayload {
+  token:     String!
+  wsUrl:     String!
+  expiresAt: String!  # ISO-8601
+}
+
+

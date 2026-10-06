@@ -1,0 +1,61 @@
+# --- Audit: query, export, verify ---
+# Backed by audit (AuditService). The gateway sends the signed-in caller as
+# the requester on every call. Record ids are surfaced as Strings to
+# avoid 32-bit-int truncation in JS clients (the underlying type is int64).
+
+type AuditRecord {
+  id: String!
+  recordUuid: ID!
+  tier: String!
+  action: String!
+  actorUserId: ID!
+  subject: String!
+  groupId: ID!
+  occurredAt: String!  # ISO-8601
+  prevHash: String!
+  recordHash: String!
+  legalBasisExempt: Boolean!
+  # Human-readable labels resolved server-side at read time from the actor /
+  # group / subject ids above, so the UI never has to fan out its own lookups.
+  # actorName: the actor user's display name. groupName: the record's group
+  # name. subjectLabel: a readable rendering of the `type:uuid` subject
+  # (policy code/title, group name, or template name+version). All nullable —
+  # null on any resolution miss, in which case the client shows the raw id.
+  actorName: String
+  groupName: String
+  subjectLabel: String
+}
+
+type AuditQueryPage {
+  records: [AuditRecord!]!
+  nextPageToken: String!
+}
+
+type AuditCheckpoint {
+  checkpointUuid: ID!
+  merkleRoot: String!
+  anchorType: String!
+  anchorUrl: String!
+  # base64-encoded TSA token bytes.
+  tsaToken: String!
+  anchoredAt: String!  # ISO-8601
+}
+
+type AuditSegment {
+  records: [AuditRecord!]!
+  checkpoints: [AuditCheckpoint!]!
+}
+
+type AuditChainVerification {
+  valid: Boolean!
+  recordsChecked: Int!
+  errors: [String!]!
+}
+
+extend type Query {
+  auditLog(tier: String, groupId: ID, actorUserId: ID, subject: String, pageSize: Int, pageToken: String): AuditQueryPage!
+  auditSegment(fromRecordId: String!, toRecordId: String!): AuditSegment!
+  verifyAuditChain(fromRecordId: String!, toRecordId: String!): AuditChainVerification!
+}
+
+

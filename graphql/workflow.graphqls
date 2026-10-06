@@ -1,0 +1,389 @@
+# --- Workflow: approval-saga submit/signal/status/pending-tasks ---
+# Backed by workflow (WorkflowService). The caller is the signed-in user:
+# submitWorkflow's submitter, signalWorkflow's actor and pendingTasks's
+# approver filter are never taken from input.
+# The schema therefore omits actor / approver / submitter inputs.
+
+enum ApprovalStatus {
+  APPROVAL_STATUS_UNSPECIFIED
+  APPROVAL_STATUS_DRAFT
+  APPROVAL_STATUS_IN_REVIEW
+  APPROVAL_STATUS_APPROVED
+  APPROVAL_STATUS_SCHEDULED
+  APPROVAL_STATUS_PUBLISHED
+  APPROVAL_STATUS_SUPERSEDED
+  APPROVAL_STATUS_REJECTED
+  APPROVAL_STATUS_WITHDRAWN
+  APPROVAL_STATUS_ARCHIVED
+}
+
+enum SignalType {
+  SIGNAL_TYPE_UNSPECIFIED
+  SIGNAL_TYPE_APPROVE
+  SIGNAL_TYPE_REJECT
+  SIGNAL_TYPE_REQUEST_CHANGES
+  SIGNAL_TYPE_WITHDRAW
+  SIGNAL_TYPE_RETIRE
+}
+
+type WorkflowSubmitResult {
+  runId: String!
+}
+
+# One current assignee on a stage, from the authoritative approval_assignments
+# row (who must approve + their state/comment/time) — NOT the assignmentHistory
+# audit log, whose `created` actor is the submitter.
+type StageAssignee {
+  userId: String!
+  # Resolved display name (nil when the directory can't resolve it — the client
+  # falls back to a short id).
+  name: String
+  # pending / approved / rejected.
+  state: String!
+  # Decision comment, present once decided.
+  comment: String
+  # ISO-8601 decision timestamp, present once decided.
+  decidedAt: String
+  # The group whose seat this is, when the user holds a group seat; null for
+  # an individual seat.
+  groupId: ID
+}
+
+# One approve-as-group unit's live tally on a stage. groupName is
+# resolved by the gateway from groupId.
+type StageUnitProgress {
+  groupId: String!
+  groupName: String
+  quorum: String!    # one | majority | all
+  required: Int!     # approvals needed to satisfy the internal quorum
+  approvals: Int!
+  pending: Int!      # members still able to approve
+  roster: Int!       # total member roster size
+  status: String!    # SATISFIED | PENDING | REJECTED
+}
+
+type WorkflowStatus {
+  status: ApprovalStatus!
+  runId: String!
+  currentStageIdx: Int!
+  # Resolved workflow-definition stage names, in order. Lets approvers render
+  # an accurate stepper without admin workflow-def access.
+  stageNames: [String!]!
+  # Current assignees per stage, index-aligned with stageNames: who must approve
+  # and their decision state/comment/time. This is the stepper's roster source.
+  stageAssignees: [[StageAssignee!]!]!
+  # Per-stage approve-as-group unit progress, index-aligned with stageNames; an
+  # empty inner list means the stage has no group units.
+  stageUnitProgress: [[StageUnitProgress!]!]!
+}
+
+type PendingTask {
+  taskId: ID!
+  runId: String!
+  policyVersionId: ID!
+  policyTitle: String!
+  stageIndex: Int!
+  dueAt: String   # ISO-8601; null when the engine has not set a due time
+}
+
+type UpcomingApproval {
+  policyVersionId: ID!
+  policyTitle: String!
+  stageIndex: Int!
+  stageName: String!
+}
+
+type EffectiveWorkflow {
+  # The resolved workflow-definition id, or null when none is attached/inherited.
+  workflowDefId: ID
+  # True when an approval workflow is attached to the policy's category or inherited
+  # from an ancestor up to top level — i.e. the policy can be submitted.
+  hasWorkflow: Boolean!
+  # True when the resolved workflow is USABLE — every required stage has at least
+  # one approver. False means it can't run yet (a stage is unstaffed). Lets the
+  # submit UI disable proactively + explain, instead of failing on submit.
+  # Defaults true when hasWorkflow is false (nothing to gate on).
+  usable: Boolean!
+  # When usable=false, the name of the first stage lacking an approver (for a
+  # human-readable notice, e.g. "The 'Approval' stage has no approver"); null otherwise.
+  firstUnstaffedStage: String
+}
+
+extend type Query {
+  """
+  Status of the approval saga for a policy version. Returns
+  APPROVAL_STATUS_UNSPECIFIED when the workflow service has no record (the
+  policy was published without going through an approval flow).
+  """
+  workflowStatus(policyVersionId: ID!): WorkflowStatus!
+
+  """
+  Pending approval tasks awaiting the authenticated user. The approver id is
+  bound from the signed-in user and is never client-supplied.
+  """
+  pendingTasks: [PendingTask!]!
+
+  """
+  Approvals where the authenticated user is an approver on a future (not-yet-
+  reached) stage — visibility/heads-up, not yet actionable. Approver id is bound
+  from the signed-in user and is never client-supplied.
+  """
+  upcomingApprovals: [UpcomingApproval!]!
+
+  """
+  The approval workflow EFFECTIVE for a policy — attached to its category or
+  inherited from an ancestor up to top level. hasWorkflow=false means the policy
+  cannot be submitted for approval until an admin attaches one. The gateway
+  resolves the category lineage and delegates to the workflow service so this is
+  the same resolution Submit enforces.
+  """
+  effectiveWorkflow(policyId: ID!): EffectiveWorkflow!
+}
+
+extend type Mutation {
+  """
+  Start an approval saga for a policy version. The submittedBy field is bound
+  from the signed-in user; ancestorCategoryIds is the policy's category lineage leaf→root
+  so the workflow service can resolve the effective workflow without a
+  cross-service call back into policy-core.
+  """
+  submitWorkflow(
+    policyVersionId: ID!
+    policyId: ID!
+    categoryId: ID!
+    ancestorCategoryIds: [ID!]!
+  ): WorkflowSubmitResult!
+
+  """
+  Deliver an approver decision to an active run. The actor is bound from
+  the signed-in user. The comment is required for APPROVE and REJECT signals
+  (the workflow service rejects empty comments with InvalidArgument).
+
+  policyVersionId is authoritative: the decision targets that version's CURRENT
+  active approval. runId/taskId are advisory only (a cached inbox row may be
+  stale); the server ignores them for resolution. A stale click on a no-longer-
+  active approval returns FailedPrecondition ("refresh your inbox"), never a
+  raw NotFound.
+  """
+  signalWorkflow(
+    policyVersionId: ID!
+    runId: ID!
+    taskId: ID!
+    signal: SignalType!
+    comment: String!
+  ): Boolean!
+
+  """
+  Swap the active approver on a stage. Audited swap; the
+  initiator role is server-derived from the signed-in user (admin /
+  self-delegate / workflow-author). outOfEligibilityAck must be true
+  when an admin swaps in a user outside the seat's eligible pool. stageEligibleAssignees lists the users accepted without it.
+
+  Workflow refusals relay as coded errors: extensions.code is the symbol,
+  extensions.codeNum the number, extensions.domain "workflow", and each
+  metadata key below is its own extension:
+    SWAP_ASSIGNEE_FORBIDDEN (6002): role
+    SWAP_REASON_REQUIRED (6004)
+    SWAP_USERS_REQUIRED (6005)
+    SWAP_SAME_USER (6006)
+    SWAP_INITIATOR_ROLE_REQUIRED (6007)
+    SWAP_ASSIGNMENT_NOT_FOUND (6008): stage, current_user_id
+    SWAP_ASSIGNMENT_NOT_PENDING (6009): stage, current_user_id, state
+    SWAP_ASSIGNEE_NOT_ELIGIBLE (6010): stage, stage_name, new_user_id (the
+      refused candidate)
+    STAGE_INDEX_OUT_OF_RANGE (6011): stage, stage_count
+    APPROVAL_RUN_NOT_FOUND (6012): policy_version_id
+  """
+  swapAssignee(input: SwapAssigneeInput!): SwapAssigneeResult!
+
+  """
+  Approve or reject several pending assignments in one call. Every
+  decision in the batch must include a non-empty comment (the server stores
+  one comment per decision). Returns per-row results so a partially-
+  failed batch can be surfaced to the operator.
+  """
+  bulkDecide(input: BulkDecideInput!): BulkDecideResult!
+}
+
+# --- Reassignment, bulk decisions and history ---
+
+enum InitiatorRole {
+  INITIATOR_ROLE_UNSPECIFIED
+  INITIATOR_ROLE_ADMIN
+  INITIATOR_ROLE_SELF_DELEGATE
+  INITIATOR_ROLE_WORKFLOW_AUTHOR
+}
+
+input SwapAssigneeInput {
+  policyVersionId: ID!
+  stageIndex: Int!
+  currentUserId: ID!
+  newUserId: ID!
+  reason: String!
+  """
+  Must be true when an admin is swapping in a user outside the seat's
+  eligible pool; the swap is audited with out_of_eligibility=true.
+  """
+  outOfEligibilityAck: Boolean
+}
+
+type SwapAssigneeResult {
+  newAssignmentId: ID!
+  newSlaDeadlineAt: String!  # ISO-8601
+}
+
+enum DecisionType {
+  DECISION_TYPE_UNSPECIFIED
+  DECISION_TYPE_APPROVE
+  DECISION_TYPE_REJECT
+}
+
+input DecisionInput {
+  policyVersionId: ID!
+  stageIndex: Int!
+  decision: DecisionType!
+  comment: String!
+}
+
+input BulkDecideInput {
+  decisions: [DecisionInput!]!
+}
+
+type DecisionResult {
+  policyVersionId: ID!
+  stageIndex: Int!
+  ok: Boolean!
+  error: String
+  assignmentId: ID
+}
+
+type BulkDecideResult {
+  results: [DecisionResult!]!
+  bulkBatchId: ID!
+}
+
+type AssignmentHistoryEntry {
+  id: String!  # int64 surfaced as string for JS-safe integers
+  assignmentId: ID!
+  # One of created, swapped_in, swapped_out, approved, rejected, paused,
+  # resumed, withdrawn, reassigned. Clients should render an unknown value
+  # with a fallback, since workflow may add events.
+  event: String!
+  actorUserId: ID!
+  actorRole: String
+  previousUserId: ID
+  newUserId: ID
+  outOfEligibility: Boolean!
+  reason: String
+  createdAt: String!  # ISO-8601
+  # Display names resolved server-side for the actor / swap participants, so a
+  # non-admin caller (who cannot query the site-admin-only `users` directory)
+  # still sees human names in the History timeline. Authz rationale: these only
+  # name users already referenced by records the caller is authorized to read
+  # (same authz as the entry itself); no broader directory is exposed. Null when
+  # the id can't be resolved — the client then falls back to a short id.
+  actorName: String
+  previousUserName: String
+  newUserName: String
+}
+
+extend type Query {
+  """
+  Append-only audit history for one stage of one policy version's approval
+  run. Workflow authorizes it (admin, auditor, the policy's author, or a current
+  or past assignee on the stage).
+  """
+  assignmentHistory(policyVersionId: ID!, stageIndex: Int!): [AssignmentHistoryEntry!]!
+
+  """
+  The eligible-assignee pool for one stage of a policy version's approval run:
+  the users swapAssignee accepts as newUserId without outOfEligibilityAck, in
+  workflow definition order. It comes from the same stage descriptor
+  swapAssignee checks, so a picker built on it cannot drift from the rule. The
+  pool can include users who already hold a seat on the stage
+  (workflowStatus.stageAssignees says who does), and is empty when the stage
+  names no individual approvers.
+
+  Requires workflow.manage (template-admin, site-admin), the same gate as
+  swapAssignee: workflow does no authz on this read. Anyone else gets
+  PERMISSION_DENIED before workflow is called.
+
+  Workflow refusals relay as coded errors (extensions.domain "workflow"):
+    STAGE_INDEX_OUT_OF_RANGE (codeNum 6011): extensions.stage, stage_count
+    APPROVAL_RUN_NOT_FOUND (codeNum 6012): extensions.policy_version_id
+  """
+  stageEligibleAssignees(policyVersionId: ID!, stageIndex: Int!): StageEligibleAssignees!
+}
+
+type StageEligibleAssignees {
+  stageIndex: Int!
+  stageName: String!
+  # The pool resolved to labels, in definition order. A user identity cannot
+  # resolve keeps its id as the name, as in resolveUserLabels.
+  assignees: [UserLabel!]!
+}
+
+
+# --- Workflow definitions (admin management) ---
+# The individual approvers a stage names for one category.
+type CategoryApprovers {
+  categoryId: ID!
+  approverIds: [ID!]!
+}
+# A group that approves as a whole: its members hold group seats, the group is
+# satisfied once internalQuorum of them approve, and it counts as one vote in
+# the stage quorum.
+type GroupUnit {
+  groupId: ID!
+  internalQuorum: String!  # one | majority | all
+  memberUserIds: [ID!]!
+}
+type WorkflowStageDef {
+  id: ID!
+  name: String!
+  approvers: [ID!]!
+  approversByCategory: [CategoryApprovers!]!
+  groupUnits: [GroupUnit!]!
+  quorum: String!
+  slaDays: Int
+  rejectOnSlaBreach: Boolean
+  pinnedLast: Boolean
+}
+type WorkflowDef {
+  id: ID!
+  name: String!
+  description: String
+  version: Int!
+  stages: [WorkflowStageDef!]!
+}
+input CategoryApproversInput {
+  categoryId: ID!
+  approverIds: [ID!]!
+}
+input GroupUnitInput {
+  groupId: ID!
+  internalQuorum: String!  # one | majority | all
+  memberUserIds: [ID!]!
+}
+input WorkflowStageInput {
+  id: ID
+  name: String!
+  approvers: [ID!]!
+  approversByCategory: [CategoryApproversInput!]
+  groupUnits: [GroupUnitInput!]
+  quorum: String!
+  slaDays: Int
+  rejectOnSlaBreach: Boolean
+  pinnedLast: Boolean
+}
+extend type Query {
+  workflowDefs: [WorkflowDef!]!
+  workflowDef(id: ID!): WorkflowDef
+}
+extend type Mutation {
+  createWorkflowDef(name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
+  updateWorkflowDef(id: ID!, name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
+  archiveWorkflowDef(id: ID!): Boolean!
+}
+
+

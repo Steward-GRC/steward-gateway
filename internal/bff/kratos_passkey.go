@@ -34,7 +34,7 @@ const (
 	passkeyCreateDataNodeName    = "passkey_create_data"
 	passkeySettingsRegisterField = "passkey_settings_register"
 
-	kratosActionSetSessionToken = "set_ory_session_token"
+	kratosActionSetSessionToken = "set_ory_session_token" // #nosec G101 -- a Kratos action name, not a credential
 
 	passkeyRegisterFlowTTL = 10 * time.Minute
 )

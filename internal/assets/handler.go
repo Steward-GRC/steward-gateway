@@ -93,7 +93,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	lg := h.logger.Ctx(r.Context())
 
 	r.Body = http.MaxBytesReader(w, r.Body, MaxUploadBytes+multipartOverhead)
-	if err := r.ParseMultipartForm(MaxUploadBytes + multipartOverhead); err != nil {
+	if err := r.ParseMultipartForm(MaxUploadBytes + multipartOverhead); err != nil { // #nosec G120 -- the body is bounded by MaxBytesReader above
 		lg.Debug("asset upload: malformed or oversized form")
 		writeError(w, http.StatusBadRequest, "File too large or malformed upload — max upload size is 10 MB")
 		return

@@ -142,7 +142,7 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 }
 
 func (h *Handler) setCookie(w http.ResponseWriter, id string, maxAge int) {
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ // #nosec G124 -- HttpOnly and SameSite always; Secure is off only for COOKIE_INSECURE local runs
 		Name: CookieName, Value: id, Path: "/", HttpOnly: true, Secure: h.Secure,
 		// Lax, not Strict: the SSO callback lands through a cross-site
 		// redirect, and Strict would drop the cookie on that first navigation.

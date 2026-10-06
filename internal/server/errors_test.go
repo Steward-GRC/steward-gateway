@@ -177,7 +177,7 @@ func TestSanitizingErrorPresenterLogsNoAddress(t *testing.T) {
 	var buf bytes.Buffer
 	lg := log.NewLoggerWithOptions("gateway", log.WithOutput(&buf), log.WithDefaultFormat(log.FormatJSON))
 
-	ErrorPresenter(lg)(context.Background(), errors.New("dial tcp 198.51.100.7:4433 and [2001:db8::7]:443: connection refused"))
+	_ = ErrorPresenter(lg)(context.Background(), errors.New("dial tcp 198.51.100.7:4433 and [2001:db8::7]:443: connection refused"))
 
 	out := buf.String()
 	if strings.Contains(out, "198.51.100.7") || strings.Contains(out, "2001:db8::7") {

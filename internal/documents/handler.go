@@ -40,7 +40,7 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 // "file" in, {"title","content"} out, or {"error"} with a 400.
 func ExtractHandler(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, MaxUploadBytes+multipartOverhead)
-	if err := r.ParseMultipartForm(MaxUploadBytes + multipartOverhead); err != nil {
+	if err := r.ParseMultipartForm(MaxUploadBytes + multipartOverhead); err != nil { // #nosec G120 -- the body is bounded by MaxBytesReader above
 		writeError(w, http.StatusBadRequest, "File too large or malformed upload — max upload size is 10 MB")
 		return
 	}

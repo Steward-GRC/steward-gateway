@@ -91,6 +91,7 @@ func TestListUserSessionsHappyPath(t *testing.T) {
 					ExpiresAt:       "2026-06-25T17:00:00Z",
 					Active:          true,
 					UserAgent:       "Mozilla/5.0",
+					ClientIp:        "203.0.113.7",
 				},
 				{
 					SessionId: "sid-2",
@@ -115,8 +116,14 @@ func TestListUserSessionsHappyPath(t *testing.T) {
 	if out[0].SessionID != "sid-1" || out[0].AuthenticatedAt != "2026-06-25T09:30:00Z" || !out[0].Active {
 		t.Errorf("session 1 not mapped: %+v", out[0])
 	}
+	if out[0].ClientIP == nil || *out[0].ClientIP != "203.0.113.7" {
+		t.Errorf("session 1 clientIp not mapped: %+v", out[0].ClientIP)
+	}
 	if out[1].Active || out[1].UserAgent != "curl/8.0" {
 		t.Errorf("session 2 not mapped: %+v", out[1])
+	}
+	if out[1].ClientIP != nil {
+		t.Errorf("session 2 expected nil clientIp (none recorded), got %v", *out[1].ClientIP)
 	}
 }
 

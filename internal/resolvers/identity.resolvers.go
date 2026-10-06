@@ -216,6 +216,11 @@ func (r *queryResolver) PoliciesByOwner(ctx context.Context, userID string, incl
 	return ListPoliciesByOwner(ctx, r.PolicyClient, userID, includeRetired)
 }
 
+// MyDrafts is the resolver for the myDrafts field.
+func (r *queryResolver) MyDrafts(ctx context.Context) ([]*Policy, error) {
+	return MyDrafts(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient)
+}
+
 // PreviewAccountMerge is the resolver for the previewAccountMerge field.
 func (r *queryResolver) PreviewAccountMerge(ctx context.Context, sourceUserID string, targetUserID string) (*AccountMergePreview, error) {
 	return PreviewAccountMergeResolver(ctx, r.IdentityAdminClient, sourceUserID, targetUserID)

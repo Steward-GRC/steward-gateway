@@ -793,6 +793,8 @@ type ComplexityRoot struct {
 		CreatedAt                 func(childComplexity int) int
 		CurrentDraftVersionID     func(childComplexity int) int
 		CurrentPublishedVersionID func(childComplexity int) int
+		CurrentVersionNo          func(childComplexity int) int
+		CurrentVersionStatus      func(childComplexity int) int
 		DocumentType              func(childComplexity int) int
 		HomeCategoryID            func(childComplexity int) int
 		ID                        func(childComplexity int) int
@@ -805,6 +807,7 @@ type ComplexityRoot struct {
 		TemplateNone              func(childComplexity int) int
 		TemplateUpdateAvailable   func(childComplexity int) int
 		Title                     func(childComplexity int) int
+		UpdatedAt                 func(childComplexity int) int
 		ViewerCan                 func(childComplexity int) int
 	}
 
@@ -825,8 +828,10 @@ type ComplexityRoot struct {
 	PolicyVersion struct {
 		Appendices        func(childComplexity int) int
 		ContentJSON       func(childComplexity int) int
+		CreatedAt         func(childComplexity int) int
 		ID                func(childComplexity int) int
 		PolicyID          func(childComplexity int) int
+		PublishedAt       func(childComplexity int) int
 		Status            func(childComplexity int) int
 		TemplateVersionID func(childComplexity int) int
 		VersionNo         func(childComplexity int) int
@@ -860,6 +865,7 @@ type ComplexityRoot struct {
 		CategoryApprovers          func(childComplexity int, categoryID string) int
 		CategoryChildren           func(childComplexity int, parentID *string) int
 		CategoryRuleset            func(childComplexity int, categoryID string) int
+		CategoryTree               func(childComplexity int, rootID *string) int
 		CompletionReport           func(childComplexity int, policyVersionID string, groupID *string) int
 		ContactBlocks              func(childComplexity int, includeArchived *bool) int
 		Definitions                func(childComplexity int, categoryID *string, includeArchived *bool) int
@@ -879,6 +885,7 @@ type ComplexityRoot struct {
 		ManagedGroupMembers        func(childComplexity int, groupID string) int
 		Me                         func(childComplexity int) int
 		MyAckSummary               func(childComplexity int) int
+		MyDrafts                   func(childComplexity int) int
 		MyFactors                  func(childComplexity int) int
 		MyObligations              func(childComplexity int) int
 		MyReport                   func(childComplexity int, caseID string) int
@@ -895,6 +902,7 @@ type ComplexityRoot struct {
 		Policies                   func(childComplexity int, categoryID string, includeDescendants *bool, documentType *DocumentType) int
 		PoliciesByOwner            func(childComplexity int, userID string, includeRetired *bool) int
 		Policy                     func(childComplexity int, id string) int
+		PolicyByNumber             func(childComplexity int, number string) int
 		PolicyContactBlocks        func(childComplexity int, policyID string) int
 		PolicyDefinitionCandidates func(childComplexity int, policyID string, includeArchived *bool) int
 		PolicyDefinitionEntries    func(childComplexity int, policyID string) int
@@ -1107,6 +1115,7 @@ type ComplexityRoot struct {
 	Session struct {
 		Active          func(childComplexity int) int
 		AuthenticatedAt func(childComplexity int) int
+		ClientIP        func(childComplexity int) int
 		ExpiresAt       func(childComplexity int) int
 		IssuedAt        func(childComplexity int) int
 		SessionID       func(childComplexity int) int
@@ -1501,10 +1510,12 @@ type QueryResolver interface {
 	VerifyAuditChain(ctx context.Context, fromRecordID string, toRecordID string) (*AuditChainVerification, error)
 	Category(ctx context.Context, id string) (*Category, error)
 	CategoryChildren(ctx context.Context, parentID *string) ([]*Category, error)
+	CategoryTree(ctx context.Context, rootID *string) ([]*Category, error)
 	Templates(ctx context.Context, ownerCategoryID *string) ([]*Template, error)
 	LatestTemplateVersion(ctx context.Context, templateID string) (*TemplateVersion, error)
 	TemplateVersions(ctx context.Context, templateID string) ([]*TemplateVersion, error)
 	Policy(ctx context.Context, id string) (*Policy, error)
+	PolicyByNumber(ctx context.Context, number string) (*Policy, error)
 	Policies(ctx context.Context, categoryID string, includeDescendants *bool, documentType *DocumentType) ([]*Policy, error)
 	PolicyVersion(ctx context.Context, id string) (*PolicyVersion, error)
 	PolicyVersions(ctx context.Context, policyID string) ([]*PolicyVersion, error)
@@ -1535,6 +1546,7 @@ type QueryResolver interface {
 	ResolveUserLabels(ctx context.Context, ids []string) ([]*UserLabel, error)
 	SearchUsers(ctx context.Context, query string, limit *int) ([]*UserLabel, error)
 	PoliciesByOwner(ctx context.Context, userID string, includeRetired *bool) ([]*Policy, error)
+	MyDrafts(ctx context.Context) ([]*Policy, error)
 	PreviewAccountMerge(ctx context.Context, sourceUserID string, targetUserID string) (*AccountMergePreview, error)
 	PreviewUserDeletion(ctx context.Context, userID string) (*UserDeletionPreview, error)
 	ManagedGroupMembers(ctx context.Context, groupID string) ([]*User, error)
@@ -5311,6 +5323,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Policy.CurrentPublishedVersionID(childComplexity), true
+	case "Policy.currentVersionNo":
+		if e.ComplexityRoot.Policy.CurrentVersionNo == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Policy.CurrentVersionNo(childComplexity), true
+	case "Policy.currentVersionStatus":
+		if e.ComplexityRoot.Policy.CurrentVersionStatus == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Policy.CurrentVersionStatus(childComplexity), true
 	case "Policy.documentType":
 		if e.ComplexityRoot.Policy.DocumentType == nil {
 			break
@@ -5383,6 +5407,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Policy.Title(childComplexity), true
+	case "Policy.updatedAt":
+		if e.ComplexityRoot.Policy.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Policy.UpdatedAt(childComplexity), true
 	case "Policy.viewerCan":
 		if e.ComplexityRoot.Policy.ViewerCan == nil {
 			break
@@ -5435,6 +5465,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PolicyVersion.ContentJSON(childComplexity), true
+	case "PolicyVersion.createdAt":
+		if e.ComplexityRoot.PolicyVersion.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersion.CreatedAt(childComplexity), true
 	case "PolicyVersion.id":
 		if e.ComplexityRoot.PolicyVersion.ID == nil {
 			break
@@ -5447,6 +5483,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PolicyVersion.PolicyID(childComplexity), true
+	case "PolicyVersion.publishedAt":
+		if e.ComplexityRoot.PolicyVersion.PublishedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersion.PublishedAt(childComplexity), true
 	case "PolicyVersion.status":
 		if e.ComplexityRoot.PolicyVersion.Status == nil {
 			break
@@ -5676,6 +5718,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.CategoryRuleset(childComplexity, args["categoryId"].(string)), true
+	case "Query.categoryTree":
+		if e.ComplexityRoot.Query.CategoryTree == nil {
+			break
+		}
+
+		args, err := ec.field_Query_categoryTree_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CategoryTree(childComplexity, args["rootId"].(*string)), true
 	case "Query.completionReport":
 		if e.ComplexityRoot.Query.CompletionReport == nil {
 			break
@@ -5851,6 +5904,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MyAckSummary(childComplexity), true
+	case "Query.myDrafts":
+		if e.ComplexityRoot.Query.MyDrafts == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.MyDrafts(childComplexity), true
 	case "Query.myFactors":
 		if e.ComplexityRoot.Query.MyFactors == nil {
 			break
@@ -5982,6 +6041,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Policy(childComplexity, args["id"].(string)), true
+	case "Query.policyByNumber":
+		if e.ComplexityRoot.Query.PolicyByNumber == nil {
+			break
+		}
+
+		args, err := ec.field_Query_policyByNumber_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PolicyByNumber(childComplexity, args["number"].(string)), true
 	case "Query.policyContactBlocks":
 		if e.ComplexityRoot.Query.PolicyContactBlocks == nil {
 			break
@@ -7035,6 +7105,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Session.AuthenticatedAt(childComplexity), true
+	case "Session.clientIp":
+		if e.ComplexityRoot.Session.ClientIP == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Session.ClientIP(childComplexity), true
 	case "Session.expiresAt":
 		if e.ComplexityRoot.Session.ExpiresAt == nil {
 			break
@@ -8709,6 +8785,10 @@ type IssueCollabTokenPayload {
   # Categories
   category(id: ID!): Category
   categoryChildren(parentId: ID): [Category!]!
+  # The whole subtree under rootId (including rootId itself), or the whole
+  # category forest when rootId is omitted. Categories are at most three
+  # levels deep, so this is always a small, one-call read.
+  categoryTree(rootId: ID): [Category!]!
 
   # Templates
   templates(ownerCategoryId: ID): [Template!]!
@@ -8718,6 +8798,9 @@ type IssueCollabTokenPayload {
 
   # Policies
   policy(id: ID!): Policy
+  # Looks a policy up by its rendered number (e.g. "POL-SAFETY-000007"), which
+  # is unique by construction. Same read model and NotFound behavior as policy(id).
+  policyByNumber(number: String!): Policy
   # documentType filters by kind: null lists policies only; POLICY or PROCEDURE
   # filters to that kind.
   policies(categoryId: ID!, includeDescendants: Boolean, documentType: DocumentType): [Policy!]!
@@ -8963,8 +9046,14 @@ type Policy {
   ownerUserId: ID!
   ownerName: String       # resolved from identity service; null when lookup unavailable
   createdAt: String       # RFC-3339 timestamp of first-version creation; null when unavailable
+  updatedAt: String       # RFC-3339 timestamp of the last write to the policy row; null when unavailable
   currentPublishedVersionId: ID
   currentDraftVersionId: ID
+  # The version number/status of whichever version is current (published if
+  # set, else the draft). Null when the policy has neither. versionNo is 0
+  # for an unpublished draft, which isn't numbered until it's published.
+  currentVersionNo: Int
+  currentVersionStatus: String
   # Template tri-state. templateNone=true → explicit NONE (freeform), overrides
   # the category chain; templateId set → that specific template; both unset
   # (none=false, id=null) → inherit from the owning category chain.
@@ -9016,6 +9105,8 @@ type PolicyVersion {
   templateVersionId: ID!
   contentJson: String!
   appendices: [Appendix!]!
+  createdAt: String    # RFC-3339; null when unavailable
+  publishedAt: String  # RFC-3339; null until published
 }
 
 type Appendix {
@@ -9570,6 +9661,11 @@ extend type Query {
   # blocks) until reassignUserPolicies clears it. Retired policies are excluded
   # unless includeRetired is true. Site-admin only.
   policiesByOwner(userId: ID!, includeRetired: Boolean): [Policy!]!
+  # myDrafts is the self-service twin of policiesByOwner: the signed-in
+  # caller's own policies that currently have a draft version, with no
+  # site-admin gate (every caller may read their own drafts). Mirrors
+  # revokeMySessions vs revokeUserSessions.
+  myDrafts: [Policy!]!
   # previewAccountMerge -> IdentityAdminService.PreviewAccountMerge: a read-only,
   # side-effect-free projection of what merging sourceUserId INTO targetUserId
   # would move/dedupe (owned policies, RACI grants, acknowledgments, workflow
@@ -9758,6 +9854,9 @@ type Session {
   expiresAt: String!
   active: Boolean!
   userAgent: String!
+  # The IP address of the device that last used the session; null when Kratos
+  # recorded none for it.
+  clientIp: String
 }
 
 extend type Query { listUserSessions(userId: ID!): [Session!]! }
@@ -12091,10 +12190,16 @@ func (ec *executionContext) childFields_Policy(ctx context.Context, field graphq
 		return ec.fieldContext_Policy_ownerName(ctx, field)
 	case "createdAt":
 		return ec.fieldContext_Policy_createdAt(ctx, field)
+	case "updatedAt":
+		return ec.fieldContext_Policy_updatedAt(ctx, field)
 	case "currentPublishedVersionId":
 		return ec.fieldContext_Policy_currentPublishedVersionId(ctx, field)
 	case "currentDraftVersionId":
 		return ec.fieldContext_Policy_currentDraftVersionId(ctx, field)
+	case "currentVersionNo":
+		return ec.fieldContext_Policy_currentVersionNo(ctx, field)
+	case "currentVersionStatus":
+		return ec.fieldContext_Policy_currentVersionStatus(ctx, field)
 	case "templateId":
 		return ec.fieldContext_Policy_templateId(ctx, field)
 	case "templateNone":
@@ -12157,6 +12262,10 @@ func (ec *executionContext) childFields_PolicyVersion(ctx context.Context, field
 		return ec.fieldContext_PolicyVersion_contentJson(ctx, field)
 	case "appendices":
 		return ec.fieldContext_PolicyVersion_appendices(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_PolicyVersion_createdAt(ctx, field)
+	case "publishedAt":
+		return ec.fieldContext_PolicyVersion_publishedAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PolicyVersion", field.Name)
 }
@@ -12539,6 +12648,8 @@ func (ec *executionContext) childFields_Session(ctx context.Context, field graph
 		return ec.fieldContext_Session_active(ctx, field)
 	case "userAgent":
 		return ec.fieldContext_Session_userAgent(ctx, field)
+	case "clientIp":
+		return ec.fieldContext_Session_clientIp(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Session", field.Name)
 }
@@ -16281,6 +16392,20 @@ func (ec *executionContext) field_Query_categoryRuleset_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_categoryTree_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "rootId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["rootId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_category_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -16600,6 +16725,20 @@ func (ec *executionContext) field_Query_policies_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["documentType"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_policyByNumber_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "number",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["number"] = arg0
 	return args, nil
 }
 
@@ -31803,6 +31942,29 @@ func (ec *executionContext) fieldContext_Policy_createdAt(_ context.Context, fie
 	return graphql.NewScalarFieldContext("Policy", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _Policy_updatedAt(ctx context.Context, field graphql.CollectedField, obj *Policy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Policy_updatedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Policy_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Policy", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Policy_currentPublishedVersionId(ctx context.Context, field graphql.CollectedField, obj *Policy) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -31847,6 +32009,52 @@ func (ec *executionContext) _Policy_currentDraftVersionId(ctx context.Context, f
 }
 func (ec *executionContext) fieldContext_Policy_currentDraftVersionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Policy", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Policy_currentVersionNo(ctx context.Context, field graphql.CollectedField, obj *Policy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Policy_currentVersionNo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentVersionNo, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Policy_currentVersionNo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Policy", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Policy_currentVersionStatus(ctx context.Context, field graphql.CollectedField, obj *Policy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Policy_currentVersionStatus(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentVersionStatus, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Policy_currentVersionStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Policy", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Policy_templateId(ctx context.Context, field graphql.CollectedField, obj *Policy) (ret graphql.Marshaler) {
@@ -32311,6 +32519,52 @@ func (ec *executionContext) fieldContext_PolicyVersion_appendices(_ context.Cont
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _PolicyVersion_createdAt(ctx context.Context, field graphql.CollectedField, obj *PolicyVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersion_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersion_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersion_publishedAt(ctx context.Context, field graphql.CollectedField, obj *PolicyVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersion_publishedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PublishedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersion_publishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _PolicyViewerCan_read(ctx context.Context, field graphql.CollectedField, obj *PolicyViewerCan) (ret graphql.Marshaler) {
@@ -33153,6 +33407,50 @@ func (ec *executionContext) fieldContext_Query_categoryChildren(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_categoryTree(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_categoryTree(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CategoryTree(ctx, fc.Args["rootId"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_categoryTree(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Category(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_categoryTree_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_templates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -33323,6 +33621,50 @@ func (ec *executionContext) fieldContext_Query_policy(ctx context.Context, field
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_policy_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_policyByNumber(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_policyByNumber(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PolicyByNumber(ctx, fc.Args["number"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *Policy) graphql.Marshaler {
+			return ec.marshalOPolicy2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicy(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Query_policyByNumber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Policy(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_policyByNumber_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -34576,6 +34918,38 @@ func (ec *executionContext) fieldContext_Query_policiesByOwner(ctx context.Conte
 	if fc.Args, err = ec.field_Query_policiesByOwner_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_myDrafts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_myDrafts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().MyDrafts(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*Policy) graphql.Marshaler {
+			return ec.marshalNPolicy2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_myDrafts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Policy(ctx, field)
+		},
 	}
 	return fc, nil
 }
@@ -38881,6 +39255,29 @@ func (ec *executionContext) _Session_userAgent(ctx context.Context, field graphq
 	)
 }
 func (ec *executionContext) fieldContext_Session_userAgent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Session_clientIp(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Session_clientIp(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ClientIP, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Session_clientIp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -50730,6 +51127,11 @@ func (ec *executionContext) _Policy(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
+		case "updatedAt":
+			out.Values[i] = ec._Policy_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		case "currentPublishedVersionId":
 			out.Values[i] = ec._Policy_currentPublishedVersionId(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
@@ -50737,6 +51139,16 @@ func (ec *executionContext) _Policy(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "currentDraftVersionId":
 			out.Values[i] = ec._Policy_currentDraftVersionId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "currentVersionNo":
+			out.Values[i] = ec._Policy_currentVersionNo(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "currentVersionStatus":
+			out.Values[i] = ec._Policy_currentVersionStatus(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
@@ -51000,6 +51412,16 @@ func (ec *executionContext) _PolicyVersion(ctx context.Context, sel ast.Selectio
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "createdAt":
+			out.Values[i] = ec._PolicyVersion_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "publishedAt":
+			out.Values[i] = ec._PolicyVersion_publishedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -51483,6 +51905,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "categoryTree":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_categoryTree(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "templates":
 			field := field
 
@@ -51559,6 +52003,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_policy(ctx, field)
+				if res == graphql.RequiredNull {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "policyByNumber":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_policyByNumber(ctx, field)
 				if res == graphql.RequiredNull {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -52219,6 +52685,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_policiesByOwner(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myDrafts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myDrafts(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -54358,6 +54846,11 @@ func (ec *executionContext) _Session(ctx context.Context, sel ast.SelectionSet, 
 		case "userAgent":
 			out.Values[i] = ec._Session_userAgent(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "clientIp":
+			out.Values[i] = ec._Session_clientIp(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:

@@ -102,6 +102,11 @@ extend type Query {
   # blocks) until reassignUserPolicies clears it. Retired policies are excluded
   # unless includeRetired is true. Site-admin only.
   policiesByOwner(userId: ID!, includeRetired: Boolean): [Policy!]!
+  # myDrafts is the self-service twin of policiesByOwner: the signed-in
+  # caller's own policies that currently have a draft version, with no
+  # site-admin gate (every caller may read their own drafts). Mirrors
+  # revokeMySessions vs revokeUserSessions.
+  myDrafts: [Policy!]!
   # previewAccountMerge -> IdentityAdminService.PreviewAccountMerge: a read-only,
   # side-effect-free projection of what merging sourceUserId INTO targetUserId
   # would move/dedupe (owned policies, RACI grants, acknowledgments, workflow
@@ -290,6 +295,9 @@ type Session {
   expiresAt: String!
   active: Boolean!
   userAgent: String!
+  # The IP address of the device that last used the session; null when Kratos
+  # recorded none for it.
+  clientIp: String
 }
 
 extend type Query { listUserSessions(userId: ID!): [Session!]! }

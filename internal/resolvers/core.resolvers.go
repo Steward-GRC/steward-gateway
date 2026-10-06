@@ -298,6 +298,11 @@ func (r *queryResolver) CategoryChildren(ctx context.Context, parentID *string) 
 	return ListCategoryChildren(ctx, r.CategoryClient, parentID)
 }
 
+// CategoryTree is the resolver for the categoryTree field.
+func (r *queryResolver) CategoryTree(ctx context.Context, rootID *string) ([]*Category, error) {
+	return CategoryTree(ctx, r.CategoryClient, rootID)
+}
+
 // Templates is the resolver for the templates field.
 func (r *queryResolver) Templates(ctx context.Context, ownerCategoryID *string) ([]*Template, error) {
 	return ListTemplates(ctx, r.TemplateClient, r.CategoryClient, ownerCategoryID)
@@ -316,6 +321,11 @@ func (r *queryResolver) TemplateVersions(ctx context.Context, templateID string)
 // Policy is the resolver for the policy field.
 func (r *queryResolver) Policy(ctx context.Context, id string) (*Policy, error) {
 	return GetPolicy(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, id)
+}
+
+// PolicyByNumber is the resolver for the policyByNumber field.
+func (r *queryResolver) PolicyByNumber(ctx context.Context, number string) (*Policy, error) {
+	return PolicyByNumber(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, number)
 }
 
 // Policies is the resolver for the policies field.

@@ -17,7 +17,7 @@ func sessionToGraphQL(s *identityv1.Session) *Session {
 	if s == nil {
 		return nil
 	}
-	return &Session{
+	gql := &Session{
 		SessionID:       s.GetSessionId(),
 		UserID:          s.GetUserId(),
 		IssuedAt:        s.GetIssuedAt(),
@@ -26,6 +26,10 @@ func sessionToGraphQL(s *identityv1.Session) *Session {
 		Active:          s.GetActive(),
 		UserAgent:       s.GetUserAgent(),
 	}
+	if ip := s.GetClientIp(); ip != "" {
+		gql.ClientIP = &ip
+	}
+	return gql
 }
 
 // ListUserSessionsResolver lists a user's sessions from identity's session API.

@@ -126,6 +126,47 @@ func ListCategoryChildren(ctx context.Context, client corev1.CategoryServiceClie
 	return out, nil
 }
 
+// CategoryTree returns rootID's whole subtree, including rootID itself, or
+// the whole category forest when rootID is nil/empty. Categories are at most
+// three levels deep (category.proto), so the recursion is always shallow, and
+// every call is the same open read as categoryChildren.
+func CategoryTree(ctx context.Context, client corev1.CategoryServiceClient, rootID *string) ([]*Category, error) {
+	var out []*Category
+	var walk func(parentID *string) error
+	walk = func(parentID *string) error {
+		children, err := ListCategoryChildren(ctx, client, parentID)
+		if err != nil {
+			return err
+		}
+		for _, c := range children {
+			out = append(out, c)
+			id := c.ID
+			if err := walk(&id); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if rootID == nil || *rootID == "" {
+		if err := walk(nil); err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
+	root, err := GetCategory(ctx, client, *rootID)
+	if err != nil {
+		return nil, err
+	}
+	if root == nil {
+		return nil, status.Error(codes.NotFound, "category not found")
+	}
+	out = append(out, root)
+	if err := walk(rootID); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CreateCategory creates a category under the optional parentID.
 func CreateCategory(ctx context.Context, client corev1.CategoryServiceClient, name, slug string, parentID *string) (*Category, error) {
 	if err := authorizeOp(ctx, authz.GroupManage); err != nil {

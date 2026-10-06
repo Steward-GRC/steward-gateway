@@ -514,3 +514,51 @@ func TestMoveCategoryToRootForwardsEmptyParent(t *testing.T) {
 		t.Fatalf("expected nil parent (root), got %v", *g.ParentID)
 	}
 }
+
+func TestCategoryTreeNilRootReturnsWholeForest(t *testing.T) {
+	client := &fakeCategoryClient{groups: map[string]*corev1.Category{
+		"root1": {Id: "root1", Name: "Root1", Slug: "root1", ParentId: ""},
+		"root2": {Id: "root2", Name: "Root2", Slug: "root2", ParentId: ""},
+		"kid":   {Id: "kid", Name: "Kid", Slug: "kid", ParentId: "root1"},
+		"gkid":  {Id: "gkid", Name: "GKid", Slug: "gkid", ParentId: "kid"},
+	}}
+	tree, err := resolvers.CategoryTree(context.Background(), client, nil)
+	if err != nil {
+		t.Fatalf("CategoryTree: %v", err)
+	}
+	if len(tree) != 4 {
+		t.Fatalf("expected all 4 categories, got %d: %+v", len(tree), tree)
+	}
+}
+
+func TestCategoryTreeWithRootReturnsRootAndItsSubtreeOnly(t *testing.T) {
+	client := &fakeCategoryClient{groups: map[string]*corev1.Category{
+		"root1": {Id: "root1", Name: "Root1", Slug: "root1", ParentId: ""},
+		"root2": {Id: "root2", Name: "Root2", Slug: "root2", ParentId: ""},
+		"kid":   {Id: "kid", Name: "Kid", Slug: "kid", ParentId: "root1"},
+		"gkid":  {Id: "gkid", Name: "GKid", Slug: "gkid", ParentId: "kid"},
+	}}
+	rootID := "root1"
+	tree, err := resolvers.CategoryTree(ctxWithRoles(t, "u", []string{"site-admin"}), client, &rootID)
+	if err != nil {
+		t.Fatalf("CategoryTree: %v", err)
+	}
+	if len(tree) != 3 {
+		t.Fatalf("expected root1 + kid + gkid (3), got %d: %+v", len(tree), tree)
+	}
+	ids := map[string]bool{}
+	for _, c := range tree {
+		ids[c.ID] = true
+	}
+	if !ids["root1"] || !ids["kid"] || !ids["gkid"] || ids["root2"] {
+		t.Fatalf("unexpected tree members: %+v", ids)
+	}
+}
+
+func TestCategoryTreeMissingRootPropagatesError(t *testing.T) {
+	client := &fakeCategoryClient{groups: map[string]*corev1.Category{}}
+	rootID := "missing"
+	if _, err := resolvers.CategoryTree(ctxWithRoles(t, "u", []string{"site-admin"}), client, &rootID); err == nil {
+		t.Fatal("expected error for missing root category")
+	}
+}

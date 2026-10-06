@@ -9,10 +9,9 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 )
 
 // IssueCollabToken is the resolver for the issueCollabToken field.
 func (r *mutationResolver) IssueCollabToken(ctx context.Context, input IssueCollabTokenInput) (*IssueCollabTokenPayload, error) {
-	panic(fmt.Errorf("not implemented: IssueCollabToken - issueCollabToken"))
+	return IssueCollabToken(ctx, r.CollabClient, r.PolicyClient, r.CategoryClient, input)
 }

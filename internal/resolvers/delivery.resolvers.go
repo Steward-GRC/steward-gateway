@@ -9,35 +9,34 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 )
 
 // RequestPDFExport is the resolver for the requestPDFExport field.
 func (r *mutationResolver) RequestPDFExport(ctx context.Context, policyVersionID string) (*PDFExportJob, error) {
-	panic(fmt.Errorf("not implemented: RequestPDFExport - requestPDFExport"))
+	return RequestPDFExport(ctx, r.DeliveryClient, policyVersionID)
 }
 
 // CreateMagicLink is the resolver for the createMagicLink field.
 func (r *mutationResolver) CreateMagicLink(ctx context.Context, policyVersionID string, sensitive bool) (*MagicLink, error) {
-	panic(fmt.Errorf("not implemented: CreateMagicLink - createMagicLink"))
+	return CreateMagicLinkResolver(ctx, r.DeliveryClient, policyVersionID, sensitive)
 }
 
 // RevokeMagicLink is the resolver for the revokeMagicLink field.
 func (r *mutationResolver) RevokeMagicLink(ctx context.Context, token string) (bool, error) {
-	panic(fmt.Errorf("not implemented: RevokeMagicLink - revokeMagicLink"))
+	return RevokeMagicLinkResolver(ctx, r.DeliveryClient, token)
 }
 
 // RenderedContent is the resolver for the renderedContent field.
 func (r *queryResolver) RenderedContent(ctx context.Context, policyVersionID string) (*RenderedContent, error) {
-	panic(fmt.Errorf("not implemented: RenderedContent - renderedContent"))
+	return GetRenderedContent(ctx, r.DeliveryClient, policyVersionID)
 }
 
 // PolicyDiff is the resolver for the policyDiff field.
 func (r *queryResolver) PolicyDiff(ctx context.Context, fromVersionID string, toVersionID string) (*PolicyDiff, error) {
-	panic(fmt.Errorf("not implemented: PolicyDiff - policyDiff"))
+	return GetPolicyDiff(ctx, r.DeliveryClient, fromVersionID, toVersionID)
 }
 
 // PDFDownloadLink is the resolver for the pdfDownloadLink field.
 func (r *queryResolver) PDFDownloadLink(ctx context.Context, jobID string) (*PDFDownloadLink, error) {
-	panic(fmt.Errorf("not implemented: PDFDownloadLink - pdfDownloadLink"))
+	return GetPDFDownloadLink(ctx, r.DeliveryClient, jobID)
 }

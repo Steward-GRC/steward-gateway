@@ -24,3 +24,13 @@ func ctxWithClaims(t *testing.T, uid string, roles ...string) context.Context {
 	t.Helper()
 	return ctxWithRoles(t, uid, roles)
 }
+
+func ctxWithUser(t *testing.T, uid string) context.Context {
+	t.Helper()
+	return ctxWithUserEmail(t, uid, "")
+}
+
+func ctxWithUserEmail(t *testing.T, uid, email string) context.Context {
+	t.Helper()
+	return ctxWithStubClaims(t, principal.Static{UserIDValue: uid, EmailValue: email, RolesValue: []string{"dev"}, GroupsValue: []string{"g1"}})
+}

@@ -10,6 +10,7 @@ import (
 	authz "github.com/Steward-GRC/steward-authz"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 )
 
 // maxCategoryDepth bounds every ancestor walk, so a cycle in stored data can't
@@ -93,4 +94,24 @@ func subjectKindFromProto(k corev1.RuleSubjectKind) authz.SubjectKind {
 	default:
 		return authz.SubjectEveryone
 	}
+}
+
+// subjectForUser builds the steward-authz Subject for a user other than the
+// caller (the access simulator, approver pools): roles and root from GetUser,
+// IdP group names from ListUserIdpGroups for group-rule matching.
+func subjectForUser(ctx context.Context, ic identityv1.IdentityReadServiceClient, userID string) (authz.Subject, error) {
+	ur, err := ic.GetUser(ctx, &identityv1.GetUserRequest{UserId: userID})
+	if err != nil {
+		return authz.Subject{}, fmt.Errorf("get user: %w", err)
+	}
+	gr, err := ic.ListUserIdpGroups(ctx, &identityv1.ListUserIdpGroupsRequest{UserId: userID})
+	if err != nil {
+		return authz.Subject{}, fmt.Errorf("list user idp groups: %w", err)
+	}
+	u := ur.GetUser()
+	roles := make([]authz.Role, 0, len(u.GetRoles()))
+	for _, r := range u.GetRoles() {
+		roles = append(roles, authz.Role(r))
+	}
+	return authz.Subject{UserID: userID, Roles: roles, Root: u.GetIsRoot(), Groups: gr.GetIdpGroups()}, nil
 }

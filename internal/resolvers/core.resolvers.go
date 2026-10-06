@@ -9,7 +9,6 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -171,122 +170,122 @@ func (r *mutationResolver) SetPolicyAck(ctx context.Context, policyID string, ac
 
 // SetGlobalSettings is the resolver for the setGlobalSettings field.
 func (r *mutationResolver) SetGlobalSettings(ctx context.Context, input GlobalSettingsInput) (*GlobalSettings, error) {
-	panic(fmt.Errorf("not implemented: SetGlobalSettings - setGlobalSettings"))
+	return SetGlobalSettings(ctx, r.SettingsClient, input)
 }
 
 // SetEmailServiceConfig is the resolver for the setEmailServiceConfig field.
 func (r *mutationResolver) SetEmailServiceConfig(ctx context.Context, input EmailServiceConfigInput) (*EmailServiceConfigStatus, error) {
-	panic(fmt.Errorf("not implemented: SetEmailServiceConfig - setEmailServiceConfig"))
+	return SetEmailServiceConfig(ctx, r.SettingsClient, input)
 }
 
 // AddAppendix is the resolver for the addAppendix field.
 func (r *mutationResolver) AddAppendix(ctx context.Context, policyVersionID string, title string, contentJSON string) (*Appendix, error) {
-	panic(fmt.Errorf("not implemented: AddAppendix - addAppendix"))
+	return AddAppendixResolver(ctx, r.AppendixClient, policyVersionID, title, contentJSON)
 }
 
 // UpdateAppendix is the resolver for the updateAppendix field.
 func (r *mutationResolver) UpdateAppendix(ctx context.Context, id string, title string, contentJSON string) (*Appendix, error) {
-	panic(fmt.Errorf("not implemented: UpdateAppendix - updateAppendix"))
+	return UpdateAppendixResolver(ctx, r.AppendixClient, id, title, contentJSON)
 }
 
 // ReorderAppendices is the resolver for the reorderAppendices field.
 func (r *mutationResolver) ReorderAppendices(ctx context.Context, policyVersionID string, orderedIds []string) ([]*Appendix, error) {
-	panic(fmt.Errorf("not implemented: ReorderAppendices - reorderAppendices"))
+	return ReorderAppendicesResolver(ctx, r.AppendixClient, policyVersionID, orderedIds)
 }
 
 // DeleteAppendix is the resolver for the deleteAppendix field.
 func (r *mutationResolver) DeleteAppendix(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteAppendix - deleteAppendix"))
+	return DeleteAppendixResolver(ctx, r.AppendixClient, id)
 }
 
 // SetRelatedPolicies is the resolver for the setRelatedPolicies field.
 func (r *mutationResolver) SetRelatedPolicies(ctx context.Context, policyID string, relatedPolicyIds []string) ([]*RelatedPolicy, error) {
-	panic(fmt.Errorf("not implemented: SetRelatedPolicies - setRelatedPolicies"))
+	return SetRelatedPoliciesResolver(ctx, r.logger(), r.RelationClient, r.PolicyClient, r.CategoryClient, r.IdentityClient, policyID, relatedPolicyIds)
 }
 
 // CreateContactBlock is the resolver for the createContactBlock field.
 func (r *mutationResolver) CreateContactBlock(ctx context.Context, block ContactBlockInput) (*ContactBlock, error) {
-	panic(fmt.Errorf("not implemented: CreateContactBlock - createContactBlock"))
+	return CreateContactBlockResolver(ctx, r.ContactClient, &block)
 }
 
 // UpdateContactBlock is the resolver for the updateContactBlock field.
 func (r *mutationResolver) UpdateContactBlock(ctx context.Context, id string, block ContactBlockInput) (*ContactBlock, error) {
-	panic(fmt.Errorf("not implemented: UpdateContactBlock - updateContactBlock"))
+	return UpdateContactBlockResolver(ctx, r.ContactClient, id, &block)
 }
 
 // DeleteContactBlock is the resolver for the deleteContactBlock field.
 func (r *mutationResolver) DeleteContactBlock(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteContactBlock - deleteContactBlock"))
+	return DeleteContactBlockResolver(ctx, r.ContactClient, id)
 }
 
 // SetContactBlockArchived is the resolver for the setContactBlockArchived field.
 func (r *mutationResolver) SetContactBlockArchived(ctx context.Context, id string, archived bool) (*ContactBlock, error) {
-	panic(fmt.Errorf("not implemented: SetContactBlockArchived - setContactBlockArchived"))
+	return SetContactBlockArchivedResolver(ctx, r.ContactClient, id, archived)
 }
 
 // SetPolicyContactBlocks is the resolver for the setPolicyContactBlocks field.
 func (r *mutationResolver) SetPolicyContactBlocks(ctx context.Context, policyID string, contactBlockIds []string) ([]*ContactBlock, error) {
-	panic(fmt.Errorf("not implemented: SetPolicyContactBlocks - setPolicyContactBlocks"))
+	return SetPolicyContactBlocksResolver(ctx, r.ContactClient, policyID, contactBlockIds)
 }
 
 // CreateReference is the resolver for the createReference field.
 func (r *mutationResolver) CreateReference(ctx context.Context, input ReferenceInput) (*Reference, error) {
-	panic(fmt.Errorf("not implemented: CreateReference - createReference"))
+	return CreateReferenceResolver(ctx, r.ReferenceClient, &input)
 }
 
 // UpdateReference is the resolver for the updateReference field.
 func (r *mutationResolver) UpdateReference(ctx context.Context, id string, input ReferenceInput) (*Reference, error) {
-	panic(fmt.Errorf("not implemented: UpdateReference - updateReference"))
+	return UpdateReferenceResolver(ctx, r.ReferenceClient, id, &input)
 }
 
 // DeleteReference is the resolver for the deleteReference field.
 func (r *mutationResolver) DeleteReference(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteReference - deleteReference"))
+	return DeleteReferenceResolver(ctx, r.ReferenceClient, id)
 }
 
 // SetReferenceArchived is the resolver for the setReferenceArchived field.
 func (r *mutationResolver) SetReferenceArchived(ctx context.Context, id string, archived bool) (*Reference, error) {
-	panic(fmt.Errorf("not implemented: SetReferenceArchived - setReferenceArchived"))
+	return SetReferenceArchivedResolver(ctx, r.ReferenceClient, id, archived)
 }
 
 // SetPolicyReferences is the resolver for the setPolicyReferences field.
 func (r *mutationResolver) SetPolicyReferences(ctx context.Context, policyID string, referenceIds []string) ([]*Reference, error) {
-	panic(fmt.Errorf("not implemented: SetPolicyReferences - setPolicyReferences"))
+	return SetPolicyReferencesResolver(ctx, r.ReferenceClient, r.PolicyClient, r.CategoryClient, policyID, referenceIds)
 }
 
 // CreateDefinition is the resolver for the createDefinition field.
 func (r *mutationResolver) CreateDefinition(ctx context.Context, input DefinitionEntryInput) (*DefinitionEntry, error) {
-	panic(fmt.Errorf("not implemented: CreateDefinition - createDefinition"))
+	return CreateDefinitionResolver(ctx, r.DefinitionLibraryClient, &input)
 }
 
 // UpdateDefinition is the resolver for the updateDefinition field.
 func (r *mutationResolver) UpdateDefinition(ctx context.Context, id string, input DefinitionEntryInput) (*DefinitionEntry, error) {
-	panic(fmt.Errorf("not implemented: UpdateDefinition - updateDefinition"))
+	return UpdateDefinitionResolver(ctx, r.DefinitionLibraryClient, id, &input)
 }
 
 // DeleteDefinition is the resolver for the deleteDefinition field.
 func (r *mutationResolver) DeleteDefinition(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteDefinition - deleteDefinition"))
+	return DeleteDefinitionResolver(ctx, r.DefinitionLibraryClient, id)
 }
 
 // SetDefinitionArchived is the resolver for the setDefinitionArchived field.
 func (r *mutationResolver) SetDefinitionArchived(ctx context.Context, id string, archived bool) (*DefinitionEntry, error) {
-	panic(fmt.Errorf("not implemented: SetDefinitionArchived - setDefinitionArchived"))
+	return SetDefinitionArchivedResolver(ctx, r.DefinitionLibraryClient, id, archived)
 }
 
 // SetPolicyDefinitionEntries is the resolver for the setPolicyDefinitionEntries field.
 func (r *mutationResolver) SetPolicyDefinitionEntries(ctx context.Context, policyID string, definitionIds []string) ([]*DefinitionEntry, error) {
-	panic(fmt.Errorf("not implemented: SetPolicyDefinitionEntries - setPolicyDefinitionEntries"))
+	return SetPolicyDefinitionEntriesResolver(ctx, r.DefinitionLibraryClient, r.PolicyClient, r.CategoryClient, policyID, definitionIds)
 }
 
 // SetCategoryRuleset is the resolver for the setCategoryRuleset field.
 func (r *mutationResolver) SetCategoryRuleset(ctx context.Context, categoryID string, rules []*RaciRuleInput) (*CategoryRuleset, error) {
-	panic(fmt.Errorf("not implemented: SetCategoryRuleset - setCategoryRuleset"))
+	return SetCategoryRulesetResolver(ctx, r.CategoryClient, categoryID, rules)
 }
 
 // Appendices is the resolver for the appendices field.
 func (r *policyVersionResolver) Appendices(ctx context.Context, obj *PolicyVersion) ([]*Appendix, error) {
-	panic(fmt.Errorf("not implemented: Appendices - appendices"))
+	return AppendicesForVersion(ctx, r.AppendixClient, obj.ID)
 }
 
 // Category is the resolver for the category field.
@@ -351,77 +350,77 @@ func (r *queryResolver) EffectiveGovernance(ctx context.Context, categoryID stri
 
 // GlobalSettings is the resolver for the globalSettings field.
 func (r *queryResolver) GlobalSettings(ctx context.Context) (*GlobalSettings, error) {
-	panic(fmt.Errorf("not implemented: GlobalSettings - globalSettings"))
+	return GetGlobalSettings(ctx, r.SettingsClient)
 }
 
 // EmailServiceConfig is the resolver for the emailServiceConfig field.
 func (r *queryResolver) EmailServiceConfig(ctx context.Context) (*EmailServiceConfigStatus, error) {
-	panic(fmt.Errorf("not implemented: EmailServiceConfig - emailServiceConfig"))
+	return GetEmailServiceConfig(ctx, r.SettingsClient)
 }
 
 // RelatedPolicies is the resolver for the relatedPolicies field.
 func (r *queryResolver) RelatedPolicies(ctx context.Context, policyID string) ([]*RelatedPolicy, error) {
-	panic(fmt.Errorf("not implemented: RelatedPolicies - relatedPolicies"))
+	return RelatedPoliciesResolver(ctx, r.RelationClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, policyID)
 }
 
 // RelatedPolicyCandidates is the resolver for the relatedPolicyCandidates field.
 func (r *queryResolver) RelatedPolicyCandidates(ctx context.Context, policyID string) ([]*Policy, error) {
-	panic(fmt.Errorf("not implemented: RelatedPolicyCandidates - relatedPolicyCandidates"))
+	return RelatedPolicyCandidatesResolver(ctx, r.Resolver, policyID)
 }
 
 // ContactBlocks is the resolver for the contactBlocks field.
 func (r *queryResolver) ContactBlocks(ctx context.Context, includeArchived *bool) ([]*ContactBlock, error) {
-	panic(fmt.Errorf("not implemented: ContactBlocks - contactBlocks"))
+	return ContactBlocksResolver(ctx, r.ContactClient, includeArchived != nil && *includeArchived)
 }
 
 // PolicyContactBlocks is the resolver for the policyContactBlocks field.
 func (r *queryResolver) PolicyContactBlocks(ctx context.Context, policyID string) ([]*ContactBlock, error) {
-	panic(fmt.Errorf("not implemented: PolicyContactBlocks - policyContactBlocks"))
+	return PolicyContactBlocksResolver(ctx, r.ContactClient, policyID)
 }
 
 // References is the resolver for the references field.
 func (r *queryResolver) References(ctx context.Context, includeArchived *bool) ([]*Reference, error) {
-	panic(fmt.Errorf("not implemented: References - references"))
+	return ReferencesResolver(ctx, r.ReferenceClient, includeArchived != nil && *includeArchived)
 }
 
 // PolicyReferences is the resolver for the policyReferences field.
 func (r *queryResolver) PolicyReferences(ctx context.Context, policyID string) ([]*Reference, error) {
-	panic(fmt.Errorf("not implemented: PolicyReferences - policyReferences"))
+	return PolicyReferencesResolver(ctx, r.ReferenceClient, policyID)
 }
 
 // Definitions is the resolver for the definitions field.
 func (r *queryResolver) Definitions(ctx context.Context, categoryID *string, includeArchived *bool) ([]*DefinitionEntry, error) {
-	panic(fmt.Errorf("not implemented: Definitions - definitions"))
+	return DefinitionLibraryResolver(ctx, r.DefinitionLibraryClient, categoryID, includeArchived != nil && *includeArchived)
 }
 
 // PolicyDefinitionCandidates is the resolver for the policyDefinitionCandidates field.
 func (r *queryResolver) PolicyDefinitionCandidates(ctx context.Context, policyID string, includeArchived *bool) ([]*DefinitionEntry, error) {
-	panic(fmt.Errorf("not implemented: PolicyDefinitionCandidates - policyDefinitionCandidates"))
+	return PolicyDefinitionCandidatesResolver(ctx, r.DefinitionLibraryClient, policyID, includeArchived != nil && *includeArchived)
 }
 
 // PolicyDefinitionEntries is the resolver for the policyDefinitionEntries field.
 func (r *queryResolver) PolicyDefinitionEntries(ctx context.Context, policyID string) ([]*DefinitionEntry, error) {
-	panic(fmt.Errorf("not implemented: PolicyDefinitionEntries - policyDefinitionEntries"))
+	return PolicyDefinitionEntriesResolver(ctx, r.DefinitionLibraryClient, policyID)
 }
 
 // CategoryRuleset is the resolver for the categoryRuleset field.
 func (r *queryResolver) CategoryRuleset(ctx context.Context, categoryID string) (*CategoryRuleset, error) {
-	panic(fmt.Errorf("not implemented: CategoryRuleset - categoryRuleset"))
+	return GetCategoryRulesetResolver(ctx, r.CategoryClient, categoryID)
 }
 
 // SimulateCategory is the resolver for the simulateCategory field.
 func (r *queryResolver) SimulateCategory(ctx context.Context, categoryID string, userID string, draftRules []*RaciRuleInput) (*RaciDecision, error) {
-	panic(fmt.Errorf("not implemented: SimulateCategory - simulateCategory"))
+	return SimulateCategoryResolver(ctx, r.Resolver, categoryID, userID, draftRules)
 }
 
 // CategoryApprovers is the resolver for the categoryApprovers field.
 func (r *queryResolver) CategoryApprovers(ctx context.Context, categoryID string) ([]*User, error) {
-	panic(fmt.Errorf("not implemented: CategoryApprovers - categoryApprovers"))
+	return CategoryApproversResolver(ctx, r.Resolver, categoryID)
 }
 
 // ViewerIsApprover is the resolver for the viewerIsApprover field.
 func (r *queryResolver) ViewerIsApprover(ctx context.Context) (bool, error) {
-	panic(fmt.Errorf("not implemented: ViewerIsApprover - viewerIsApprover"))
+	return ViewerIsApproverResolver(ctx, r.logger(), r.CategoryClient)
 }
 
 // PolicyVersion returns PolicyVersionResolver implementation.

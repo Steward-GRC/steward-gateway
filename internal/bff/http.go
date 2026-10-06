@@ -201,7 +201,7 @@ func (h *Handler) finishPasswordLogin(w http.ResponseWriter, r *http.Request, re
 		return
 	}
 	log.Trace(l, "sign-in: session issued", log.F("flow", flow), log.F("user_id", user.GetId()), log.F("mfa_required", false))
-	h.issueSession(w, r, Session{AccessToken: res.AccessToken, ExpiresAt: res.ExpiresAt, UserID: user.GetId()})
+	h.issueSession(w, r, Session{AccessToken: res.AccessToken, KratosSessionID: res.SessionID, ExpiresAt: res.ExpiresAt, UserID: user.GetId()})
 }
 
 // newSession stores sess under a fresh id with a fresh CSRF token. Every
@@ -324,6 +324,9 @@ func (h *Handler) performRefresh(ctx context.Context, sid string, sess Session) 
 	}
 	sess.AccessToken = res.AccessToken
 	sess.ExpiresAt = res.ExpiresAt
+	if res.SessionID != "" {
+		sess.KratosSessionID = res.SessionID
+	}
 	_ = h.Store.Save(ctx, sid, sess)
 	return sess, nil
 }

@@ -164,10 +164,11 @@ func (h *Handler) PasskeyLoginFinish(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Trace(l, "passkey login: session issued", log.F("flow", "passkey_login"), log.F("user_id", user.GetId()))
 	h.issueSession(w, r, Session{
-		AccessToken: res.AccessToken,
-		ExpiresAt:   res.ExpiresAt,
-		UserID:      user.GetId(),
-		MFAVerified: true,
+		AccessToken:     res.AccessToken,
+		KratosSessionID: res.SessionID,
+		ExpiresAt:       res.ExpiresAt,
+		UserID:          user.GetId(),
+		MFAVerified:     true,
 	})
 }
 

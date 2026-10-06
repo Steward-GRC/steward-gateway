@@ -49,6 +49,7 @@ type kratosIdentity struct {
 // needs, shared by the login response's embedded session and the
 // /sessions/whoami response (same shape in both places).
 type kratosSession struct {
+	ID        string         `json:"id"`
 	Active    bool           `json:"active"`
 	ExpiresAt time.Time      `json:"expires_at"`
 	Identity  kratosIdentity `json:"identity"`
@@ -127,6 +128,7 @@ func (c *KratosClient) postJSON(ctx context.Context, endpoint string, body any) 
 func sessionToAuthResult(sessionToken string, sess kratosSession) AuthResult {
 	return AuthResult{
 		AccessToken: sessionToken,
+		SessionID:   sess.ID,
 		ExpiresAt:   sess.ExpiresAt,
 		Subject:     sess.Identity.ID,
 		Email:       sess.Identity.Traits.Email,

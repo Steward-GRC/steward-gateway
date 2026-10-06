@@ -18,9 +18,12 @@ const maxPendingAttempts = 5
 // PendingAuth is a verified first factor waiting for the second. The Kratos
 // session token is never returned to the client.
 type PendingAuth struct {
-	AccessToken    string    `json:"access_token"`
-	TokenExpiresAt time.Time `json:"token_expires_at"`
-	UserID         string    `json:"user_id"`
+	AccessToken string `json:"access_token"`
+	// KratosSessionID is the Kratos session behind AccessToken, carried onto
+	// the promoted Session.
+	KratosSessionID string    `json:"kratos_session_id,omitempty"`
+	TokenExpiresAt  time.Time `json:"token_expires_at"`
+	UserID          string    `json:"user_id"`
 	// Factors are the kinds the user may finish with.
 	Factors []string `json:"factors"`
 	// Enroll marks a first sign-in that must enrol a factor before the

@@ -79,7 +79,7 @@ func (h *Handler) authenticate(next http.Handler, exemptSafeMethods bool) http.H
 			}
 			sess = refreshed
 		}
-		claims, err := h.claimsForSession(r.Context(), sess.UserID, SessionRef(c.Value))
+		claims, err := h.claimsForSession(r.Context(), sess, SessionRef(c.Value))
 		if err != nil {
 			h.authOutcome(r.Context(), r.URL.Path, "user_lookup_failed", err)
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
@@ -100,12 +100,14 @@ func SessionRef(sid string) string {
 	return base64.RawURLEncoding.EncodeToString(sum[:16])
 }
 
-func (h *Handler) claimsForSession(ctx context.Context, userID, ref string) (principal.Claims, error) {
-	if userID == "" {
+// claimsForSession resolves the session's user. It passes the Kratos session
+// id along, so identity records the session as used.
+func (h *Handler) claimsForSession(ctx context.Context, sess Session, ref string) (principal.Claims, error) {
+	if sess.UserID == "" {
 		return nil, errcodes.Wrap(errcodes.CodeKratosVerifyNoSessionPrincipal,
 			errors.New("session carries no platform user"))
 	}
-	c, err := ClaimsForUserFromIdentity(h.Identity)(ctx, userID)
+	c, err := claimsFromIdentity(ctx, h.Identity, &identityv1.GetUserRequest{UserId: sess.UserID, SessionId: sess.KratosSessionID})
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +224,7 @@ func (h *Handler) WebsocketInit(ctx context.Context, r *http.Request, csrf strin
 	if !ok || !CSRFEqual(csrf, sess.CSRFToken) {
 		return ctx, ErrWebsocketUnauthorized
 	}
-	claims, err := h.claimsForSession(ctx, sess.UserID, SessionRef(c.Value))
+	claims, err := h.claimsForSession(ctx, sess, SessionRef(c.Value))
 	if err != nil {
 		return ctx, fmt.Errorf("%w: %v", ErrWebsocketUnauthorized, err)
 	}
@@ -233,26 +235,31 @@ func (h *Handler) WebsocketInit(ctx context.Context, r *http.Request, csrf strin
 // GetUser. A missing or disabled user fails closed.
 func ClaimsForUserFromIdentity(users UserByIDResolver) ClaimsForUser {
 	return func(ctx context.Context, userID string) (principal.Claims, error) {
-		if userID == "" {
-			return nil, errcodes.Wrap(errcodes.CodeKratosSessionUserLookupFailed,
-				errors.New("resolve claims with an empty user id"))
-		}
-		resp, err := users.GetUser(ctx, &identityv1.GetUserRequest{UserId: userID})
-		if err != nil {
-			return nil, errcodes.Wrap(errcodes.CodeKratosSessionUserLookupFailed,
-				fmt.Errorf("resolve user %q: %w", userID, err))
-		}
-		u := resp.GetUser()
-		if u == nil {
-			return nil, errcodes.Wrap(errcodes.CodeKratosSessionUserLookupFailed,
-				fmt.Errorf("identity returned no user for %q", userID))
-		}
-		if !u.GetEnabled() {
-			return nil, errcodes.Wrap(errcodes.CodeKratosSessionUserLookupFailed,
-				fmt.Errorf("user %q is disabled", userID))
-		}
-		return claimsFromIdentityUser(u), nil
+		return claimsFromIdentity(ctx, users, &identityv1.GetUserRequest{UserId: userID})
 	}
+}
+
+func claimsFromIdentity(ctx context.Context, users UserByIDResolver, req *identityv1.GetUserRequest) (principal.Claims, error) {
+	userID := req.GetUserId()
+	if userID == "" {
+		return nil, errcodes.Wrap(errcodes.CodeKratosSessionUserLookupFailed,
+			errors.New("resolve claims with an empty user id"))
+	}
+	resp, err := users.GetUser(ctx, req)
+	if err != nil {
+		return nil, errcodes.Wrap(errcodes.CodeKratosSessionUserLookupFailed,
+			fmt.Errorf("resolve user %q: %w", userID, err))
+	}
+	u := resp.GetUser()
+	if u == nil {
+		return nil, errcodes.Wrap(errcodes.CodeKratosSessionUserLookupFailed,
+			fmt.Errorf("identity returned no user for %q", userID))
+	}
+	if !u.GetEnabled() {
+		return nil, errcodes.Wrap(errcodes.CodeKratosSessionUserLookupFailed,
+			fmt.Errorf("user %q is disabled", userID))
+	}
+	return claimsFromIdentityUser(u), nil
 }
 
 func claimsFromIdentityUser(u *identityv1.User) principal.Claims {

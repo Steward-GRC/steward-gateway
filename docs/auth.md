@@ -5,6 +5,14 @@ Polis brokers SSO, and identity maps every sign-in to a platform user and runs
 the second factor. The browser only ever holds the `steward_sid` cookie and a
 CSRF token; Kratos session tokens stay in Valkey.
 
+Every authenticated request resolves the user through identity's `GetUser`.
+For a Kratos-backed session (password or passkey) the gateway also passes the
+Kratos session id, which it keeps on the stored session from sign-in (or picks
+up on the next whoami for a session stored before it did). Identity records the
+session's last-seen time from it, throttled, so no extra call is made. SSO
+sessions have no Kratos session and record nothing. An act-as target lookup
+never passes a session id.
+
 ## Routes
 
 Public:

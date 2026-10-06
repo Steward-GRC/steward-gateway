@@ -499,7 +499,7 @@ func (h *Handler) ssoLoginWithMFA(w http.ResponseWriter, r *http.Request, user *
 		http.Redirect(w, r, "/login?error=sso_mfa", http.StatusFound)
 		return
 	}
-	pendingID, err := h.createPending(r.Context(), "", time.Now().Add(h.TTL), user.GetId(), kinds, false)
+	pendingID, err := h.createPending(r.Context(), "", "", time.Now().Add(h.TTL), user.GetId(), kinds, false)
 	if err != nil {
 		l.Error(err, "sso mfa: could not park the pending sign-in", log.F("flow", "sso_mfa"), log.F("user_id", user.GetId()))
 		http.Redirect(w, r, "/login?error=sso_mfa", http.StatusFound)

@@ -14,9 +14,11 @@ import (
 var ErrInvalidCredentials = errors.New("invalid credentials")
 
 // AuthResult is a verified Kratos sign-in. AccessToken is the opaque Kratos
-// session token; whoami extends it and logout revokes it.
+// session token; whoami extends it and logout revokes it. SessionID is the
+// Kratos session's id, which identity records last-seen times under.
 type AuthResult struct {
 	AccessToken string
+	SessionID   string
 	ExpiresAt   time.Time
 	Subject     string
 	Email       string

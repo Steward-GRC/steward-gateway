@@ -159,7 +159,7 @@ func (h *Handler) loginWithMFA(w http.ResponseWriter, r *http.Request, res AuthR
 	kinds := factorKinds(factorsResp.GetFactors())
 	enroll := len(kinds) == 0 || (h.MFA.RequireStrong && !hasStrongFactor(kinds))
 
-	pendingID, err := h.createPending(r.Context(), res.AccessToken, res.ExpiresAt, user.GetId(), kinds, enroll)
+	pendingID, err := h.createPending(r.Context(), res.AccessToken, res.SessionID, res.ExpiresAt, user.GetId(), kinds, enroll)
 	if err != nil {
 		h.logger(r.Context()).Error(err, "mfa step-up: could not park the pending sign-in", log.F("user_id", user.GetId()))
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "server"})
@@ -177,19 +177,21 @@ func (h *Handler) loginWithMFA(w http.ResponseWriter, r *http.Request, res AuthR
 }
 
 // createPending parks a sign-in for its second factor. sessionToken is the
-// Kratos session token for a password or passkey sign-in, empty for SSO.
-func (h *Handler) createPending(ctx context.Context, sessionToken string, tokenExpiresAt time.Time, userID string, kinds []string, enroll bool) (string, error) {
+// Kratos session token (and kratosSessionID its session's id) for a password
+// or passkey sign-in, both empty for SSO.
+func (h *Handler) createPending(ctx context.Context, sessionToken, kratosSessionID string, tokenExpiresAt time.Time, userID string, kinds []string, enroll bool) (string, error) {
 	pendingID, err := newSessionID()
 	if err != nil {
 		return "", err
 	}
 	if err := h.Pending.CreatePending(ctx, pendingID, PendingAuth{
-		AccessToken:    sessionToken,
-		TokenExpiresAt: tokenExpiresAt,
-		UserID:         userID,
-		Factors:        kinds,
-		Enroll:         enroll,
-		ExpiresAt:      time.Now().Add(pendingTTL),
+		AccessToken:     sessionToken,
+		KratosSessionID: kratosSessionID,
+		TokenExpiresAt:  tokenExpiresAt,
+		UserID:          userID,
+		Factors:         kinds,
+		Enroll:          enroll,
+		ExpiresAt:       time.Now().Add(pendingTTL),
 	}); err != nil {
 		return "", err
 	}
@@ -385,10 +387,11 @@ func (h *Handler) promotePending(w http.ResponseWriter, r *http.Request, id stri
 	}
 	log.Trace(h.logger(r.Context()), "mfa step-up: factor verified, session issued", log.F("user_id", final.UserID))
 	h.issueSession(w, r, Session{
-		AccessToken: final.AccessToken,
-		ExpiresAt:   final.TokenExpiresAt,
-		UserID:      final.UserID,
-		MFAVerified: true,
+		AccessToken:     final.AccessToken,
+		KratosSessionID: final.KratosSessionID,
+		ExpiresAt:       final.TokenExpiresAt,
+		UserID:          final.UserID,
+		MFAVerified:     true,
 	})
 }
 

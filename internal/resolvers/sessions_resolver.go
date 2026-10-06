@@ -29,6 +29,9 @@ func sessionToGraphQL(s *identityv1.Session) *Session {
 	if ip := s.GetClientIp(); ip != "" {
 		gql.ClientIP = &ip
 	}
+	if at := s.GetLastSeenAt(); at != "" {
+		gql.LastSeenAt = &at
+	}
 	return gql
 }
 

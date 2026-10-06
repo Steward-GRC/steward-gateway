@@ -7,6 +7,7 @@ tool github.com/99designs/gqlgen
 require (
 	github.com/99designs/gqlgen v0.17.94
 	github.com/Bugs5382/go-apperr v1.2.1
+	github.com/Bugs5382/go-buildinfo v1.0.0
 	github.com/Bugs5382/go-grpc-actor v1.0.0
 	github.com/Bugs5382/go-log v1.3.0
 	github.com/Bugs5382/go-otel v1.3.2

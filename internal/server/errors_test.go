@@ -92,7 +92,7 @@ func TestSanitizingErrorPresenter(t *testing.T) {
 		},
 		{
 			name:           "apperr-coded internal error relays its own code",
-			in:             apperr.Coded(1245, errors.New("pq: duplicate key value violates unique constraint \"policies_pkey\"")),
+			in:             apperr.Coded(1998, errors.New("pq: duplicate key value violates unique constraint \"policies_pkey\"")),
 			wantMessage:    ServerFaultMessage,
 			wantCode:       "INTERNAL",
 			wantKind:       "reach",
@@ -100,7 +100,7 @@ func TestSanitizingErrorPresenter(t *testing.T) {
 		},
 		{
 			name:           "wrapped apperr-coded internal error relays its own code",
-			in:             fmt.Errorf("resolver: %w", apperr.Coded(1246, errors.New("boom"))),
+			in:             fmt.Errorf("resolver: %w", apperr.Coded(1999, errors.New("boom"))),
 			wantMessage:    ServerFaultMessage,
 			wantCode:       "INTERNAL",
 			wantKind:       "reach",
@@ -155,17 +155,17 @@ func TestSanitizingErrorPresenterLogsCodeAndTraceID(t *testing.T) {
 	var buf bytes.Buffer
 	lg := log.NewLoggerWithOptions("gateway", log.WithOutput(&buf), log.WithDefaultFormat(log.FormatJSON))
 
-	got := ErrorPresenter(lg)(ctx, apperr.Coded(1245, errors.New("boom")))
+	got := ErrorPresenter(lg)(ctx, apperr.Coded(1998, errors.New("boom")))
 
 	if got.Message != ServerFaultMessage {
 		t.Fatalf("message = %q, want the generic %q", got.Message, ServerFaultMessage)
 	}
-	if got.Extensions["codeNum"] != 1245 {
-		t.Fatalf("extensions codeNum = %v, want 1245", got.Extensions["codeNum"])
+	if got.Extensions["codeNum"] != 1998 {
+		t.Fatalf("extensions codeNum = %v, want 1998", got.Extensions["codeNum"])
 	}
 	out := buf.String()
-	if !strings.Contains(out, `"code":1245`) {
-		t.Fatalf("expected log line to carry code=1245, got %q", out)
+	if !strings.Contains(out, `"code":1998`) {
+		t.Fatalf("expected log line to carry code=1998, got %q", out)
 	}
 	if !strings.Contains(out, `"trace_id":"`+traceID.String()+`"`) {
 		t.Fatalf("expected log line to carry the trace id, got %q", out)

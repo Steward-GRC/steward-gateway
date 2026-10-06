@@ -1,0 +1,75 @@
+// Copyright 2026 The Steward Authors
+// SPDX-License-Identifier: Apache-2.0
+
+package resolvers_test
+
+import (
+	"context"
+	"maps"
+	"strconv"
+	"testing"
+
+	"github.com/Bugs5382/go-apperr"
+	"github.com/Bugs5382/go-apperr/apperrgrpc"
+	"github.com/Steward-GRC/steward-gateway/internal/errcodes"
+	"github.com/Steward-GRC/steward-gateway/internal/principal"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+func ctxWithStubClaims(t *testing.T, c principal.Static) context.Context {
+	t.Helper()
+	return principal.WithClaims(context.Background(), c)
+}
+
+func ctxWithRoles(t *testing.T, uid string, roles []string) context.Context {
+	t.Helper()
+	return ctxWithStubClaims(t, principal.Static{UserIDValue: uid, RolesValue: roles})
+}
+
+func ctxWithClaims(t *testing.T, uid string, roles ...string) context.Context {
+	t.Helper()
+	return ctxWithRoles(t, uid, roles)
+}
+
+func ctxWithUser(t *testing.T, uid string) context.Context {
+	t.Helper()
+	return ctxWithUserEmail(t, uid, "")
+}
+
+func ctxWithUserEmail(t *testing.T, uid, email string) context.Context {
+	t.Helper()
+	return ctxWithStubClaims(t, principal.Static{UserIDValue: uid, EmailValue: email, RolesValue: []string{"dev"}, GroupsValue: []string{"g1"}})
+}
+
+// gatewayStatus is the status the gateway's error presenter sends for err.
+func gatewayStatus(err error) *status.Status {
+	return apperrgrpc.Status(context.Background(), errcodes.Registry(), err, errcodes.CodeInternal, errcodes.Domain)
+}
+
+// wireStatus is the status a client sees for err: a gateway-coded error goes
+// through the presenter, a relayed backend status passes unchanged.
+func wireStatus(err error) *status.Status {
+	if _, ok := apperr.Code(err); ok {
+		return gatewayStatus(err)
+	}
+	return status.Convert(err)
+}
+
+func gatewayEntry(code int) apperr.Entry {
+	e, _ := errcodes.Registry().Describe(code)
+	return e
+}
+
+// backendCodedErr is a coded refusal as a backend sends it: a status carrying
+// an ErrorInfo with the backend's symbol, domain, code and metadata.
+func backendCodedErr(code codes.Code, num int, symbol, domain string, md map[string]string) error {
+	meta := map[string]string{apperrgrpc.MetaCodeNum: strconv.Itoa(num)}
+	maps.Copy(meta, md)
+	st, err := status.New(code, symbol).WithDetails(&errdetails.ErrorInfo{Reason: symbol, Domain: domain, Metadata: meta})
+	if err != nil {
+		panic(err)
+	}
+	return st.Err()
+}

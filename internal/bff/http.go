@@ -61,6 +61,10 @@ type Handler struct {
 	Pending PendingStore
 	MFA     MFAConfig
 
+	// PasskeyLogin parks a passkey sign-in between begin and finish; nil
+	// turns passkey sign-in off.
+	PasskeyLogin PasskeyLoginStore
+
 	Log        log.Logger
 	AuthMetric metric.Int64Counter
 

@@ -9545,7 +9545,7 @@ type Session {
   sessionId: ID!
   userId: ID!
   issuedAt: String!
-  # When the user last authenticated in this session (sign-in or step-up).
+  # When the session last authenticated (sign-in or step-up).
   authenticatedAt: String!
   expiresAt: String!
   active: Boolean!

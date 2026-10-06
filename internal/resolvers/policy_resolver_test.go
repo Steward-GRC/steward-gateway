@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
@@ -14,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // fakePolicyClient is a hand-rolled stub of corev1.PolicyServiceClient.
@@ -95,6 +97,15 @@ func (f *fakePolicyClient) GetPolicy(_ context.Context, in *corev1.GetPolicyRequ
 		return nil, fmt.Errorf("not found: %s", in.Id)
 	}
 	return &corev1.GetPolicyResponse{Policy: p}, nil
+}
+
+func (f *fakePolicyClient) GetPolicyByNumber(_ context.Context, in *corev1.GetPolicyByNumberRequest, _ ...grpc.CallOption) (*corev1.GetPolicyByNumberResponse, error) {
+	for _, p := range f.policies {
+		if p.Number == in.Number {
+			return &corev1.GetPolicyByNumberResponse{Policy: p}, nil
+		}
+	}
+	return nil, fmt.Errorf("not found: %s", in.Number)
 }
 
 func (f *fakePolicyClient) ListPolicies(_ context.Context, in *corev1.ListPoliciesRequest, _ ...grpc.CallOption) (*corev1.ListPoliciesResponse, error) {
@@ -1264,5 +1275,145 @@ func TestReindexPolicyVersion_AdminGatedAndForwardsActor(t *testing.T) {
 	}
 	if res.VersionID != "ver-9" || res.Sections != 2 {
 		t.Fatalf("result mapping: %+v", res)
+	}
+}
+
+func TestPolicyByNumber_HappyPath(t *testing.T) {
+	groups := newRaciReadClient(
+		map[string]*corev1.Category{"g-it": {Id: "g-it", Name: "IT", ParentId: ""}},
+		map[string][]*corev1.CategoryRule{"g-it": {allowEveryoneRule()}},
+	)
+	pc := &fakePolicyClient{policies: map[string]*corev1.Policy{
+		"pol-1": {Id: "pol-1", HomeCategoryId: "g-it", Number: "POL-IT-000001", Title: "Sec", CurrentPublishedVersionId: "v1"},
+	}}
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u", RolesValue: []string{"reader"}})
+	p, err := resolvers.PolicyByNumber(ctx, pc, groups, nil, nil, "POL-IT-000001")
+	if err != nil {
+		t.Fatalf("PolicyByNumber: %v", err)
+	}
+	if p.ID != "pol-1" || p.Number != "POL-IT-000001" {
+		t.Fatalf("unexpected policy: %+v", p)
+	}
+}
+
+func TestPolicyByNumber_NotFoundPropagates(t *testing.T) {
+	pc := &fakePolicyClient{policies: map[string]*corev1.Policy{}}
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u", RolesValue: []string{"reader"}})
+	if _, err := resolvers.PolicyByNumber(ctx, pc, nil, nil, nil, "POL-NOPE-000001"); err == nil {
+		t.Fatal("expected error for unknown number")
+	}
+}
+
+func TestMyDrafts_ReturnsOnlyOwnDraftsAndScopesToCaller(t *testing.T) {
+	groups := newRaciReadClient(
+		map[string]*corev1.Category{"g-it": {Id: "g-it", Name: "IT", ParentId: ""}},
+		map[string][]*corev1.CategoryRule{"g-it": {allowEveryoneRule()}},
+	)
+	pc := &fakePolicyClient{
+		byOwnerResp: &corev1.ListPoliciesByOwnerResponse{Policies: []*corev1.Policy{
+			{Id: "draft-pol", HomeCategoryId: "g-it", Number: "POL-IT-1", Title: "Has a draft", OwnerUserId: "me", CurrentDraftVersionId: "v-draft"},
+			{Id: "published-pol", HomeCategoryId: "g-it", Number: "POL-IT-2", Title: "No draft", OwnerUserId: "me", CurrentPublishedVersionId: "v-pub"},
+		}},
+	}
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "me", RolesValue: []string{"author"}})
+	out, err := resolvers.MyDrafts(ctx, pc, groups, nil, nil)
+	if err != nil {
+		t.Fatalf("MyDrafts: %v", err)
+	}
+	if len(out) != 1 || out[0].ID != "draft-pol" {
+		t.Fatalf("expected only the policy with a draft, got %+v", out)
+	}
+	if pc.lastListByOwner == nil || pc.lastListByOwner.OwnerUserId != "me" {
+		t.Fatalf("expected the call scoped to the caller's own id, got %+v", pc.lastListByOwner)
+	}
+}
+
+func TestMyDrafts_Unauthenticated(t *testing.T) {
+	pc := &fakePolicyClient{}
+	if _, err := resolvers.MyDrafts(context.Background(), pc, nil, nil, nil); err == nil {
+		t.Fatal("expected an error with no signed-in caller")
+	}
+}
+
+// TestPolicyFromProto_MapsUpdatedAtAndCurrentVersion verifies the read model
+// maps Policy.updated_at and current_version_no/current_version_status
+// straight from the proto, with no extra per-row read (steward-web#27 gap 3/4).
+func TestPolicyFromProto_MapsUpdatedAtAndCurrentVersion(t *testing.T) {
+	groups := newRaciReadClient(
+		map[string]*corev1.Category{"g-it": {Id: "g-it", Name: "IT", ParentId: ""}},
+		map[string][]*corev1.CategoryRule{"g-it": {allowEveryoneRule()}},
+	)
+	updatedAt := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	pc := &fakePolicyClient{policies: map[string]*corev1.Policy{
+		"pol-cur": {
+			Id: "pol-cur", HomeCategoryId: "g-it", Number: "POL-IT-1", Title: "Current",
+			CurrentPublishedVersionId: "v1",
+			UpdatedAt:                 timestamppb.New(updatedAt),
+			CurrentVersionNo:          3,
+			CurrentVersionStatus:      corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_PUBLISHED,
+		},
+		"pol-none": {Id: "pol-none", HomeCategoryId: "g-it", Number: "POL-IT-2", Title: "Bare"},
+	}}
+	ctx := ctxWithStubClaims(t, principal.Static{
+		UserIDValue:      "auth",
+		RolesValue:       []string{"author"},
+		ScopedRolesValue: []principal.ScopedRole{{Role: "author", Category: "IT"}},
+	})
+
+	cur, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-cur")
+	if err != nil {
+		t.Fatalf("GetPolicy(cur): %v", err)
+	}
+	if cur.UpdatedAt == nil || *cur.UpdatedAt != "2026-05-01T12:00:00Z" {
+		t.Fatalf("unexpected UpdatedAt: %v", cur.UpdatedAt)
+	}
+	if cur.CurrentVersionNo == nil || *cur.CurrentVersionNo != 3 {
+		t.Fatalf("unexpected CurrentVersionNo: %v", cur.CurrentVersionNo)
+	}
+	if cur.CurrentVersionStatus == nil || *cur.CurrentVersionStatus != "POLICY_VERSION_STATUS_PUBLISHED" {
+		t.Fatalf("unexpected CurrentVersionStatus: %v", cur.CurrentVersionStatus)
+	}
+
+	none, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-none")
+	if err != nil {
+		t.Fatalf("GetPolicy(none): %v", err)
+	}
+	if none.UpdatedAt != nil {
+		t.Fatalf("expected nil UpdatedAt with no proto timestamp, got %v", *none.UpdatedAt)
+	}
+	if none.CurrentVersionNo != nil || none.CurrentVersionStatus != nil {
+		t.Fatalf("expected nil current-version fields with no current version, got %v/%v", none.CurrentVersionNo, none.CurrentVersionStatus)
+	}
+}
+
+// TestGetPolicyVersion_MapsCreatedAtAndPublishedAt verifies PolicyVersion
+// carries both timestamps from the proto (steward-web#27 gap 3).
+func TestGetPolicyVersion_MapsCreatedAtAndPublishedAt(t *testing.T) {
+	groups := newRaciReadClient(
+		map[string]*corev1.Category{"g-it": {Id: "g-it", Name: "IT", ParentId: ""}},
+		map[string][]*corev1.CategoryRule{"g-it": {allowEveryoneRule()}},
+	)
+	createdAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	publishedAt := time.Date(2026, 1, 3, 4, 5, 6, 0, time.UTC)
+	pc := &fakePolicyClient{
+		policies: map[string]*corev1.Policy{
+			"pol-1": {Id: "pol-1", HomeCategoryId: "g-it", Number: "POL-IT-1", Title: "Sec", CurrentPublishedVersionId: "v1"},
+		},
+		versions: map[string]*corev1.PolicyVersion{
+			"v1": {Id: "v1", PolicyId: "pol-1", VersionNo: 1, Status: corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_PUBLISHED,
+				CreatedAt: timestamppb.New(createdAt), PublishedAt: timestamppb.New(publishedAt)},
+		},
+	}
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "r", RolesValue: []string{"reader"}})
+	_ = groups
+	v, err := resolvers.GetPolicyVersion(ctx, pc, groups, nil, "v1")
+	if err != nil {
+		t.Fatalf("GetPolicyVersion: %v", err)
+	}
+	if v.CreatedAt == nil || *v.CreatedAt != "2026-01-02T03:04:05Z" {
+		t.Fatalf("unexpected CreatedAt: %v", v.CreatedAt)
+	}
+	if v.PublishedAt == nil || *v.PublishedAt != "2026-01-03T04:05:06Z" {
+		t.Fatalf("unexpected PublishedAt: %v", v.PublishedAt)
 	}
 }

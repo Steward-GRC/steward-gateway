@@ -782,8 +782,11 @@ type Policy struct {
 	OwnerUserID               string           `json:"ownerUserId"`
 	OwnerName                 *string          `json:"ownerName,omitempty"`
 	CreatedAt                 *string          `json:"createdAt,omitempty"`
+	UpdatedAt                 *string          `json:"updatedAt,omitempty"`
 	CurrentPublishedVersionID *string          `json:"currentPublishedVersionId,omitempty"`
 	CurrentDraftVersionID     *string          `json:"currentDraftVersionId,omitempty"`
+	CurrentVersionNo          *int             `json:"currentVersionNo,omitempty"`
+	CurrentVersionStatus      *string          `json:"currentVersionStatus,omitempty"`
 	TemplateID                *string          `json:"templateId,omitempty"`
 	TemplateNone              bool             `json:"templateNone"`
 	TemplateUpdateAvailable   bool             `json:"templateUpdateAvailable"`
@@ -822,6 +825,8 @@ type PolicyVersion struct {
 	TemplateVersionID string      `json:"templateVersionId"`
 	ContentJSON       string      `json:"contentJson"`
 	Appendices        []*Appendix `json:"appendices"`
+	CreatedAt         *string     `json:"createdAt,omitempty"`
+	PublishedAt       *string     `json:"publishedAt,omitempty"`
 }
 
 type PolicyViewerCan struct {
@@ -1062,13 +1067,14 @@ type SegmentSource struct {
 }
 
 type Session struct {
-	SessionID       string `json:"sessionId"`
-	UserID          string `json:"userId"`
-	IssuedAt        string `json:"issuedAt"`
-	AuthenticatedAt string `json:"authenticatedAt"`
-	ExpiresAt       string `json:"expiresAt"`
-	Active          bool   `json:"active"`
-	UserAgent       string `json:"userAgent"`
+	SessionID       string  `json:"sessionId"`
+	UserID          string  `json:"userId"`
+	IssuedAt        string  `json:"issuedAt"`
+	AuthenticatedAt string  `json:"authenticatedAt"`
+	ExpiresAt       string  `json:"expiresAt"`
+	Active          bool    `json:"active"`
+	UserAgent       string  `json:"userAgent"`
+	ClientIP        *string `json:"clientIp,omitempty"`
 }
 
 type SpCertificate struct {

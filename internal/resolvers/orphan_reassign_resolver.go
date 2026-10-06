@@ -33,6 +33,29 @@ func ListPoliciesByOwner(ctx context.Context, client corev1.PolicyServiceClient,
 	return out, nil
 }
 
+// MyDrafts is the self-service twin of ListPoliciesByOwner: the signed-in
+// caller's own policies that currently have a draft version. No site-admin
+// gate — every caller may read their own drafts.
+func MyDrafts(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient) ([]*Policy, error) {
+	userID, err := claimsUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.ListPoliciesByOwner(ctx, &corev1.ListPoliciesByOwnerRequest{OwnerUserId: userID})
+	if err != nil {
+		return nil, err
+	}
+	drafts := make([]*Policy, 0, len(resp.GetPolicies()))
+	for _, p := range resp.GetPolicies() {
+		gql := policyFromProto(p)
+		if gql.CurrentDraftVersionID == nil {
+			continue
+		}
+		drafts = append(drafts, gql)
+	}
+	return resolvePolicyReadModel(ctx, drafts, client, categoryClient, adminClient, identity)
+}
+
 // ReassignUserPolicies bulk-transfers a user's owned policies and category RACI author grants to
 // another user in one auditable admin op.
 func ReassignUserPolicies(ctx context.Context, client corev1.PolicyServiceClient, fromUserID, toUserID string) (*ReassignUserPoliciesResult, error) {

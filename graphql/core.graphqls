@@ -3,6 +3,10 @@ extend type Query {
   # Categories
   category(id: ID!): Category
   categoryChildren(parentId: ID): [Category!]!
+  # The whole subtree under rootId (including rootId itself), or the whole
+  # category forest when rootId is omitted. Categories are at most three
+  # levels deep, so this is always a small, one-call read.
+  categoryTree(rootId: ID): [Category!]!
 
   # Templates
   templates(ownerCategoryId: ID): [Template!]!
@@ -12,6 +16,9 @@ extend type Query {
 
   # Policies
   policy(id: ID!): Policy
+  # Looks a policy up by its rendered number (e.g. "POL-SAFETY-000007"), which
+  # is unique by construction. Same read model and NotFound behavior as policy(id).
+  policyByNumber(number: String!): Policy
   # documentType filters by kind: null lists policies only; POLICY or PROCEDURE
   # filters to that kind.
   policies(categoryId: ID!, includeDescendants: Boolean, documentType: DocumentType): [Policy!]!
@@ -257,8 +264,14 @@ type Policy {
   ownerUserId: ID!
   ownerName: String       # resolved from identity service; null when lookup unavailable
   createdAt: String       # RFC-3339 timestamp of first-version creation; null when unavailable
+  updatedAt: String       # RFC-3339 timestamp of the last write to the policy row; null when unavailable
   currentPublishedVersionId: ID
   currentDraftVersionId: ID
+  # The version number/status of whichever version is current (published if
+  # set, else the draft). Null when the policy has neither. versionNo is 0
+  # for an unpublished draft, which isn't numbered until it's published.
+  currentVersionNo: Int
+  currentVersionStatus: String
   # Template tri-state. templateNone=true → explicit NONE (freeform), overrides
   # the category chain; templateId set → that specific template; both unset
   # (none=false, id=null) → inherit from the owning category chain.
@@ -310,6 +323,8 @@ type PolicyVersion {
   templateVersionId: ID!
   contentJson: String!
   appendices: [Appendix!]!
+  createdAt: String    # RFC-3339; null when unavailable
+  publishedAt: String  # RFC-3339; null until published
 }
 
 type Appendix {

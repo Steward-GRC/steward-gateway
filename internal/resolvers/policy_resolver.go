@@ -89,6 +89,16 @@ func policyFromProto(p *corev1.Policy) *Policy {
 		t := ackTriggerFromProto(p.AckTriggers)
 		gql.AckTriggers = &t
 	}
+	if p.UpdatedAt != nil {
+		ts := p.UpdatedAt.AsTime().UTC().Format("2006-01-02T15:04:05Z")
+		gql.UpdatedAt = &ts
+	}
+	if p.CurrentVersionStatus != corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_UNSPECIFIED {
+		no := int(p.CurrentVersionNo)
+		status := p.CurrentVersionStatus.String()
+		gql.CurrentVersionNo = &no
+		gql.CurrentVersionStatus = &status
+	}
 	return gql
 }
 
@@ -201,7 +211,7 @@ func policyVersionFromProto(v *corev1.PolicyVersion) *PolicyVersion {
 	if v == nil {
 		return nil
 	}
-	return &PolicyVersion{
+	gql := &PolicyVersion{
 		ID:                v.Id,
 		PolicyID:          v.PolicyId,
 		VersionNo:         int(v.VersionNo),
@@ -209,6 +219,15 @@ func policyVersionFromProto(v *corev1.PolicyVersion) *PolicyVersion {
 		TemplateVersionID: v.TemplateVersionId,
 		ContentJSON:       v.ContentJson,
 	}
+	if v.CreatedAt != nil {
+		ts := v.CreatedAt.AsTime().UTC().Format("2006-01-02T15:04:05Z")
+		gql.CreatedAt = &ts
+	}
+	if v.PublishedAt != nil {
+		ts := v.PublishedAt.AsTime().UTC().Format("2006-01-02T15:04:05Z")
+		gql.PublishedAt = &ts
+	}
+	return gql
 }
 
 // resolvePolicyReadModel returns the policies the caller may see, each with
@@ -326,6 +345,30 @@ func GetPolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryC
 		return nil, err
 	}
 	resp, err := client.GetPolicy(ctx, &corev1.GetPolicyRequest{Id: id})
+	if err != nil {
+		return nil, err
+	}
+	p := policyFromProto(resp.Policy)
+	if p == nil {
+		return nil, status.Error(codes.NotFound, "policy not found")
+	}
+	visible, err := resolvePolicyReadModel(ctx, []*Policy{p}, client, categoryClient, adminClient, identity)
+	if err != nil {
+		return nil, err
+	}
+	if len(visible) == 0 {
+		return nil, status.Error(codes.NotFound, "policy not found")
+	}
+	return visible[0], nil
+}
+
+// PolicyByNumber returns one policy by its rendered number, the same read
+// model and NotFound behavior as GetPolicy.
+func PolicyByNumber(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, number string) (*Policy, error) {
+	if _, err := subjectFromCtx(ctx); err != nil {
+		return nil, err
+	}
+	resp, err := client.GetPolicyByNumber(ctx, &corev1.GetPolicyByNumberRequest{Number: number})
 	if err != nil {
 		return nil, err
 	}

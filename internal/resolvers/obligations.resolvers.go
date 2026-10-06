@@ -7,95 +7,94 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 )
 
 // RecordAck is the resolver for the recordAck field.
 func (r *mutationResolver) RecordAck(ctx context.Context, policyVersionID string) (*Acknowledgment, error) {
-	panic(fmt.Errorf("not implemented: RecordAck - recordAck"))
+	return RecordAckResolver(ctx, r.AckClient, policyVersionID)
 }
 
 // UpsertNotificationPref is the resolver for the upsertNotificationPref field.
 func (r *mutationResolver) UpsertNotificationPref(ctx context.Context, input NotificationPrefInput) (*NotificationPref, error) {
-	panic(fmt.Errorf("not implemented: UpsertNotificationPref - upsertNotificationPref"))
+	return UpsertNotificationPrefResolver(ctx, r.NotifPrefClient, input)
 }
 
 // SetCategoryCadence is the resolver for the setCategoryCadence field.
 func (r *mutationResolver) SetCategoryCadence(ctx context.Context, category NotifCategory, cadence NotifCadence) (*NotificationSettings, error) {
-	panic(fmt.Errorf("not implemented: SetCategoryCadence - setCategoryCadence"))
+	return SetCategoryCadenceResolver(ctx, r.NotifPrefClient, category, cadence)
 }
 
 // SetTypeCadence is the resolver for the setTypeCadence field.
 func (r *mutationResolver) SetTypeCadence(ctx context.Context, kind string, cadence NotifCadence) (*NotificationSettings, error) {
-	panic(fmt.Errorf("not implemented: SetTypeCadence - setTypeCadence"))
+	return SetTypeCadenceResolver(ctx, r.NotifPrefClient, kind, cadence)
 }
 
 // SetDigestWindow is the resolver for the setDigestWindow field.
 func (r *mutationResolver) SetDigestWindow(ctx context.Context, dailyHour int, weeklyDow int) (*NotificationSettings, error) {
-	panic(fmt.Errorf("not implemented: SetDigestWindow - setDigestWindow"))
+	return SetDigestWindowResolver(ctx, r.NotifPrefClient, dailyHour, weeklyDow)
 }
 
 // SetNotificationChannels is the resolver for the setNotificationChannels field.
 func (r *mutationResolver) SetNotificationChannels(ctx context.Context, input NotificationPrefInput) (*NotificationSettings, error) {
-	panic(fmt.Errorf("not implemented: SetNotificationChannels - setNotificationChannels"))
+	return SetNotificationChannelsResolver(ctx, r.NotifPrefClient, input)
 }
 
 // RecordView is the resolver for the recordView field.
 func (r *mutationResolver) RecordView(ctx context.Context, policyVersionID string) (bool, error) {
-	panic(fmt.Errorf("not implemented: RecordView - recordView"))
+	return RecordViewResolver(ctx, r.AckClient, policyVersionID)
 }
 
 // MyObligations is the resolver for the myObligations field.
 func (r *queryResolver) MyObligations(ctx context.Context) ([]*Obligation, error) {
-	panic(fmt.Errorf("not implemented: MyObligations - myObligations"))
+	return MyObligationsResolver(ctx, r.ObligationClient)
 }
 
 // MyAckSummary is the resolver for the myAckSummary field.
 func (r *queryResolver) MyAckSummary(ctx context.Context) (*AckSummary, error) {
-	panic(fmt.Errorf("not implemented: MyAckSummary - myAckSummary"))
+	return MyAckSummaryResolver(ctx, r.ObligationClient)
 }
 
 // ObligatedAudienceCount is the resolver for the obligatedAudienceCount field.
 func (r *queryResolver) ObligatedAudienceCount(ctx context.Context, policyID string) (int, error) {
-	panic(fmt.Errorf("not implemented: ObligatedAudienceCount - obligatedAudienceCount"))
+	return ObligatedAudienceCountResolver(ctx, r.ObligationClient, policyID)
 }
 
 // AckStatus is the resolver for the ackStatus field.
 func (r *queryResolver) AckStatus(ctx context.Context, policyVersionID string) (*AckStatus, error) {
-	panic(fmt.Errorf("not implemented: AckStatus - ackStatus"))
+	return GetAckStatusResolver(ctx, r.AckClient, policyVersionID)
 }
 
 // NotificationPref is the resolver for the notificationPref field.
 func (r *queryResolver) NotificationPref(ctx context.Context) (*NotificationPref, error) {
-	panic(fmt.Errorf("not implemented: NotificationPref - notificationPref"))
+	return GetNotificationPrefResolver(ctx, r.NotifPrefClient)
 }
 
 // NotificationSettings is the resolver for the notificationSettings field.
 func (r *queryResolver) NotificationSettings(ctx context.Context) (*NotificationSettings, error) {
-	panic(fmt.Errorf("not implemented: NotificationSettings - notificationSettings"))
+	return GetNotificationSettingsResolver(ctx, r.NotifPrefClient)
 }
 
 // NotificationTypeCatalog is the resolver for the notificationTypeCatalog field.
 func (r *queryResolver) NotificationTypeCatalog(ctx context.Context) ([]*NotifTypeDef, error) {
-	panic(fmt.Errorf("not implemented: NotificationTypeCatalog - notificationTypeCatalog"))
+	return NotificationTypeCatalogResolver(ctx, r.NotifPrefClient)
 }
 
 // CompletionReport is the resolver for the completionReport field.
 func (r *queryResolver) CompletionReport(ctx context.Context, policyVersionID string, groupID *string) (*CompletionReport, error) {
-	panic(fmt.Errorf("not implemented: CompletionReport - completionReport"))
+	return GetCompletionReportResolver(ctx, r.ReportingClient, r.IdentityClient, policyVersionID, groupID)
 }
 
 // ExportAcks is the resolver for the exportAcks field.
 func (r *queryResolver) ExportAcks(ctx context.Context, policyVersionID string, format string) (*AckExport, error) {
-	panic(fmt.Errorf("not implemented: ExportAcks - exportAcks"))
+	return ExportAcksResolver(ctx, r.ReportingClient, policyVersionID, format)
 }
 
 // AckRoster is the resolver for the ackRoster field.
 func (r *queryResolver) AckRoster(ctx context.Context, policyVersionID string, groupID *string) (*AckRoster, error) {
-	panic(fmt.Errorf("not implemented: AckRoster - ackRoster"))
+	return AckRosterResolver(ctx, r.ReportingClient, r.IdentityClient, policyVersionID, groupID)
 }
 
 // AckActivity is the resolver for the ackActivity field.
 func (r *queryResolver) AckActivity(ctx context.Context, policyVersionID string, groupID *string, days int) ([]*AckActivityDay, error) {
-	panic(fmt.Errorf("not implemented: AckActivity - ackActivity"))
+	return AckActivityResolver(ctx, r.ReportingClient, policyVersionID, groupID, days)
 }

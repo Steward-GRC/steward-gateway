@@ -1,8 +1,7 @@
 # --- Compliance: acknowledgments, obligations, notification prefs, reporting ---
-# Backed by modules/compliance-notify (AckService, ObligationService,
-# NotifPrefService, ReportingService). The caller's user id is always sourced
-# from authmw claims at the gateway — never from input — for any field that
-# represents the actor.
+# Backed by obligations (AckService, ObligationService, NotifPrefService,
+# ReportingService). The actor is always the signed-in user, never taken from
+# input.
 
 type Obligation {
   policyId: ID!
@@ -37,8 +36,8 @@ input NotificationPrefInput {
   push: Boolean!
 }
 
-# Per-user notification cadence model (compliance-notify#8 slices 2-3). The
-# caller's user id is always bound from authmw claims at the gateway.
+# Per-user notification cadence model. The caller is always the signed-in
+# user.
 enum NotifCadence { IMMEDIATE DAILY WEEKLY OFF }
 enum NotifCategory { COMPLIANCE SECURITY TRANSACTIONAL WORKFLOW INFORMATIONAL }
 

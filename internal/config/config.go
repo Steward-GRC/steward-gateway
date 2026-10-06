@@ -58,6 +58,9 @@ type Config struct {
 	// KubernetesAPI is the in-cluster API address, empty outside a cluster.
 	KubernetesAPI string
 
+	// OTLPEndpoint is the OpenTelemetry collector; empty exports nothing.
+	OTLPEndpoint string
+
 	// Auth holds the sign-in settings.
 	Auth Auth
 }
@@ -104,6 +107,7 @@ func Load(getenv func(string) string) (Config, error) {
 		Release:              getenv("STEWARD_RELEASE"),
 		ApplianceVersionFile: getenv("STEWARD_APPLIANCE_VERSION_FILE"),
 		HTTPProbes:           map[string]string{},
+		OTLPEndpoint:         getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 	}
 	for _, n := range backend.Names() {
 		c.Backends[n] = or("STEWARD_"+strings.ToUpper(n)+"_ADDR", "steward-"+n+":9090")

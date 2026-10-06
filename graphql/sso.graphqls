@@ -13,20 +13,19 @@ type Organization {
   orgName: String!
   protocol: String!
   displayName: String!
-  # The connection alias (identity's keycloak_alias column, kept under its
-  # historical name). /auth/sso/start?connection=<alias> matches it against
-  # identity Discover; Keycloak itself is retired.
-  keycloakAlias: String!
+  # The connection alias. /auth/sso/start?connection=<alias> matches it
+  # against identity Discover.
+  connectionAlias: String!
   verified: Boolean!
   testPassed: Boolean!
   enabled: Boolean!
   connectionId: ID!
   # When true (default), a first-seen SSO user is auto-provisioned on sign-in
-  # (identity#26). When false, only a pre-provisioned platform user may sign in
+  #. When false, only a pre-provisioned platform user may sign in
   # via SSO; an unknown SSO email is refused.
   jitEnabled: Boolean!
   # When true, this org's users may sign in with a local password as a fallback
-  # even while SSO is configured (identity#27). Defaults false (SSO-only).
+  # even while SSO is configured. Defaults false (SSO-only).
   allowLocal: Boolean!
 }
 
@@ -55,8 +54,8 @@ type GroupMapping {
 type DomainVerification {
   token: String!
   dnsRecordName: String!
-  # Exact TXT value to publish (<prefix>=<token>); the prefix is per-environment
-  # (policy-verify in prod; policy-verify-dev / policy-verify-qa in lower envs).
+  # Exact TXT value to publish (<prefix>=<token>); the prefix is an identity
+  # setting.
   dnsRecordValue: String!
   instructions: String!
 }
@@ -100,7 +99,7 @@ extend type Mutation {
   # Mint a DNS TXT verification challenge for a domain. The token is stable by
   # default (re-calling returns the same token). Pass rotate: true to mint a
   # fresh token — the one explicit action that changes it, which also revokes
-  # the domain's prior verified proof (identity#12).
+  # the domain's prior verified proof.
   startDomainVerification(domain: String!, rotate: Boolean): DomainVerification!
   # Check the domain's DNS TXT record against its verification token; returns
   # the updated organization.
@@ -109,8 +108,8 @@ extend type Mutation {
   activateOrganization(domain: String!): Organization!
   # Disable an organization's SSO connection.
   disableOrganization(domain: String!): Organization!
-  # Update an organization's per-org login toggles: jitEnabled (identity#26)
-  # and allowLocal (identity#27). Each argument is optional — omit one to leave
+  # Update an organization's per-org login toggles: jitEnabled
+  # and allowLocal. Each argument is optional — omit one to leave
   # it unchanged and flip only the other.
   updateIdPConnection(domain: String!, jitEnabled: Boolean, allowLocal: Boolean): Organization!
   # Change an organization's IdP protocol (SAML<->OIDC). DESTRUCTIVE: it
@@ -118,7 +117,7 @@ extend type Mutation {
   # start — clearing both gates (verified + testPassed) and disabling the
   # connection — so the domain must be re-verified and the IdP re-tested before
   # re-activation. config carries the new protocol's IdP settings; secretRef
-  # names the stored client secret (OIDC) (identity#13).
+  # names the stored client secret (OIDC).
   changeOrgProtocol(domain: String!, protocol: String!, config: [KeyValueInput!], secretRef: String): Organization!
   # Remove an organization SSO connection.
   deleteOrganization(domain: String!): Boolean!

@@ -115,7 +115,7 @@ func TestMeritRACIRead_GroupDenyHidesNonAdmin(t *testing.T) {
 		},
 		listResult: []string{"pol-it"},
 	}
-	// User is in the Contractors AD group (matched by GroupNames in EvalSubject via AdGroups).
+	// User is in the Contractors IdP group (matched by the subject's Groups).
 	ctx := ctxWithStubClaims(t, principal.Static{
 		UserIDValue:    "contractor-u",
 		RolesValue:     []string{"reader"},
@@ -427,9 +427,8 @@ func TestMeritRACIRead_BreakGlassFlipsObfuscate(t *testing.T) {
 }
 
 // TestMeritRACIRead_GroupDenyMatchesADGroups verifies that group-kind RACI rules
-// match against AD group names (from Claims.AdGroups / IdpGroupsValue), NOT platform
-// group IDs (from Claims.Groups / GroupsValue). This is the production-faithful path:
-// Keycloak-federated AD group names arrive via x-fwd-adgroups, not x-fwd-groups.
+// match against IdP group names (Claims.IdpGroups), NOT platform group IDs
+// (Claims.Groups).
 func TestMeritRACIRead_GroupDenyMatchesADGroups(t *testing.T) {
 	gc := newRaciReadClient(
 		map[string]*corev1.Category{

@@ -9,280 +9,250 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
+	"time"
+
+	"github.com/Steward-GRC/steward-gateway/internal/bff"
 )
 
 // GrantRole is the resolver for the grantRole field.
 func (r *mutationResolver) GrantRole(ctx context.Context, userID string, role string, category *string) (*User, error) {
-	panic(fmt.Errorf("not implemented: GrantRole - grantRole"))
+	return GrantRoleResolver(ctx, r.IdentityAdminClient, userID, role, category)
 }
 
 // RevokeRole is the resolver for the revokeRole field.
 func (r *mutationResolver) RevokeRole(ctx context.Context, userID string, role string, category *string) (*User, error) {
-	panic(fmt.Errorf("not implemented: RevokeRole - revokeRole"))
+	return RevokeRoleResolver(ctx, r.IdentityAdminClient, userID, role, category)
 }
 
 // EnableUser is the resolver for the enableUser field.
 func (r *mutationResolver) EnableUser(ctx context.Context, userID string) (*User, error) {
-	panic(fmt.Errorf("not implemented: EnableUser - enableUser"))
+	return EnableUserResolver(ctx, r.IdentityAdminClient, userID)
 }
 
 // DisableUser is the resolver for the disableUser field.
 func (r *mutationResolver) DisableUser(ctx context.Context, userID string) (*User, error) {
-	panic(fmt.Errorf("not implemented: DisableUser - disableUser"))
+	return DisableUserResolver(ctx, r.IdentityAdminClient, userID)
 }
 
 // ReassignUserPolicies is the resolver for the reassignUserPolicies field.
 func (r *mutationResolver) ReassignUserPolicies(ctx context.Context, fromUserID string, toUserID string) (*ReassignUserPoliciesResult, error) {
-	panic(fmt.Errorf("not implemented: ReassignUserPolicies - reassignUserPolicies"))
+	return ReassignUserPolicies(ctx, r.PolicyClient, fromUserID, toUserID)
 }
 
 // DeleteUser is the resolver for the deleteUser field.
 func (r *mutationResolver) DeleteUser(ctx context.Context, userID string) (*DeleteUserResult, error) {
-	panic(fmt.Errorf("not implemented: DeleteUser - deleteUser"))
+	return DeleteUserResolver(ctx, r.PolicyClient, r.IdentityAdminClient, userID)
 }
 
 // MergeAccounts is the resolver for the mergeAccounts field.
 func (r *mutationResolver) MergeAccounts(ctx context.Context, sourceUserID string, targetUserID string, confirmPrivileged *bool, idempotencyKey *string) (*MergeAccountsResult, error) {
-	panic(fmt.Errorf("not implemented: MergeAccounts - mergeAccounts"))
+	return MergeAccountsResolver(ctx, r.IdentityAdminClient, sourceUserID, targetUserID, confirmPrivileged, idempotencyKey)
 }
 
 // AddUserToGroup is the resolver for the addUserToGroup field.
 func (r *mutationResolver) AddUserToGroup(ctx context.Context, userID string, groupID string) (*User, error) {
-	panic(fmt.Errorf("not implemented: AddUserToGroup - addUserToGroup"))
+	return AddUserToGroupResolver(ctx, r.IdentityAdminClient, r.IdentityClient, userID, groupID)
 }
 
 // RemoveUserFromGroup is the resolver for the removeUserFromGroup field.
 func (r *mutationResolver) RemoveUserFromGroup(ctx context.Context, userID string, groupID string) (*User, error) {
-	panic(fmt.Errorf("not implemented: RemoveUserFromGroup - removeUserFromGroup"))
+	return RemoveUserFromGroupResolver(ctx, r.IdentityAdminClient, r.IdentityClient, userID, groupID)
 }
 
 // GrantGroupManager is the resolver for the grantGroupManager field.
 func (r *mutationResolver) GrantGroupManager(ctx context.Context, userID string, groupID string) (*User, error) {
-	panic(fmt.Errorf("not implemented: GrantGroupManager - grantGroupManager"))
+	return GrantGroupManagerResolver(ctx, r.IdentityAdminClient, userID, groupID)
 }
 
 // RevokeGroupManager is the resolver for the revokeGroupManager field.
 func (r *mutationResolver) RevokeGroupManager(ctx context.Context, userID string, groupID string) (*User, error) {
-	panic(fmt.Errorf("not implemented: RevokeGroupManager - revokeGroupManager"))
+	return RevokeGroupManagerResolver(ctx, r.IdentityAdminClient, userID, groupID)
 }
 
 // SetUserPolicyOverride is the resolver for the setUserPolicyOverride field.
 func (r *mutationResolver) SetUserPolicyOverride(ctx context.Context, userID string, policyNumber string, effect *OverrideEffect) (*User, error) {
-	panic(fmt.Errorf("not implemented: SetUserPolicyOverride - setUserPolicyOverride"))
+	return SetUserPolicyOverrideResolver(ctx, r.IdentityAdminClient, userID, policyNumber, effect)
 }
 
 // RequestStepUpOtp is the resolver for the requestStepUpOtp field.
 func (r *mutationResolver) RequestStepUpOtp(ctx context.Context) (bool, error) {
-	panic(fmt.Errorf("not implemented: RequestStepUpOtp - requestStepUpOtp"))
+	return RequestStepUpOtpResolver(ctx, r.IdentityAdminClient)
 }
 
 // TransferRoot is the resolver for the transferRoot field.
 func (r *mutationResolver) TransferRoot(ctx context.Context, toUserID string, otp string) (*User, error) {
-	panic(fmt.Errorf("not implemented: TransferRoot - transferRoot"))
+	return TransferRootResolver(ctx, r.IdentityAdminClient, r.IdentityClient, toUserID, otp)
 }
 
 // CompleteOnboarding is the resolver for the completeOnboarding field.
 func (r *mutationResolver) CompleteOnboarding(ctx context.Context, acceptTerms bool, username *string, firstName *string, lastName *string, email *string) (*User, error) {
-	panic(fmt.Errorf("not implemented: CompleteOnboarding - completeOnboarding"))
+	return CompleteOnboardingResolver(ctx, r.IdentityAdminClient, acceptTerms, username, firstName, lastName, email)
 }
 
 // UpdateMyProfile is the resolver for the updateMyProfile field.
 func (r *mutationResolver) UpdateMyProfile(ctx context.Context, firstName *string, lastName *string, locale *string) (*User, error) {
-	panic(fmt.Errorf("not implemented: UpdateMyProfile - updateMyProfile"))
+	return UpdateMyProfileResolver(ctx, r.IdentityAdminClient, firstName, lastName, locale)
 }
 
 // RevokeUserSessions is the resolver for the revokeUserSessions field.
 func (r *mutationResolver) RevokeUserSessions(ctx context.Context, userID string, reason *string) (int, error) {
-	panic(fmt.Errorf("not implemented: RevokeUserSessions - revokeUserSessions"))
+	return RevokeUserSessionsResolver(ctx, r.IdentityAdminClient, userID, reason)
 }
 
 // RevokeMySessions is the resolver for the revokeMySessions field.
 func (r *mutationResolver) RevokeMySessions(ctx context.Context) (int, error) {
-	panic(fmt.Errorf("not implemented: RevokeMySessions - revokeMySessions"))
+	return RevokeMySessionsResolver(ctx, r.IdentityClient)
 }
 
 // CreateLocalUser is the resolver for the createLocalUser field.
 func (r *mutationResolver) CreateLocalUser(ctx context.Context, username string, email string, name string, password string) (*User, error) {
-	panic(fmt.Errorf("not implemented: CreateLocalUser - createLocalUser"))
+	return CreateLocalUserResolver(ctx, r.IdentityAdminClient, username, email, name, password)
 }
 
 // ResetUserPassword is the resolver for the resetUserPassword field.
 func (r *mutationResolver) ResetUserPassword(ctx context.Context, userID string, newPassword string) (bool, error) {
-	panic(fmt.Errorf("not implemented: ResetUserPassword - resetUserPassword"))
+	return ResetUserPasswordResolver(ctx, r.IdentityAdminClient, userID, newPassword)
 }
 
 // ResendWelcomeEmail is the resolver for the resendWelcomeEmail field.
 func (r *mutationResolver) ResendWelcomeEmail(ctx context.Context, userID string) (bool, error) {
-	panic(fmt.Errorf("not implemented: ResendWelcomeEmail - resendWelcomeEmail"))
+	return ResendWelcomeEmailResolver(ctx, r.WelcomeClient, userID)
 }
 
 // UpdateUserProfile is the resolver for the updateUserProfile field.
 func (r *mutationResolver) UpdateUserProfile(ctx context.Context, userID string, name string, email string) (*User, error) {
-	panic(fmt.Errorf("not implemented: UpdateUserProfile - updateUserProfile"))
-}
-
-// CreateDirectoryGroup is the resolver for the createDirectoryGroup field.
-func (r *mutationResolver) CreateDirectoryGroup(ctx context.Context, name string) (*DirectoryGroup, error) {
-	panic(fmt.Errorf("not implemented: CreateDirectoryGroup - createDirectoryGroup"))
-}
-
-// RenameDirectoryGroup is the resolver for the renameDirectoryGroup field.
-func (r *mutationResolver) RenameDirectoryGroup(ctx context.Context, groupID int, name string) (*DirectoryGroup, error) {
-	panic(fmt.Errorf("not implemented: RenameDirectoryGroup - renameDirectoryGroup"))
-}
-
-// DeleteDirectoryGroup is the resolver for the deleteDirectoryGroup field.
-func (r *mutationResolver) DeleteDirectoryGroup(ctx context.Context, groupID int) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteDirectoryGroup - deleteDirectoryGroup"))
-}
-
-// AddUserToDirectoryGroup is the resolver for the addUserToDirectoryGroup field.
-func (r *mutationResolver) AddUserToDirectoryGroup(ctx context.Context, userID string, groupID int) (bool, error) {
-	panic(fmt.Errorf("not implemented: AddUserToDirectoryGroup - addUserToDirectoryGroup"))
-}
-
-// RemoveUserFromDirectoryGroup is the resolver for the removeUserFromDirectoryGroup field.
-func (r *mutationResolver) RemoveUserFromDirectoryGroup(ctx context.Context, userID string, groupID int) (bool, error) {
-	panic(fmt.Errorf("not implemented: RemoveUserFromDirectoryGroup - removeUserFromDirectoryGroup"))
+	return UpdateUserProfileResolver(ctx, r.IdentityAdminClient, userID, name, email)
 }
 
 // EnrollTotpBegin is the resolver for the enrollTotpBegin field.
 func (r *mutationResolver) EnrollTotpBegin(ctx context.Context) (*TotpEnrollment, error) {
-	panic(fmt.Errorf("not implemented: EnrollTotpBegin - enrollTotpBegin"))
+	return EnrollTotpBeginResolver(ctx, r.IdentityClient)
 }
 
 // EnrollTotpConfirm is the resolver for the enrollTotpConfirm field.
 func (r *mutationResolver) EnrollTotpConfirm(ctx context.Context, code string) (bool, error) {
-	panic(fmt.Errorf("not implemented: EnrollTotpConfirm - enrollTotpConfirm"))
+	return EnrollTotpConfirmResolver(ctx, r.IdentityClient, code)
 }
 
 // SendEnrollEmailOtp is the resolver for the sendEnrollEmailOtp field.
 func (r *mutationResolver) SendEnrollEmailOtp(ctx context.Context) (bool, error) {
-	panic(fmt.Errorf("not implemented: SendEnrollEmailOtp - sendEnrollEmailOtp"))
+	return SendEnrollEmailOtpResolver(ctx, r.IdentityClient)
 }
 
 // VerifyEnrollEmailOtp is the resolver for the verifyEnrollEmailOtp field.
 func (r *mutationResolver) VerifyEnrollEmailOtp(ctx context.Context, code string) (bool, error) {
-	panic(fmt.Errorf("not implemented: VerifyEnrollEmailOtp - verifyEnrollEmailOtp"))
+	return VerifyEnrollEmailOtpResolver(ctx, r.IdentityClient, code)
 }
 
 // WebauthnRegisterBegin is the resolver for the webauthnRegisterBegin field.
 func (r *mutationResolver) WebauthnRegisterBegin(ctx context.Context) (*WebauthnRegistration, error) {
-	panic(fmt.Errorf("not implemented: WebauthnRegisterBegin - webauthnRegisterBegin"))
+	return WebauthnRegisterBeginResolver(ctx, r.IdentityClient)
 }
 
 // WebauthnRegisterFinish is the resolver for the webauthnRegisterFinish field.
 func (r *mutationResolver) WebauthnRegisterFinish(ctx context.Context, sessionID string, credentialJSON string, label *string) (bool, error) {
-	panic(fmt.Errorf("not implemented: WebauthnRegisterFinish - webauthnRegisterFinish"))
+	return WebauthnRegisterFinishResolver(ctx, r.IdentityClient, sessionID, credentialJSON, label)
 }
 
 // RemoveFactor is the resolver for the removeFactor field.
 func (r *mutationResolver) RemoveFactor(ctx context.Context, kind string) (bool, error) {
-	panic(fmt.Errorf("not implemented: RemoveFactor - removeFactor"))
+	return RemoveFactorResolver(ctx, r.IdentityClient, kind)
 }
 
 // RemoveWebauthnCredential is the resolver for the removeWebauthnCredential field.
 func (r *mutationResolver) RemoveWebauthnCredential(ctx context.Context, credentialID string) (bool, error) {
-	panic(fmt.Errorf("not implemented: RemoveWebauthnCredential - removeWebauthnCredential"))
+	return RemoveWebauthnCredentialResolver(ctx, r.IdentityClient, credentialID)
 }
 
 // RenameMfaMethod is the resolver for the renameMfaMethod field.
 func (r *mutationResolver) RenameMfaMethod(ctx context.Context, methodID string, label string) (bool, error) {
-	panic(fmt.Errorf("not implemented: RenameMfaMethod - renameMfaMethod"))
+	return RenameMfaMethodResolver(ctx, r.IdentityClient, methodID, label)
 }
 
 // RemoveUserMfaFactor is the resolver for the removeUserMfaFactor field.
 func (r *mutationResolver) RemoveUserMfaFactor(ctx context.Context, userID string, methodID string) (bool, error) {
-	panic(fmt.Errorf("not implemented: RemoveUserMfaFactor - removeUserMfaFactor"))
+	return RemoveUserMfaFactorResolver(ctx, r.IdentityAdminClient, userID, methodID)
 }
 
 // RenameUserMfaFactor is the resolver for the renameUserMfaFactor field.
 func (r *mutationResolver) RenameUserMfaFactor(ctx context.Context, userID string, methodID string, label string) (bool, error) {
-	panic(fmt.Errorf("not implemented: RenameUserMfaFactor - renameUserMfaFactor"))
+	return RenameUserMfaFactorResolver(ctx, r.IdentityAdminClient, userID, methodID, label)
 }
 
 // StartImpersonation is the resolver for the startImpersonation field.
 func (r *mutationResolver) StartImpersonation(ctx context.Context, userID string, reason string) (*ImpersonationSession, error) {
-	panic(fmt.Errorf("not implemented: StartImpersonation - startImpersonation"))
+	sid, _ := bff.SessionIDFromContext(ctx)
+	return StartImpersonationResolver(ctx, r.SessionStore, sid, r.IdentityClient, r.AuditEmitter, time.Now, userID, reason)
 }
 
 // StopImpersonation is the resolver for the stopImpersonation field.
 func (r *mutationResolver) StopImpersonation(ctx context.Context) (bool, error) {
-	panic(fmt.Errorf("not implemented: StopImpersonation - stopImpersonation"))
+	sid, _ := bff.SessionIDFromContext(ctx)
+	return StopImpersonationResolver(ctx, r.SessionStore, sid, r.AuditEmitter)
 }
 
 // Me is the resolver for the me field.
 func (r *queryResolver) Me(ctx context.Context) (*User, error) {
-	panic(fmt.Errorf("not implemented: Me - me"))
+	return MeResolver(ctx, r.IdentityClient, r.CategoryClient)
 }
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, search *string, pageSize *int, pageToken *string, includeDeleted *bool) (*UserPage, error) {
-	panic(fmt.Errorf("not implemented: Users - users"))
+	return UsersResolver(ctx, r.IdentityClient, search, pageSize, pageToken, includeDeleted)
 }
 
 // ResolveUserLabels is the resolver for the resolveUserLabels field.
 func (r *queryResolver) ResolveUserLabels(ctx context.Context, ids []string) ([]*UserLabel, error) {
-	panic(fmt.Errorf("not implemented: ResolveUserLabels - resolveUserLabels"))
+	return ResolveUserLabelsResolver(ctx, r.IdentityClient, ids)
 }
 
 // SearchUsers is the resolver for the searchUsers field.
 func (r *queryResolver) SearchUsers(ctx context.Context, query string, limit *int) ([]*UserLabel, error) {
-	panic(fmt.Errorf("not implemented: SearchUsers - searchUsers"))
+	return SearchUsersResolver(ctx, r.IdentityClient, query, limit)
 }
 
 // PoliciesByOwner is the resolver for the policiesByOwner field.
 func (r *queryResolver) PoliciesByOwner(ctx context.Context, userID string, includeRetired *bool) ([]*Policy, error) {
-	panic(fmt.Errorf("not implemented: PoliciesByOwner - policiesByOwner"))
+	return ListPoliciesByOwner(ctx, r.PolicyClient, userID, includeRetired)
 }
 
 // PreviewAccountMerge is the resolver for the previewAccountMerge field.
 func (r *queryResolver) PreviewAccountMerge(ctx context.Context, sourceUserID string, targetUserID string) (*AccountMergePreview, error) {
-	panic(fmt.Errorf("not implemented: PreviewAccountMerge - previewAccountMerge"))
+	return PreviewAccountMergeResolver(ctx, r.IdentityAdminClient, sourceUserID, targetUserID)
 }
 
 // PreviewUserDeletion is the resolver for the previewUserDeletion field.
 func (r *queryResolver) PreviewUserDeletion(ctx context.Context, userID string) (*UserDeletionPreview, error) {
-	panic(fmt.Errorf("not implemented: PreviewUserDeletion - previewUserDeletion"))
+	return PreviewUserDeletionResolver(ctx, r.IdentityAdminClient, userID)
 }
 
 // ManagedGroupMembers is the resolver for the managedGroupMembers field.
 func (r *queryResolver) ManagedGroupMembers(ctx context.Context, groupID string) ([]*User, error) {
-	panic(fmt.Errorf("not implemented: ManagedGroupMembers - managedGroupMembers"))
+	return ManagedGroupMembersResolver(ctx, r.IdentityClient, groupID)
 }
 
 // ListUserSessions is the resolver for the listUserSessions field.
 func (r *queryResolver) ListUserSessions(ctx context.Context, userID string) ([]*Session, error) {
-	panic(fmt.Errorf("not implemented: ListUserSessions - listUserSessions"))
-}
-
-// DirectoryGroups is the resolver for the directoryGroups field.
-func (r *queryResolver) DirectoryGroups(ctx context.Context) ([]*DirectoryGroup, error) {
-	panic(fmt.Errorf("not implemented: DirectoryGroups - directoryGroups"))
-}
-
-// GroupMembers is the resolver for the groupMembers field.
-func (r *queryResolver) GroupMembers(ctx context.Context, groupID int) ([]*DirectoryMember, error) {
-	panic(fmt.Errorf("not implemented: GroupMembers - groupMembers"))
+	return ListUserSessionsResolver(ctx, r.IdentityAdminClient, userID)
 }
 
 // MyFactors is the resolver for the myFactors field.
 func (r *queryResolver) MyFactors(ctx context.Context) ([]*UserFactor, error) {
-	panic(fmt.Errorf("not implemented: MyFactors - myFactors"))
+	return MyFactorsResolver(ctx, r.IdentityClient)
 }
 
 // MyWebauthnCredentials is the resolver for the myWebauthnCredentials field.
 func (r *queryResolver) MyWebauthnCredentials(ctx context.Context) ([]*WebauthnCredentialInfo, error) {
-	panic(fmt.Errorf("not implemented: MyWebauthnCredentials - myWebauthnCredentials"))
+	return MyWebauthnCredentialsResolver(ctx, r.IdentityClient)
 }
 
 // UserFactors is the resolver for the userFactors field.
 func (r *queryResolver) UserFactors(ctx context.Context, userID string) ([]*MfaFactor, error) {
-	panic(fmt.Errorf("not implemented: UserFactors - userFactors"))
+	return UserFactorsResolver(ctx, r.IdentityAdminClient, userID)
 }
 
 // ImpersonationStatus is the resolver for the impersonationStatus field.
 func (r *queryResolver) ImpersonationStatus(ctx context.Context) (*ImpersonationSession, error) {
-	panic(fmt.Errorf("not implemented: ImpersonationStatus - impersonationStatus"))
+	sid, _ := bff.SessionIDFromContext(ctx)
+	return ImpersonationStatusResolver(ctx, r.SessionStore, sid, r.IdentityClient, time.Now)
 }

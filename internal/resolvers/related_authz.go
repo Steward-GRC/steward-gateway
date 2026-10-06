@@ -128,7 +128,7 @@ func (a *readerAudience) memberReads(m audienceMember, p *Policy) bool {
 	return sensitivityGate(m.readSens, p) == authz.EffectAllow
 }
 
-// isDraftPolicy reports whether p has no current published version — i.e.
+// isDraftPolicy reports whether p has no current published version.
 func isDraftPolicy(p *Policy) bool {
 	return p.CurrentPublishedVersionID == nil || *p.CurrentPublishedVersionID == ""
 }

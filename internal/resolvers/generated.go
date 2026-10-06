@@ -314,18 +314,6 @@ type ComplexityRoot struct {
 		WeeklyDow func(childComplexity int) int
 	}
 
-	DirectoryGroup struct {
-		ID   func(childComplexity int) int
-		Name func(childComplexity int) int
-	}
-
-	DirectoryMember struct {
-		Email    func(childComplexity int) int
-		Name     func(childComplexity int) int
-		UserID   func(childComplexity int) int
-		Username func(childComplexity int) int
-	}
-
 	DomainVerification struct {
 		DNSRecordName  func(childComplexity int) int
 		DNSRecordValue func(childComplexity int) int
@@ -468,7 +456,6 @@ type ComplexityRoot struct {
 		AddAppendix                   func(childComplexity int, policyVersionID string, title string, contentJSON string) int
 		AddGroupMapping               func(childComplexity int, connectionID string, idpGroupClaimValue string, targetGroupID string) int
 		AddOrganization               func(childComplexity int, input AddOrganizationInput) int
-		AddUserToDirectoryGroup       func(childComplexity int, userID string, groupID int) int
 		AddUserToGroup                func(childComplexity int, userID string, groupID string) int
 		ArchiveWorkflowDef            func(childComplexity int, id string) int
 		BreakGlassReveal              func(childComplexity int, policyID string, reason string) int
@@ -478,7 +465,6 @@ type ComplexityRoot struct {
 		CreateCategory                func(childComplexity int, name string, slug string, parentID *string) int
 		CreateContactBlock            func(childComplexity int, block ContactBlockInput) int
 		CreateDefinition              func(childComplexity int, input DefinitionEntryInput) int
-		CreateDirectoryGroup          func(childComplexity int, name string) int
 		CreateLocalUser               func(childComplexity int, username string, email string, name string, password string) int
 		CreateMagicLink               func(childComplexity int, policyVersionID string, sensitive bool) int
 		CreatePolicy                  func(childComplexity int, homeCategoryID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) int
@@ -490,7 +476,6 @@ type ComplexityRoot struct {
 		DeleteCategory                func(childComplexity int, id string) int
 		DeleteContactBlock            func(childComplexity int, id string) int
 		DeleteDefinition              func(childComplexity int, id string) int
-		DeleteDirectoryGroup          func(childComplexity int, groupID int) int
 		DeleteGroupMapping            func(childComplexity int, mappingID string) int
 		DeleteOrganization            func(childComplexity int, domain string) int
 		DeletePolicy                  func(childComplexity int, id string) int
@@ -519,12 +504,10 @@ type ComplexityRoot struct {
 		ReindexPolicy                 func(childComplexity int, policyID string) int
 		ReindexPolicyVersion          func(childComplexity int, policyVersionID string) int
 		RemoveFactor                  func(childComplexity int, kind string) int
-		RemoveUserFromDirectoryGroup  func(childComplexity int, userID string, groupID int) int
 		RemoveUserFromGroup           func(childComplexity int, userID string, groupID string) int
 		RemoveUserMfaFactor           func(childComplexity int, userID string, methodID string) int
 		RemoveWebauthnCredential      func(childComplexity int, credentialID string) int
 		RenameCategory                func(childComplexity int, id string, name string, slug string) int
-		RenameDirectoryGroup          func(childComplexity int, groupID int, name string) int
 		RenameMfaMethod               func(childComplexity int, methodID string, label string) int
 		RenamePolicy                  func(childComplexity int, policyID string, newTitle string) int
 		RenameTemplate                func(childComplexity int, id string, name string) int
@@ -626,17 +609,17 @@ type ComplexityRoot struct {
 	}
 
 	Organization struct {
-		AllowLocal    func(childComplexity int) int
-		ConnectionID  func(childComplexity int) int
-		DisplayName   func(childComplexity int) int
-		Domain        func(childComplexity int) int
-		Enabled       func(childComplexity int) int
-		JitEnabled    func(childComplexity int) int
-		KeycloakAlias func(childComplexity int) int
-		OrgName       func(childComplexity int) int
-		Protocol      func(childComplexity int) int
-		TestPassed    func(childComplexity int) int
-		Verified      func(childComplexity int) int
+		AllowLocal      func(childComplexity int) int
+		ConnectionAlias func(childComplexity int) int
+		ConnectionID    func(childComplexity int) int
+		DisplayName     func(childComplexity int) int
+		Domain          func(childComplexity int) int
+		Enabled         func(childComplexity int) int
+		JitEnabled      func(childComplexity int) int
+		OrgName         func(childComplexity int) int
+		Protocol        func(childComplexity int) int
+		TestPassed      func(childComplexity int) int
+		Verified        func(childComplexity int) int
 	}
 
 	OverdueEntry struct {
@@ -741,7 +724,6 @@ type ComplexityRoot struct {
 		ContactBlocks              func(childComplexity int, includeArchived *bool) int
 		Definitions                func(childComplexity int, categoryID *string, includeArchived *bool) int
 		DiffVersions               func(childComplexity int, fromVersionID string, toVersionID string) int
-		DirectoryGroups            func(childComplexity int) int
 		EffectiveGovernance        func(childComplexity int, categoryID string) int
 		EffectiveTemplate          func(childComplexity int, policyID string) int
 		EffectiveWorkflow          func(childComplexity int, policyID string) int
@@ -749,7 +731,6 @@ type ComplexityRoot struct {
 		ExportAcks                 func(childComplexity int, policyVersionID string, format string) int
 		GlobalSettings             func(childComplexity int) int
 		GroupMappings              func(childComplexity int, connectionID string) int
-		GroupMembers               func(childComplexity int, groupID int) int
 		Health                     func(childComplexity int) int
 		ImpersonationStatus        func(childComplexity int) int
 		LatestTemplateVersion      func(childComplexity int, templateID string) int
@@ -913,13 +894,10 @@ type ComplexityRoot struct {
 	}
 
 	Session struct {
-		ClientIP        func(childComplexity int) int
+		Active          func(childComplexity int) int
+		AuthenticatedAt func(childComplexity int) int
 		ExpiresAt       func(childComplexity int) int
 		IssuedAt        func(childComplexity int) int
-		LastSeenAt      func(childComplexity int) int
-		RevokeReason    func(childComplexity int) int
-		RevokedAt       func(childComplexity int) int
-		RevokedByUserID func(childComplexity int) int
 		SessionID       func(childComplexity int) int
 		UserAgent       func(childComplexity int) int
 		UserID          func(childComplexity int) int
@@ -1013,12 +991,12 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		AdGroups         func(childComplexity int) int
 		DeletedAt        func(childComplexity int) int
 		DirectoryGroups  func(childComplexity int) int
 		Email            func(childComplexity int) int
 		Enabled          func(childComplexity int) int
 		FirstName        func(childComplexity int) int
+		IdpGroups        func(childComplexity int) int
 		IsRoot           func(childComplexity int) int
 		LastName         func(childComplexity int) int
 		LocalAccount     func(childComplexity int) int
@@ -1037,9 +1015,9 @@ type ComplexityRoot struct {
 	}
 
 	UserDeletionCounts struct {
-		AdGroups         func(childComplexity int) int
 		BreakGlassGrants func(childComplexity int) int
 		GroupMemberships func(childComplexity int) int
+		IdpGroups        func(childComplexity int) int
 		ManagedGroups    func(childComplexity int) int
 		OwnedPolicies    func(childComplexity int) int
 		PendingApprovals func(childComplexity int) int
@@ -1226,11 +1204,6 @@ type MutationResolver interface {
 	ResetUserPassword(ctx context.Context, userID string, newPassword string) (bool, error)
 	ResendWelcomeEmail(ctx context.Context, userID string) (bool, error)
 	UpdateUserProfile(ctx context.Context, userID string, name string, email string) (*User, error)
-	CreateDirectoryGroup(ctx context.Context, name string) (*DirectoryGroup, error)
-	RenameDirectoryGroup(ctx context.Context, groupID int, name string) (*DirectoryGroup, error)
-	DeleteDirectoryGroup(ctx context.Context, groupID int) (bool, error)
-	AddUserToDirectoryGroup(ctx context.Context, userID string, groupID int) (bool, error)
-	RemoveUserFromDirectoryGroup(ctx context.Context, userID string, groupID int) (bool, error)
 	EnrollTotpBegin(ctx context.Context) (*TotpEnrollment, error)
 	EnrollTotpConfirm(ctx context.Context, code string) (bool, error)
 	SendEnrollEmailOtp(ctx context.Context) (bool, error)
@@ -1329,8 +1302,6 @@ type QueryResolver interface {
 	PreviewUserDeletion(ctx context.Context, userID string) (*UserDeletionPreview, error)
 	ManagedGroupMembers(ctx context.Context, groupID string) ([]*User, error)
 	ListUserSessions(ctx context.Context, userID string) ([]*Session, error)
-	DirectoryGroups(ctx context.Context) ([]*DirectoryGroup, error)
-	GroupMembers(ctx context.Context, groupID int) ([]*DirectoryMember, error)
 	MyFactors(ctx context.Context) ([]*UserFactor, error)
 	MyWebauthnCredentials(ctx context.Context) ([]*WebauthnCredentialInfo, error)
 	UserFactors(ctx context.Context, userID string) ([]*MfaFactor, error)
@@ -2404,44 +2375,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.DigestWindow.WeeklyDow(childComplexity), true
 
-	case "DirectoryGroup.id":
-		if e.ComplexityRoot.DirectoryGroup.ID == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DirectoryGroup.ID(childComplexity), true
-	case "DirectoryGroup.name":
-		if e.ComplexityRoot.DirectoryGroup.Name == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DirectoryGroup.Name(childComplexity), true
-
-	case "DirectoryMember.email":
-		if e.ComplexityRoot.DirectoryMember.Email == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DirectoryMember.Email(childComplexity), true
-	case "DirectoryMember.name":
-		if e.ComplexityRoot.DirectoryMember.Name == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DirectoryMember.Name(childComplexity), true
-	case "DirectoryMember.userId":
-		if e.ComplexityRoot.DirectoryMember.UserID == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DirectoryMember.UserID(childComplexity), true
-	case "DirectoryMember.username":
-		if e.ComplexityRoot.DirectoryMember.Username == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DirectoryMember.Username(childComplexity), true
-
 	case "DomainVerification.dnsRecordName":
 		if e.ComplexityRoot.DomainVerification.DNSRecordName == nil {
 			break
@@ -2951,17 +2884,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddOrganization(childComplexity, args["input"].(AddOrganizationInput)), true
-	case "Mutation.addUserToDirectoryGroup":
-		if e.ComplexityRoot.Mutation.AddUserToDirectoryGroup == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_addUserToDirectoryGroup_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.AddUserToDirectoryGroup(childComplexity, args["userId"].(string), args["groupId"].(int)), true
 	case "Mutation.addUserToGroup":
 		if e.ComplexityRoot.Mutation.AddUserToGroup == nil {
 			break
@@ -3061,17 +2983,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateDefinition(childComplexity, args["input"].(DefinitionEntryInput)), true
-	case "Mutation.createDirectoryGroup":
-		if e.ComplexityRoot.Mutation.CreateDirectoryGroup == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_createDirectoryGroup_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.CreateDirectoryGroup(childComplexity, args["name"].(string)), true
 	case "Mutation.createLocalUser":
 		if e.ComplexityRoot.Mutation.CreateLocalUser == nil {
 			break
@@ -3193,17 +3104,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteDefinition(childComplexity, args["id"].(string)), true
-	case "Mutation.deleteDirectoryGroup":
-		if e.ComplexityRoot.Mutation.DeleteDirectoryGroup == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_deleteDirectoryGroup_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.DeleteDirectoryGroup(childComplexity, args["groupId"].(int)), true
 	case "Mutation.deleteGroupMapping":
 		if e.ComplexityRoot.Mutation.DeleteGroupMapping == nil {
 			break
@@ -3502,17 +3402,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RemoveFactor(childComplexity, args["kind"].(string)), true
-	case "Mutation.removeUserFromDirectoryGroup":
-		if e.ComplexityRoot.Mutation.RemoveUserFromDirectoryGroup == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_removeUserFromDirectoryGroup_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.RemoveUserFromDirectoryGroup(childComplexity, args["userId"].(string), args["groupId"].(int)), true
 	case "Mutation.removeUserFromGroup":
 		if e.ComplexityRoot.Mutation.RemoveUserFromGroup == nil {
 			break
@@ -3557,17 +3446,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RenameCategory(childComplexity, args["id"].(string), args["name"].(string), args["slug"].(string)), true
-	case "Mutation.renameDirectoryGroup":
-		if e.ComplexityRoot.Mutation.RenameDirectoryGroup == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_renameDirectoryGroup_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.RenameDirectoryGroup(childComplexity, args["groupId"].(int), args["name"].(string)), true
 	case "Mutation.renameMfaMethod":
 		if e.ComplexityRoot.Mutation.RenameMfaMethod == nil {
 			break
@@ -4415,6 +4293,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Organization.AllowLocal(childComplexity), true
+	case "Organization.connectionAlias":
+		if e.ComplexityRoot.Organization.ConnectionAlias == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Organization.ConnectionAlias(childComplexity), true
 	case "Organization.connectionId":
 		if e.ComplexityRoot.Organization.ConnectionID == nil {
 			break
@@ -4445,12 +4329,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Organization.JitEnabled(childComplexity), true
-	case "Organization.keycloakAlias":
-		if e.ComplexityRoot.Organization.KeycloakAlias == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Organization.KeycloakAlias(childComplexity), true
 	case "Organization.orgName":
 		if e.ComplexityRoot.Organization.OrgName == nil {
 			break
@@ -4997,12 +4875,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.DiffVersions(childComplexity, args["fromVersionId"].(string), args["toVersionId"].(string)), true
-	case "Query.directoryGroups":
-		if e.ComplexityRoot.Query.DirectoryGroups == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Query.DirectoryGroups(childComplexity), true
 	case "Query.effectiveGovernance":
 		if e.ComplexityRoot.Query.EffectiveGovernance == nil {
 			break
@@ -5070,17 +4942,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GroupMappings(childComplexity, args["connectionId"].(string)), true
-	case "Query.groupMembers":
-		if e.ComplexityRoot.Query.GroupMembers == nil {
-			break
-		}
-
-		args, err := ec.field_Query_groupMembers_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Query.GroupMembers(childComplexity, args["groupId"].(int)), true
 	case "Query.health":
 		if e.ComplexityRoot.Query.Health == nil {
 			break
@@ -5990,12 +5851,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.SegmentSource.VersionID(childComplexity), true
 
-	case "Session.clientIp":
-		if e.ComplexityRoot.Session.ClientIP == nil {
+	case "Session.active":
+		if e.ComplexityRoot.Session.Active == nil {
 			break
 		}
 
-		return e.ComplexityRoot.Session.ClientIP(childComplexity), true
+		return e.ComplexityRoot.Session.Active(childComplexity), true
+	case "Session.authenticatedAt":
+		if e.ComplexityRoot.Session.AuthenticatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Session.AuthenticatedAt(childComplexity), true
 	case "Session.expiresAt":
 		if e.ComplexityRoot.Session.ExpiresAt == nil {
 			break
@@ -6008,30 +5875,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Session.IssuedAt(childComplexity), true
-	case "Session.lastSeenAt":
-		if e.ComplexityRoot.Session.LastSeenAt == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Session.LastSeenAt(childComplexity), true
-	case "Session.revokeReason":
-		if e.ComplexityRoot.Session.RevokeReason == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Session.RevokeReason(childComplexity), true
-	case "Session.revokedAt":
-		if e.ComplexityRoot.Session.RevokedAt == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Session.RevokedAt(childComplexity), true
-	case "Session.revokedByUserId":
-		if e.ComplexityRoot.Session.RevokedByUserID == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Session.RevokedByUserID(childComplexity), true
 	case "Session.sessionId":
 		if e.ComplexityRoot.Session.SessionID == nil {
 			break
@@ -6362,12 +6205,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.UpcomingApproval.StageName(childComplexity), true
 
-	case "User.adGroups":
-		if e.ComplexityRoot.User.AdGroups == nil {
-			break
-		}
-
-		return e.ComplexityRoot.User.AdGroups(childComplexity), true
 	case "User.deletedAt":
 		if e.ComplexityRoot.User.DeletedAt == nil {
 			break
@@ -6398,6 +6235,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.User.FirstName(childComplexity), true
+	case "User.idpGroups":
+		if e.ComplexityRoot.User.IdpGroups == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.IdpGroups(childComplexity), true
 	case "User.isRoot":
 		if e.ComplexityRoot.User.IsRoot == nil {
 			break
@@ -6489,12 +6332,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.User.Username(childComplexity), true
 
-	case "UserDeletionCounts.adGroups":
-		if e.ComplexityRoot.UserDeletionCounts.AdGroups == nil {
-			break
-		}
-
-		return e.ComplexityRoot.UserDeletionCounts.AdGroups(childComplexity), true
 	case "UserDeletionCounts.breakGlassGrants":
 		if e.ComplexityRoot.UserDeletionCounts.BreakGlassGrants == nil {
 			break
@@ -6507,6 +6344,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.UserDeletionCounts.GroupMemberships(childComplexity), true
+	case "UserDeletionCounts.idpGroups":
+		if e.ComplexityRoot.UserDeletionCounts.IdpGroups == nil {
+			break
+		}
+
+		return e.ComplexityRoot.UserDeletionCounts.IdpGroups(childComplexity), true
 	case "UserDeletionCounts.managedGroups":
 		if e.ComplexityRoot.UserDeletionCounts.ManagedGroups == nil {
 			break
@@ -7523,9 +7366,8 @@ extend type Subscription {
 
 `, BuiltIn: false},
 	{Name: "../../graphql/audit.graphqls", Input: `# --- Audit: query, export, verify ---
-# Backed by modules/audit (AuditService). Caller identity is implicit on the
-# server side (read from per-request claims via context); the gateway still
-# constructs the request as expected. Record ids are surfaced as Strings to
+# Backed by audit (AuditService). The gateway sends the signed-in caller as
+# the requester on every call. Record ids are surfaced as Strings to
 # avoid 32-bit-int truncation in JS clients (the underlying type is int64).
 
 type AuditRecord {
@@ -8323,10 +8165,10 @@ extend type Mutation {
 
 
 `, BuiltIn: false},
-	{Name: "../../graphql/identity.graphqls", Input: `# --- Identity / RBAC (ADM-03) ---
-# Backed by external/identity (IdentityReadService / IdentityAdminService) via
-# the gateway. The caller's identity for ` + "`" + `me` + "`" + ` is sourced from authmw claims at
-# the gateway — never from input. Mutations are admin-gated server-side.
+	{Name: "../../graphql/identity.graphqls", Input: `# --- Identity / RBAC ---
+# Backed by identity (IdentityReadService / IdentityAdminService). The caller
+# for ` + "`" + `me` + "`" + ` is the signed-in user, never taken from input. Mutations are
+# admin-gated at the gateway and again in identity.
 
 type User {
   userId: ID!
@@ -8337,17 +8179,17 @@ type User {
   enabled: Boolean!
   roles: [String!]!              # global elevated roles; reader is implicit and never listed
   scopes: RoleScopes!            # category-scoped author/approver grants
-  directoryGroups: [ID!]!        # platform (directory-synced) group ids
-  adGroups: [String!]!           # AD group names (membership source for #3b)
+  directoryGroups: [ID!]!        # platform group ids the user belongs to
+  idpGroups: [String!]!          # IdP group names; category rules match them
   policyOverrides: [PolicyOverride!]!
-  isRoot: Boolean!               # the protected root site-admin (#19); cannot be disabled/demoted
+  isRoot: Boolean!               # the protected root site-admin; cannot be disabled/demoted
   permissions: [String!]!        # effective permission catalog entries, computed server-side from roles + grants
-  localAccount: Boolean!         # true = created via createLocalUser (lldap-backed); false = federated (SSO)
+  localAccount: Boolean!         # true = a local account created via createLocalUser; false = federated (SSO)
   username: String!              # login username; for SSO/JIT users derived from the email local-part
   needsOnboarding: Boolean!      # true until the user completes first-run onboarding (completeOnboarding); existing pre-feature users are already onboarded (false)
-  managedGroupIds: [ID!]!        # platform group ids this user is a LOCAL group-manager of (identity#22); empty when the user manages none
-  memberships: [GroupMembership!]!  # per-group membership provenance, parallel to directoryGroups; lets the UI mark IdP-synced memberships read-only (identity#22)
-  # Account-level BCP-47 language preference (ui#164), e.g. "en" / "en-US".
+  managedGroupIds: [ID!]!        # platform group ids this user is a LOCAL group-manager of; empty when the user manages none
+  memberships: [GroupMembership!]!  # per-group membership provenance, parallel to directoryGroups; lets the UI mark IdP-synced memberships read-only
+  # Account-level BCP-47 language preference, e.g. "en" / "en-US".
   # Modelled like firstName/lastName — non-null with "" as the unset sentinel
   # (identity stores an empty string for "never chosen"), so the client falls
   # back to its own default rather than treating null specially.
@@ -8362,7 +8204,7 @@ type User {
   mergedIntoUserId: ID
 }
 
-# GroupMembership is one directoryGroups entry with its provenance (identity#22).
+# GroupMembership is one directoryGroups entry with its provenance.
 # groupId matches an entry in User.directoryGroups; source is server-set:
 # "manual" (admin / self-service / group-manager grant) or "idp-sync" (created
 # by the IdP group-mapping path). The My Groups editor renders idp-sync rows
@@ -8397,7 +8239,7 @@ type UserLabel {
   name: String!
   # Secondary identifier for user pickers, so accounts that share a display
   # name are distinguishable — most sharply on the account-merge page, which
-  # deletes the source account irreversibly (gateway#76). NULLABLE and
+  # deletes the source account irreversibly. NULLABLE and
   # additive: existing consumers that select only { id name } are unaffected,
   # and a user that identity holds with no address resolves to null rather
   # than an empty string. Sourced from the user row the underlying identity
@@ -8406,7 +8248,7 @@ type UserLabel {
 }
 
 extend type Query {
-  # me -> IdentityReadService.ResolveClaims/GetUser for the caller (identity sourced from authmw claims).
+  # me -> IdentityReadService.ResolveClaims/GetUser for the caller (identity the signed-in user).
   # users -> IdentityReadService.ListUsersByEmail: search -> email_substring, pageSize -> limit, pageToken/nextPageToken -> the opaque cursor.
   #   includeDeleted -> include_deleted: also return soft-deleted (tombstoned) accounts, marked by
   #   User.deletedAt / User.mergedIntoUserId. Default false. Gated like the whole query (user.manage,
@@ -8444,7 +8286,7 @@ extend type Query {
   previewUserDeletion(userId: ID!): UserDeletionPreview!
   # managedGroupMembers -> IdentityReadService.ListUsersInGroup: the DIRECT
   # members of a platform group, for the group-manager "My Groups" editor
-  # (identity#22). Authorized for site-admins AND for a LOCAL group-manager of
+  #. Authorized for site-admins AND for a LOCAL group-manager of
   # groupId (unlike the site-admin-only ` + "`" + `users` + "`" + ` query). Each User carries
   # memberships[] so the client can mark IdP-synced memberships read-only.
   managedGroupMembers(groupId: ID!): [User!]!
@@ -8469,14 +8311,14 @@ extend type Mutation {
   # mergeAccounts -> IdentityAdminService.MergeAccounts: merges sourceUserId INTO
   # targetUserId (owned policies re-pointed, RACI grants rewritten, acknowledgments
   # moved/deduped, workflow items reassigned, preferences moved) in one auditable
-  # admin op. The actor is bound from authmw claims. confirmPrivileged must be true
+  # admin op. The actor is the signed-in user. confirmPrivileged must be true
   # when the preview's requiresPrivilegedConfirm is set; idempotencyKey makes the
   # op safe to retry (re-run with the same key to resume a PARTIAL). Site-admin only.
   mergeAccounts(sourceUserId: ID!, targetUserId: ID!, confirmPrivileged: Boolean, idempotencyKey: String): MergeAccountsResult!
   addUserToGroup(userId: ID!, groupId: ID!): User!
   removeUserFromGroup(userId: ID!, groupId: ID!): User!
   # grantGroupManager -> IdentityAdminService.GrantGroupManager: makes userId a
-  # LOCAL group-manager of groupId (identity#22). Site-admin only — granting the
+  # LOCAL group-manager of groupId. Site-admin only — granting the
   # manager role is not itself something a group-manager may do; managers only
   # manage membership. Idempotent; returns the refreshed user.
   grantGroupManager(userId: ID!, groupId: ID!): User!
@@ -8489,7 +8331,7 @@ extend type Mutation {
   # transferRoot; the emailed code must then be passed as transferRoot(otp:).
   # Always returns true (anti-enumeration).
   requestStepUpOtp: Boolean!
-  # Moves the protected root site-admin (#19) to another user. Only the current
+  # Moves the protected root site-admin to another user. Only the current
   # root may call this; the target is granted site-admin + admin. Requires the
   # one-time code emailed by requestStepUpOtp, which the backend verifies
   # server-side before transferring — an invalid/absent code transfers nothing.
@@ -8505,7 +8347,7 @@ extend type Mutation {
   # false. Returns the updated user.
   completeOnboarding(acceptTerms: Boolean!, username: String, firstName: String, lastName: String, email: String): User!
   # updateMyProfile lets the CALLING user edit their OWN name and language
-  # preference from account settings (identity#23, ui#164; pairs with ui#137).
+  # preference from account settings.
   # Self-service — bound to the context actor, NOT admin-gated, and it never
   # takes a userId (the admin path for editing OTHER users is
   # updateUserProfile). Every argument is optional: an omitted field is left
@@ -8514,7 +8356,7 @@ extend type Mutation {
   # (whose IdP may not supply a name) and local users alike. Returns the
   # updated user.
   #
-  # locale is the account-level BCP-47 language tag (ui#164). It is VALIDATED at
+  # locale is the account-level BCP-47 language tag. It is VALIDATED at
   # the gateway before it is forwarded: only language[-Script][-REGION] is
   # accepted ("en", "en-US", "zh-Hant-TW", "es-419"); anything else is refused
   # with the coded business error PROFILE_LOCALE_INVALID (1241) and nothing is
@@ -8523,7 +8365,7 @@ extend type Mutation {
   updateMyProfile(firstName: String, lastName: String, locale: String): User!
 }
 
-# Result of reassignUserPolicies (identity#30): the policies whose owner moved,
+# Result of reassignUserPolicies: the policies whose owner moved,
 # plus counts for the owner reassignment and the category RACI author-grant sweep.
 type ReassignUserPoliciesResult {
   reassignedPolicyIds: [ID!]!
@@ -8531,14 +8373,14 @@ type ReassignUserPoliciesResult {
   reassignedAuthorGrants: Int!
 }
 
-# Result of deleteUser (identity#30): the deleted user's id and how many active
+# Result of deleteUser: the deleted user's id and how many active
 # sessions were revoked by the soft-delete.
 type DeleteUserResult {
   userId: ID!
   revokedSessions: Int!
 }
 
-# --- Account merge (identity#31) ---
+# --- Account merge ---
 # The kind of thing a merge preview line item represents.
 enum MergeItemKind { POLICY_OWNER RACI_GRANT ACKNOWLEDGMENT WORKFLOW_ITEM PREFERENCE }
 
@@ -8554,14 +8396,14 @@ type MergeWarning { code: String!  message: String! }
 # Read-only projection of merging sourceUserId INTO targetUserId (previewAccountMerge).
 type AccountMergePreview { sourceUserId: ID!  targetUserId: ID!  counts: MergeCounts!  items: [MergePreviewItem!]!  warnings: [MergeWarning!]!  requiresPrivilegedConfirm: Boolean! }
 
-# --- User deletion preview (identity#51) ---
+# --- User deletion preview ---
 # What a user-deletion preview line is. A delete has no target account, so
 # nothing moves: each kind is blocked, orphaned or removed.
 enum DeletionItemKind {
   PENDING_APPROVAL  # an approval seat the account still holds; blocks the delete
   OWNED_POLICY      # a policy left orphaned for re-assignment
   RACI_GRANT        # a user-subject category RACI rule the delete purges
-  ACCESS_ROW        # a role, permission, group membership, AD group, per-policy override or break-glass grant that is dropped
+  ACCESS_ROW        # a role, permission, group membership, IdP group, per-policy override or break-glass grant that is dropped
   CREDENTIAL        # the account's local-login credential, revoked before the tombstone
 }
 
@@ -8572,7 +8414,7 @@ type UserDeletionPreviewItem { kind: DeletionItemKind!  refId: ID!  label: Strin
 # Per-class counts. managedGroups is the one class the delete does NOT remove:
 # group-manager grants stay behind pointing at the tombstone (see the
 # RETAINED_MANAGED_GROUPS warning).
-type UserDeletionCounts { pendingApprovals: Int!  ownedPolicies: Int!  raciGrants: Int!  roles: Int!  permissions: Int!  groupMemberships: Int!  adGroups: Int!  policyOverrides: Int!  breakGlassGrants: Int!  managedGroups: Int! }
+type UserDeletionCounts { pendingApprovals: Int!  ownedPolicies: Int!  raciGrants: Int!  roles: Int!  permissions: Int!  groupMemberships: Int!  idpGroups: Int!  policyOverrides: Int!  breakGlassGrants: Int!  managedGroups: Int! }
 
 # code is stable: DELETE_BLOCKED_PENDING_APPROVALS | DELETE_BLOCKED_ROOT_PROTECTED |
 # POLICIES_ORPHANED | RACI_GRANTS_REMOVED | RETAINED_MANAGED_GROUPS |
@@ -8596,13 +8438,13 @@ enum MergeStepStatus { PENDING COMPLETED FAILED SKIPPED }
 # The result of one step in a merge operation.
 type MergeStepResult { step: String!  status: MergeStepStatus!  detail: String!  error: String! }
 
-# Result of mergeAccounts (identity#31): the operation id, overall status, the
+# Result of mergeAccounts: the operation id, overall status, the
 # counts actually applied, and the per-step results.
 type MergeAccountsResult { mergeOperationId: ID!  status: MergeStatus!  counts: MergeCounts!  steps: [MergeStepResult!]! }
 
 
-# --- Session management (T12) ---
-# Backed by external/identity (IdentityAdminService / IdentityReadService).
+# --- Session management ---
+# Backed by identity's session API (IdentityAdminService / IdentityReadService).
 # listUserSessions + revokeUserSessions are admin-gated (site-admin).
 # revokeMySessions is self-service (any authenticated user).
 
@@ -8610,21 +8452,11 @@ type Session {
   sessionId: ID!
   userId: ID!
   issuedAt: String!
-  lastSeenAt: String!
+  # When the user last authenticated in this session (sign-in or step-up).
+  authenticatedAt: String!
   expiresAt: String!
-  revokedAt: String
-  revokeReason: String!
-  clientIp: String!
+  active: Boolean!
   userAgent: String!
-  # Who revoked this session (identity#34). Nullable, and null in two distinct
-  # cases: the session is still active, or it was revoked by the hourly sweeper,
-  # which has no human actor — revokeReason "idle"/"max" identifies that case,
-  # and identity's audit trail carries it as "system:session-sweeper".
-  #
-  # identity has written this column since its baseline migration but exposed it
-  # nowhere, so "who revoked this session" was recorded and then unreadable
-  # through every API.
-  revokedByUserId: ID
 }
 
 extend type Query { listUserSessions(userId: ID!): [Session!]! }
@@ -8634,17 +8466,8 @@ extend type Mutation {
   revokeMySessions: Int!
 }
 
-# --- Directory: lldap-backed local user + group management ---
-# Backed by external/identity (IdentityAdminService lldap proxy).
-# All mutations are admin-gated (UserManage/GroupManage) server-side.
-
-type DirectoryGroup { id: Int! name: String! }
-type DirectoryMember { userId: ID! username: String! name: String! email: String! }
-
-extend type Query {
-  directoryGroups: [DirectoryGroup!]!
-  groupMembers(groupId: Int!): [DirectoryMember!]!
-}
+# --- Local accounts ---
+# Admin-gated (user.manage) at the gateway and in identity.
 
 extend type Mutation {
   createLocalUser(username: String!, email: String!, name: String!, password: String!): User!
@@ -8652,20 +8475,15 @@ extend type Mutation {
   # Re-send the welcome-account onboarding email to a user (admin action).
   resendWelcomeEmail(userId: ID!): Boolean!
   updateUserProfile(userId: ID!, name: String!, email: String!): User!
-  createDirectoryGroup(name: String!): DirectoryGroup!
-  renameDirectoryGroup(groupId: Int!, name: String!): DirectoryGroup!
-  deleteDirectoryGroup(groupId: Int!): Boolean!
-  addUserToDirectoryGroup(userId: ID!, groupId: Int!): Boolean!
-  removeUserFromDirectoryGroup(userId: ID!, groupId: Int!): Boolean!
 }
 
 
-# --- Second-factor management (MFA Phase 4) ---
+# --- Second-factor management ---
 # Factor-management surface consumed by the enrollment widget. EVERY operation
 # acts on the AUTHENTICATED CALLER'S OWN factors: the user id is sourced from
 # the session claims server-side — there is deliberately no userId argument —
 # and any authenticated user may manage their own factors (same gate as ` + "`" + `me` + "`" + `).
-# Backed by external/identity (IdentityReadService MFA + WebAuthn RPCs).
+# Backed by identity (IdentityReadService MFA + WebAuthn RPCs).
 
 # One second factor the caller can satisfy. kind: "totp" | "email" | "passkey".
 # enrolledAt: RFC3339 activation time; null for implicit factors (email).
@@ -8745,7 +8563,7 @@ extend type Mutation {
 
 
 # ---------------------------------------------------------------------------
-# Admin MFA factor management (identity#11 + #22 admin counterpart)
+# Admin MFA factor management
 #
 # The ADMIN side of the shared profile Security tab: a site-admin views, resets
 # (removes) and relabels a TARGET user's second factors. Distinct from the
@@ -8791,7 +8609,7 @@ extend type Mutation {
 # audited session acting as a non-privileged target user, assuming that user's
 # roles/RACI with full write capability. The record lives on the admin's
 # server-side BFF session (single source of truth) and auto-expires after 30
-# minutes. See docs/superpowers/specs/2026-08-24-site-admin-impersonation-design.md.
+# minutes.
 type ImpersonationSession {
   # The user being acted as.
   targetUserId: ID!
@@ -9009,20 +8827,19 @@ type Organization {
   orgName: String!
   protocol: String!
   displayName: String!
-  # The connection alias (identity's keycloak_alias column, kept under its
-  # historical name). /auth/sso/start?connection=<alias> matches it against
-  # identity Discover; Keycloak itself is retired.
-  keycloakAlias: String!
+  # The connection alias. /auth/sso/start?connection=<alias> matches it
+  # against identity Discover.
+  connectionAlias: String!
   verified: Boolean!
   testPassed: Boolean!
   enabled: Boolean!
   connectionId: ID!
   # When true (default), a first-seen SSO user is auto-provisioned on sign-in
-  # (identity#26). When false, only a pre-provisioned platform user may sign in
+  #. When false, only a pre-provisioned platform user may sign in
   # via SSO; an unknown SSO email is refused.
   jitEnabled: Boolean!
   # When true, this org's users may sign in with a local password as a fallback
-  # even while SSO is configured (identity#27). Defaults false (SSO-only).
+  # even while SSO is configured. Defaults false (SSO-only).
   allowLocal: Boolean!
 }
 
@@ -9051,8 +8868,8 @@ type GroupMapping {
 type DomainVerification {
   token: String!
   dnsRecordName: String!
-  # Exact TXT value to publish (<prefix>=<token>); the prefix is per-environment
-  # (policy-verify in prod; policy-verify-dev / policy-verify-qa in lower envs).
+  # Exact TXT value to publish (<prefix>=<token>); the prefix is an identity
+  # setting.
   dnsRecordValue: String!
   instructions: String!
 }
@@ -9096,7 +8913,7 @@ extend type Mutation {
   # Mint a DNS TXT verification challenge for a domain. The token is stable by
   # default (re-calling returns the same token). Pass rotate: true to mint a
   # fresh token — the one explicit action that changes it, which also revokes
-  # the domain's prior verified proof (identity#12).
+  # the domain's prior verified proof.
   startDomainVerification(domain: String!, rotate: Boolean): DomainVerification!
   # Check the domain's DNS TXT record against its verification token; returns
   # the updated organization.
@@ -9105,8 +8922,8 @@ extend type Mutation {
   activateOrganization(domain: String!): Organization!
   # Disable an organization's SSO connection.
   disableOrganization(domain: String!): Organization!
-  # Update an organization's per-org login toggles: jitEnabled (identity#26)
-  # and allowLocal (identity#27). Each argument is optional — omit one to leave
+  # Update an organization's per-org login toggles: jitEnabled
+  # and allowLocal. Each argument is optional — omit one to leave
   # it unchanged and flip only the other.
   updateIdPConnection(domain: String!, jitEnabled: Boolean, allowLocal: Boolean): Organization!
   # Change an organization's IdP protocol (SAML<->OIDC). DESTRUCTIVE: it
@@ -9114,7 +8931,7 @@ extend type Mutation {
   # start — clearing both gates (verified + testPassed) and disabling the
   # connection — so the domain must be re-verified and the IdP re-tested before
   # re-activation. config carries the new protocol's IdP settings; secretRef
-  # names the stored client secret (OIDC) (identity#13).
+  # names the stored client secret (OIDC).
   changeOrgProtocol(domain: String!, protocol: String!, config: [KeyValueInput!], secretRef: String): Organization!
   # Remove an organization SSO connection.
   deleteOrganization(domain: String!): Boolean!
@@ -10067,30 +9884,6 @@ func (ec *executionContext) childFields_DigestWindow(ctx context.Context, field 
 	return nil, fmt.Errorf("no field named %q was found under type DigestWindow", field.Name)
 }
 
-func (ec *executionContext) childFields_DirectoryGroup(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-	switch field.Name {
-	case "id":
-		return ec.fieldContext_DirectoryGroup_id(ctx, field)
-	case "name":
-		return ec.fieldContext_DirectoryGroup_name(ctx, field)
-	}
-	return nil, fmt.Errorf("no field named %q was found under type DirectoryGroup", field.Name)
-}
-
-func (ec *executionContext) childFields_DirectoryMember(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-	switch field.Name {
-	case "userId":
-		return ec.fieldContext_DirectoryMember_userId(ctx, field)
-	case "username":
-		return ec.fieldContext_DirectoryMember_username(ctx, field)
-	case "name":
-		return ec.fieldContext_DirectoryMember_name(ctx, field)
-	case "email":
-		return ec.fieldContext_DirectoryMember_email(ctx, field)
-	}
-	return nil, fmt.Errorf("no field named %q was found under type DirectoryMember", field.Name)
-}
-
 func (ec *executionContext) childFields_DomainVerification(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "token":
@@ -10433,8 +10226,8 @@ func (ec *executionContext) childFields_Organization(ctx context.Context, field 
 		return ec.fieldContext_Organization_protocol(ctx, field)
 	case "displayName":
 		return ec.fieldContext_Organization_displayName(ctx, field)
-	case "keycloakAlias":
-		return ec.fieldContext_Organization_keycloakAlias(ctx, field)
+	case "connectionAlias":
+		return ec.fieldContext_Organization_connectionAlias(ctx, field)
 	case "verified":
 		return ec.fieldContext_Organization_verified(ctx, field)
 	case "testPassed":
@@ -10829,20 +10622,14 @@ func (ec *executionContext) childFields_Session(ctx context.Context, field graph
 		return ec.fieldContext_Session_userId(ctx, field)
 	case "issuedAt":
 		return ec.fieldContext_Session_issuedAt(ctx, field)
-	case "lastSeenAt":
-		return ec.fieldContext_Session_lastSeenAt(ctx, field)
+	case "authenticatedAt":
+		return ec.fieldContext_Session_authenticatedAt(ctx, field)
 	case "expiresAt":
 		return ec.fieldContext_Session_expiresAt(ctx, field)
-	case "revokedAt":
-		return ec.fieldContext_Session_revokedAt(ctx, field)
-	case "revokeReason":
-		return ec.fieldContext_Session_revokeReason(ctx, field)
-	case "clientIp":
-		return ec.fieldContext_Session_clientIp(ctx, field)
+	case "active":
+		return ec.fieldContext_Session_active(ctx, field)
 	case "userAgent":
 		return ec.fieldContext_Session_userAgent(ctx, field)
-	case "revokedByUserId":
-		return ec.fieldContext_Session_revokedByUserId(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Session", field.Name)
 }
@@ -11031,8 +10818,8 @@ func (ec *executionContext) childFields_User(ctx context.Context, field graphql.
 		return ec.fieldContext_User_scopes(ctx, field)
 	case "directoryGroups":
 		return ec.fieldContext_User_directoryGroups(ctx, field)
-	case "adGroups":
-		return ec.fieldContext_User_adGroups(ctx, field)
+	case "idpGroups":
+		return ec.fieldContext_User_idpGroups(ctx, field)
 	case "policyOverrides":
 		return ec.fieldContext_User_policyOverrides(ctx, field)
 	case "isRoot":
@@ -11073,8 +10860,8 @@ func (ec *executionContext) childFields_UserDeletionCounts(ctx context.Context, 
 		return ec.fieldContext_UserDeletionCounts_permissions(ctx, field)
 	case "groupMemberships":
 		return ec.fieldContext_UserDeletionCounts_groupMemberships(ctx, field)
-	case "adGroups":
-		return ec.fieldContext_UserDeletionCounts_adGroups(ctx, field)
+	case "idpGroups":
+		return ec.fieldContext_UserDeletionCounts_idpGroups(ctx, field)
 	case "policyOverrides":
 		return ec.fieldContext_UserDeletionCounts_policyOverrides(ctx, field)
 	case "breakGlassGrants":
@@ -11457,28 +11244,6 @@ func (ec *executionContext) field_Mutation_addOrganization_args(ctx context.Cont
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_addUserToDirectoryGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNID2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["userId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
-		func(ctx context.Context, v any) (int, error) {
-			return ec.unmarshalNInt2int(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["groupId"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_addUserToGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11690,20 +11455,6 @@ func (ec *executionContext) field_Mutation_createDefinition_args(ctx context.Con
 		return nil, err
 	}
 	args["input"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_createDirectoryGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "name",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["name"] = arg0
 	return args, nil
 }
 
@@ -11954,20 +11705,6 @@ func (ec *executionContext) field_Mutation_deleteDefinition_args(ctx context.Con
 		return nil, err
 	}
 	args["id"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_deleteDirectoryGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
-		func(ctx context.Context, v any) (int, error) {
-			return ec.unmarshalNInt2int(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["groupId"] = arg0
 	return args, nil
 }
 
@@ -12407,28 +12144,6 @@ func (ec *executionContext) field_Mutation_removeFactor_args(ctx context.Context
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_removeUserFromDirectoryGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNID2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["userId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
-		func(ctx context.Context, v any) (int, error) {
-			return ec.unmarshalNInt2int(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["groupId"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_removeUserFromGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -12514,28 +12229,6 @@ func (ec *executionContext) field_Mutation_renameCategory_args(ctx context.Conte
 		return nil, err
 	}
 	args["slug"] = arg2
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_renameDirectoryGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
-		func(ctx context.Context, v any) (int, error) {
-			return ec.unmarshalNInt2int(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["groupId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "name",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["name"] = arg1
 	return args, nil
 }
 
@@ -14426,20 +14119,6 @@ func (ec *executionContext) field_Query_groupMappings_args(ctx context.Context, 
 		return nil, err
 	}
 	args["connectionId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_groupMembers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "groupId",
-		func(ctx context.Context, v any) (int, error) {
-			return ec.unmarshalNInt2int(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["groupId"] = arg0
 	return args, nil
 }
 
@@ -19055,144 +18734,6 @@ func (ec *executionContext) _DigestWindow_weeklyDow(ctx context.Context, field g
 }
 func (ec *executionContext) fieldContext_DigestWindow_weeklyDow(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("DigestWindow", field, false, false, errors.New("field of type Int does not have child fields"))
-}
-
-func (ec *executionContext) _DirectoryGroup_id(ctx context.Context, field graphql.CollectedField, obj *DirectoryGroup) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DirectoryGroup_id(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
-			return ec.marshalNInt2int(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_DirectoryGroup_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("DirectoryGroup", field, false, false, errors.New("field of type Int does not have child fields"))
-}
-
-func (ec *executionContext) _DirectoryGroup_name(ctx context.Context, field graphql.CollectedField, obj *DirectoryGroup) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DirectoryGroup_name(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Name, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_DirectoryGroup_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("DirectoryGroup", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _DirectoryMember_userId(ctx context.Context, field graphql.CollectedField, obj *DirectoryMember) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DirectoryMember_userId(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.UserID, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNID2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_DirectoryMember_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("DirectoryMember", field, false, false, errors.New("field of type ID does not have child fields"))
-}
-
-func (ec *executionContext) _DirectoryMember_username(ctx context.Context, field graphql.CollectedField, obj *DirectoryMember) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DirectoryMember_username(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Username, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_DirectoryMember_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("DirectoryMember", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _DirectoryMember_name(ctx context.Context, field graphql.CollectedField, obj *DirectoryMember) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DirectoryMember_name(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Name, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_DirectoryMember_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("DirectoryMember", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _DirectoryMember_email(ctx context.Context, field graphql.CollectedField, obj *DirectoryMember) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_DirectoryMember_email(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.Email, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_DirectoryMember_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("DirectoryMember", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _DomainVerification_token(ctx context.Context, field graphql.CollectedField, obj *DomainVerification) (ret graphql.Marshaler) {
@@ -24719,226 +24260,6 @@ func (ec *executionContext) fieldContext_Mutation_updateUserProfile(ctx context.
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_createDirectoryGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_createDirectoryGroup(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().CreateDirectoryGroup(ctx, fc.Args["name"].(string))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *DirectoryGroup) graphql.Marshaler {
-			return ec.marshalNDirectoryGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryGroup(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Mutation_createDirectoryGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_DirectoryGroup(ctx, field)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_createDirectoryGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_renameDirectoryGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_renameDirectoryGroup(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().RenameDirectoryGroup(ctx, fc.Args["groupId"].(int), fc.Args["name"].(string))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *DirectoryGroup) graphql.Marshaler {
-			return ec.marshalNDirectoryGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryGroup(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Mutation_renameDirectoryGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_DirectoryGroup(ctx, field)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_renameDirectoryGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_deleteDirectoryGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_deleteDirectoryGroup(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().DeleteDirectoryGroup(ctx, fc.Args["groupId"].(int))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Mutation_deleteDirectoryGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_deleteDirectoryGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_addUserToDirectoryGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_addUserToDirectoryGroup(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().AddUserToDirectoryGroup(ctx, fc.Args["userId"].(string), fc.Args["groupId"].(int))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Mutation_addUserToDirectoryGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_addUserToDirectoryGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_removeUserFromDirectoryGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_removeUserFromDirectoryGroup(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().RemoveUserFromDirectoryGroup(ctx, fc.Args["userId"].(string), fc.Args["groupId"].(int))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Mutation_removeUserFromDirectoryGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_removeUserFromDirectoryGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_enrollTotpBegin(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27052,16 +26373,16 @@ func (ec *executionContext) fieldContext_Organization_displayName(_ context.Cont
 	return graphql.NewScalarFieldContext("Organization", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
-func (ec *executionContext) _Organization_keycloakAlias(ctx context.Context, field graphql.CollectedField, obj *Organization) (ret graphql.Marshaler) {
+func (ec *executionContext) _Organization_connectionAlias(ctx context.Context, field graphql.CollectedField, obj *Organization) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Organization_keycloakAlias(ctx, field)
+			return ec.fieldContext_Organization_connectionAlias(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.KeycloakAlias, nil
+			return obj.ConnectionAlias, nil
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
@@ -27071,7 +26392,7 @@ func (ec *executionContext) _Organization_keycloakAlias(ctx context.Context, fie
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Organization_keycloakAlias(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Organization_connectionAlias(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Organization", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -30631,82 +29952,6 @@ func (ec *executionContext) fieldContext_Query_listUserSessions(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_directoryGroups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_directoryGroups(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return ec.Resolvers.Query().DirectoryGroups(ctx)
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*DirectoryGroup) graphql.Marshaler {
-			return ec.marshalNDirectoryGroup2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryGroupᚄ(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Query_directoryGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_DirectoryGroup(ctx, field)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_groupMembers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Query_groupMembers(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().GroupMembers(ctx, fc.Args["groupId"].(int))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []*DirectoryMember) graphql.Marshaler {
-			return ec.marshalNDirectoryMember2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryMemberᚄ(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Query_groupMembers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_DirectoryMember(ctx, field)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_groupMembers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_myFactors(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -33424,16 +32669,16 @@ func (ec *executionContext) fieldContext_Session_issuedAt(_ context.Context, fie
 	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
-func (ec *executionContext) _Session_lastSeenAt(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
+func (ec *executionContext) _Session_authenticatedAt(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Session_lastSeenAt(ctx, field)
+			return ec.fieldContext_Session_authenticatedAt(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.LastSeenAt, nil
+			return obj.AuthenticatedAt, nil
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
@@ -33443,7 +32688,7 @@ func (ec *executionContext) _Session_lastSeenAt(ctx context.Context, field graph
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Session_lastSeenAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Session_authenticatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -33470,73 +32715,27 @@ func (ec *executionContext) fieldContext_Session_expiresAt(_ context.Context, fi
 	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
-func (ec *executionContext) _Session_revokedAt(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
+func (ec *executionContext) _Session_active(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Session_revokedAt(ctx, field)
+			return ec.fieldContext_Session_active(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.RevokedAt, nil
+			return obj.Active, nil
 		},
 		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
-			return ec.marshalOString2ᚖstring(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_Session_revokedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _Session_revokeReason(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Session_revokeReason(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.RevokeReason, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Session_revokeReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _Session_clientIp(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Session_clientIp(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.ClientIP, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Session_clientIp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
+func (ec *executionContext) fieldContext_Session_active(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _Session_userAgent(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
@@ -33560,29 +32759,6 @@ func (ec *executionContext) _Session_userAgent(ctx context.Context, field graphq
 }
 func (ec *executionContext) fieldContext_Session_userAgent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _Session_revokedByUserId(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Session_revokedByUserId(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.RevokedByUserID, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
-			return ec.marshalOID2ᚖstring(ctx, selections, v)
-		},
-		true,
-		false,
-	)
-}
-func (ec *executionContext) fieldContext_Session_revokedByUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
 func (ec *executionContext) _SpCertificate_serial(ctx context.Context, field graphql.CollectedField, obj *SpCertificate) (ret graphql.Marshaler) {
@@ -34965,16 +34141,16 @@ func (ec *executionContext) fieldContext_User_directoryGroups(_ context.Context,
 	return graphql.NewScalarFieldContext("User", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
-func (ec *executionContext) _User_adGroups(ctx context.Context, field graphql.CollectedField, obj *User) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_idpGroups(ctx context.Context, field graphql.CollectedField, obj *User) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_User_adGroups(ctx, field)
+			return ec.fieldContext_User_idpGroups(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.AdGroups, nil
+			return obj.IdpGroups, nil
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
@@ -34984,7 +34160,7 @@ func (ec *executionContext) _User_adGroups(ctx context.Context, field graphql.Co
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_User_adGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_User_idpGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("User", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -35397,16 +34573,16 @@ func (ec *executionContext) fieldContext_UserDeletionCounts_groupMemberships(_ c
 	return graphql.NewScalarFieldContext("UserDeletionCounts", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
-func (ec *executionContext) _UserDeletionCounts_adGroups(ctx context.Context, field graphql.CollectedField, obj *UserDeletionCounts) (ret graphql.Marshaler) {
+func (ec *executionContext) _UserDeletionCounts_idpGroups(ctx context.Context, field graphql.CollectedField, obj *UserDeletionCounts) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_UserDeletionCounts_adGroups(ctx, field)
+			return ec.fieldContext_UserDeletionCounts_idpGroups(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.AdGroups, nil
+			return obj.IdpGroups, nil
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
@@ -35416,7 +34592,7 @@ func (ec *executionContext) _UserDeletionCounts_adGroups(ctx context.Context, fi
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_UserDeletionCounts_adGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_UserDeletionCounts_idpGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("UserDeletionCounts", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
@@ -41387,102 +40563,6 @@ func (ec *executionContext) _DigestWindow(ctx context.Context, sel ast.Selection
 	return out
 }
 
-var directoryGroupImplementors = []string{"DirectoryGroup"}
-
-func (ec *executionContext) _DirectoryGroup(ctx context.Context, sel ast.SelectionSet, obj *DirectoryGroup) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, directoryGroupImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferredFieldSet := graphql.NewFieldSet(nil)
-	deferLabelToView := make(map[string]*graphql.FieldSetView)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("DirectoryGroup")
-		case "id":
-			out.Values[i] = ec._DirectoryGroup_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "name":
-			out.Values[i] = ec._DirectoryGroup_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
-
-	ec.ProcessDeferredGroup(graphql.DeferredGroup{
-		Defers:   deferLabelToView,
-		Path:     graphql.GetPath(ctx),
-		FieldSet: deferredFieldSet,
-		Context:  ctx,
-	})
-
-	return out
-}
-
-var directoryMemberImplementors = []string{"DirectoryMember"}
-
-func (ec *executionContext) _DirectoryMember(ctx context.Context, sel ast.SelectionSet, obj *DirectoryMember) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, directoryMemberImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferredFieldSet := graphql.NewFieldSet(nil)
-	deferLabelToView := make(map[string]*graphql.FieldSetView)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("DirectoryMember")
-		case "userId":
-			out.Values[i] = ec._DirectoryMember_userId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "username":
-			out.Values[i] = ec._DirectoryMember_username(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "name":
-			out.Values[i] = ec._DirectoryMember_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "email":
-			out.Values[i] = ec._DirectoryMember_email(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
-
-	ec.ProcessDeferredGroup(graphql.DeferredGroup{
-		Defers:   deferLabelToView,
-		Path:     graphql.GetPath(ctx),
-		FieldSet: deferredFieldSet,
-		Context:  ctx,
-	})
-
-	return out
-}
-
 var domainVerificationImplementors = []string{"DomainVerification"}
 
 func (ec *executionContext) _DomainVerification(ctx context.Context, sel ast.SelectionSet, obj *DomainVerification) graphql.Marshaler {
@@ -43175,41 +42255,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "createDirectoryGroup":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_createDirectoryGroup(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "renameDirectoryGroup":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_renameDirectoryGroup(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "deleteDirectoryGroup":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_deleteDirectoryGroup(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "addUserToDirectoryGroup":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_addUserToDirectoryGroup(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "removeUserFromDirectoryGroup":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_removeUserFromDirectoryGroup(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "enrollTotpBegin":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_enrollTotpBegin(ctx, field)
@@ -43746,8 +42791,8 @@ func (ec *executionContext) _Organization(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "keycloakAlias":
-			out.Values[i] = ec._Organization_keycloakAlias(ctx, field, obj)
+		case "connectionAlias":
+			out.Values[i] = ec._Organization_connectionAlias(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -45640,50 +44685,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "directoryGroups":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_directoryGroups(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "groupMembers":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_groupMembers(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "myFactors":
 			field := field
 
@@ -47144,8 +46145,8 @@ func (ec *executionContext) _Session(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "lastSeenAt":
-			out.Values[i] = ec._Session_lastSeenAt(ctx, field, obj)
+		case "authenticatedAt":
+			out.Values[i] = ec._Session_authenticatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -47154,29 +46155,14 @@ func (ec *executionContext) _Session(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "revokedAt":
-			out.Values[i] = ec._Session_revokedAt(ctx, field, obj)
-			if out.Values[i] == graphql.RequiredNull {
-				out.Invalids++
-			}
-		case "revokeReason":
-			out.Values[i] = ec._Session_revokeReason(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "clientIp":
-			out.Values[i] = ec._Session_clientIp(ctx, field, obj)
+		case "active":
+			out.Values[i] = ec._Session_active(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "userAgent":
 			out.Values[i] = ec._Session_userAgent(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "revokedByUserId":
-			out.Values[i] = ec._Session_revokedByUserId(ctx, field, obj)
-			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -47905,8 +46891,8 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "adGroups":
-			out.Values[i] = ec._User_adGroups(ctx, field, obj)
+		case "idpGroups":
+			out.Values[i] = ec._User_idpGroups(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -48028,8 +47014,8 @@ func (ec *executionContext) _UserDeletionCounts(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "adGroups":
-			out.Values[i] = ec._UserDeletionCounts_adGroups(ctx, field, obj)
+		case "idpGroups":
+			out.Values[i] = ec._UserDeletionCounts_idpGroups(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -49933,62 +48919,6 @@ func (ec *executionContext) marshalNDigestWindow2ᚖgithubᚗcomᚋStewardᚑGRC
 		return graphql.Null
 	}
 	return ec._DigestWindow(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNDirectoryGroup2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryGroup(ctx context.Context, sel ast.SelectionSet, v DirectoryGroup) graphql.Marshaler {
-	return ec._DirectoryGroup(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNDirectoryGroup2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []*DirectoryGroup) graphql.Marshaler {
-	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
-		fc := graphql.GetFieldContext(ctx)
-		fc.Result = &v[i]
-		return ec.marshalNDirectoryGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryGroup(ctx, sel, v[i])
-	})
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNDirectoryGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryGroup(ctx context.Context, sel ast.SelectionSet, v *DirectoryGroup) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._DirectoryGroup(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNDirectoryMember2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryMemberᚄ(ctx context.Context, sel ast.SelectionSet, v []*DirectoryMember) graphql.Marshaler {
-	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
-		fc := graphql.GetFieldContext(ctx)
-		fc.Result = &v[i]
-		return ec.marshalNDirectoryMember2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryMember(ctx, sel, v[i])
-	})
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNDirectoryMember2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDirectoryMember(ctx context.Context, sel ast.SelectionSet, v *DirectoryMember) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._DirectoryMember(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNDocumentType2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDocumentType(ctx context.Context, v any) (DocumentType, error) {

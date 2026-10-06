@@ -360,18 +360,6 @@ type DigestWindow struct {
 	WeeklyDow int `json:"weeklyDow"`
 }
 
-type DirectoryGroup struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-}
-
-type DirectoryMember struct {
-	UserID   string `json:"userId"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-}
-
 type DomainVerification struct {
 	Token          string `json:"token"`
 	DNSRecordName  string `json:"dnsRecordName"`
@@ -601,17 +589,17 @@ type Obligation struct {
 }
 
 type Organization struct {
-	Domain        string `json:"domain"`
-	OrgName       string `json:"orgName"`
-	Protocol      string `json:"protocol"`
-	DisplayName   string `json:"displayName"`
-	KeycloakAlias string `json:"keycloakAlias"`
-	Verified      bool   `json:"verified"`
-	TestPassed    bool   `json:"testPassed"`
-	Enabled       bool   `json:"enabled"`
-	ConnectionID  string `json:"connectionId"`
-	JitEnabled    bool   `json:"jitEnabled"`
-	AllowLocal    bool   `json:"allowLocal"`
+	Domain          string `json:"domain"`
+	OrgName         string `json:"orgName"`
+	Protocol        string `json:"protocol"`
+	DisplayName     string `json:"displayName"`
+	ConnectionAlias string `json:"connectionAlias"`
+	Verified        bool   `json:"verified"`
+	TestPassed      bool   `json:"testPassed"`
+	Enabled         bool   `json:"enabled"`
+	ConnectionID    string `json:"connectionId"`
+	JitEnabled      bool   `json:"jitEnabled"`
+	AllowLocal      bool   `json:"allowLocal"`
 }
 
 type OverdueEntry struct {
@@ -842,16 +830,13 @@ type SegmentSource struct {
 }
 
 type Session struct {
-	SessionID       string  `json:"sessionId"`
-	UserID          string  `json:"userId"`
-	IssuedAt        string  `json:"issuedAt"`
-	LastSeenAt      string  `json:"lastSeenAt"`
-	ExpiresAt       string  `json:"expiresAt"`
-	RevokedAt       *string `json:"revokedAt,omitempty"`
-	RevokeReason    string  `json:"revokeReason"`
-	ClientIP        string  `json:"clientIp"`
-	UserAgent       string  `json:"userAgent"`
-	RevokedByUserID *string `json:"revokedByUserId,omitempty"`
+	SessionID       string `json:"sessionId"`
+	UserID          string `json:"userId"`
+	IssuedAt        string `json:"issuedAt"`
+	AuthenticatedAt string `json:"authenticatedAt"`
+	ExpiresAt       string `json:"expiresAt"`
+	Active          bool   `json:"active"`
+	UserAgent       string `json:"userAgent"`
 }
 
 type SpCertificate struct {
@@ -1017,7 +1002,7 @@ type User struct {
 	Roles            []string           `json:"roles"`
 	Scopes           *RoleScopes        `json:"scopes"`
 	DirectoryGroups  []string           `json:"directoryGroups"`
-	AdGroups         []string           `json:"adGroups"`
+	IdpGroups        []string           `json:"idpGroups"`
 	PolicyOverrides  []*PolicyOverride  `json:"policyOverrides"`
 	IsRoot           bool               `json:"isRoot"`
 	Permissions      []string           `json:"permissions"`
@@ -1038,7 +1023,7 @@ type UserDeletionCounts struct {
 	Roles            int `json:"roles"`
 	Permissions      int `json:"permissions"`
 	GroupMemberships int `json:"groupMemberships"`
-	AdGroups         int `json:"adGroups"`
+	IdpGroups        int `json:"idpGroups"`
 	PolicyOverrides  int `json:"policyOverrides"`
 	BreakGlassGrants int `json:"breakGlassGrants"`
 	ManagedGroups    int `json:"managedGroups"`

@@ -108,16 +108,6 @@ func flushEnv(t *testing.T, log *callLog) (*publishFakePolicy, *raciCategoryClie
 	return pc, gc, ctx
 }
 
-// gatewayStatus is the status the gateway's error presenter sends for err.
-func gatewayStatus(err error) *status.Status {
-	return apperrgrpc.Status(context.Background(), errcodes.Registry(), err, errcodes.CodeInternal, errcodes.Domain)
-}
-
-func gatewayEntry(code int) apperr.Entry {
-	e, _ := errcodes.Registry().Describe(code)
-	return e
-}
-
 func codedInfo(t *testing.T, err error) apperrgrpc.Info {
 	t.Helper()
 	info, ok := apperrgrpc.FromStatus(gatewayStatus(err))

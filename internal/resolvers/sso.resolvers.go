@@ -9,85 +9,84 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 )
 
 // AddOrganization is the resolver for the addOrganization field.
 func (r *mutationResolver) AddOrganization(ctx context.Context, input AddOrganizationInput) (*Organization, error) {
-	panic(fmt.Errorf("not implemented: AddOrganization - addOrganization"))
+	return AddOrganizationResolver(ctx, r.SSOAdminClient, input)
 }
 
 // StartDomainVerification is the resolver for the startDomainVerification field.
 func (r *mutationResolver) StartDomainVerification(ctx context.Context, domain string, rotate *bool) (*DomainVerification, error) {
-	panic(fmt.Errorf("not implemented: StartDomainVerification - startDomainVerification"))
+	return StartDomainVerificationResolver(ctx, r.SSOAdminClient, domain, rotate)
 }
 
 // VerifyDomain is the resolver for the verifyDomain field.
 func (r *mutationResolver) VerifyDomain(ctx context.Context, domain string) (*Organization, error) {
-	panic(fmt.Errorf("not implemented: VerifyDomain - verifyDomain"))
+	return VerifyDomainResolver(ctx, r.SSOAdminClient, domain)
 }
 
 // ActivateOrganization is the resolver for the activateOrganization field.
 func (r *mutationResolver) ActivateOrganization(ctx context.Context, domain string) (*Organization, error) {
-	panic(fmt.Errorf("not implemented: ActivateOrganization - activateOrganization"))
+	return ActivateOrganizationResolver(ctx, r.SSOAdminClient, domain)
 }
 
 // DisableOrganization is the resolver for the disableOrganization field.
 func (r *mutationResolver) DisableOrganization(ctx context.Context, domain string) (*Organization, error) {
-	panic(fmt.Errorf("not implemented: DisableOrganization - disableOrganization"))
+	return DisableOrganizationResolver(ctx, r.SSOAdminClient, domain)
 }
 
 // UpdateIDPConnection is the resolver for the updateIdPConnection field.
 func (r *mutationResolver) UpdateIDPConnection(ctx context.Context, domain string, jitEnabled *bool, allowLocal *bool) (*Organization, error) {
-	panic(fmt.Errorf("not implemented: UpdateIDPConnection - updateIdPConnection"))
+	return UpdateIdPConnectionResolver(ctx, r.SSOAdminClient, domain, jitEnabled, allowLocal)
 }
 
 // ChangeOrgProtocol is the resolver for the changeOrgProtocol field.
 func (r *mutationResolver) ChangeOrgProtocol(ctx context.Context, domain string, protocol string, config []*KeyValueInput, secretRef *string) (*Organization, error) {
-	panic(fmt.Errorf("not implemented: ChangeOrgProtocol - changeOrgProtocol"))
+	return ChangeOrgProtocolResolver(ctx, r.SSOAdminClient, domain, protocol, config, secretRef)
 }
 
 // DeleteOrganization is the resolver for the deleteOrganization field.
 func (r *mutationResolver) DeleteOrganization(ctx context.Context, domain string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteOrganization - deleteOrganization"))
+	return DeleteOrganizationResolver(ctx, r.SSOAdminClient, domain)
 }
 
 // AddGroupMapping is the resolver for the addGroupMapping field.
 func (r *mutationResolver) AddGroupMapping(ctx context.Context, connectionID string, idpGroupClaimValue string, targetGroupID string) (*GroupMapping, error) {
-	panic(fmt.Errorf("not implemented: AddGroupMapping - addGroupMapping"))
+	return AddGroupMappingResolver(ctx, r.SSOAdminClient, connectionID, idpGroupClaimValue, targetGroupID)
 }
 
 // DeleteGroupMapping is the resolver for the deleteGroupMapping field.
 func (r *mutationResolver) DeleteGroupMapping(ctx context.Context, mappingID string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteGroupMapping - deleteGroupMapping"))
+	return DeleteGroupMappingResolver(ctx, r.SSOAdminClient, mappingID)
 }
 
 // ForceRotateSpCertificate is the resolver for the forceRotateSpCertificate field.
 func (r *mutationResolver) ForceRotateSpCertificate(ctx context.Context) (*SpCertificate, error) {
-	panic(fmt.Errorf("not implemented: ForceRotateSpCertificate - forceRotateSpCertificate"))
+	return ForceRotateSpCertificateResolver(ctx, r.SSOAdminClient)
 }
 
 // Organizations is the resolver for the organizations field.
 func (r *queryResolver) Organizations(ctx context.Context) ([]*Organization, error) {
-	panic(fmt.Errorf("not implemented: Organizations - organizations"))
+	return OrganizationsResolver(ctx, r.SSOAdminClient)
 }
 
 // Organization is the resolver for the organization field.
 func (r *queryResolver) Organization(ctx context.Context, domain string) (*Organization, error) {
-	panic(fmt.Errorf("not implemented: Organization - organization"))
+	return OrganizationResolver(ctx, r.SSOAdminClient, domain)
 }
 
 // SpCertificate is the resolver for the spCertificate field.
 func (r *queryResolver) SpCertificate(ctx context.Context) (*SpCertificate, error) {
-	panic(fmt.Errorf("not implemented: SpCertificate - spCertificate"))
+	return SpCertificateResolver(ctx, r.SSOAdminClient)
 }
 
 // SpCertificates is the resolver for the spCertificates field.
 func (r *queryResolver) SpCertificates(ctx context.Context) ([]*SpCertificate, error) {
-	panic(fmt.Errorf("not implemented: SpCertificates - spCertificates"))
+	return SpCertificatesResolver(ctx, r.SSOAdminClient)
 }
 
 // GroupMappings is the resolver for the groupMappings field.
 func (r *queryResolver) GroupMappings(ctx context.Context, connectionID string) ([]*GroupMapping, error) {
-	panic(fmt.Errorf("not implemented: GroupMappings - groupMappings"))
+	return GroupMappingsResolver(ctx, r.SSOAdminClient, connectionID)
 }

@@ -45,7 +45,7 @@ func userToGraphQL(u *identityv1.User) *User {
 		Roles:            append([]string{}, u.GetRoles()...),
 		Scopes:           scopes,
 		DirectoryGroups:  append([]string{}, u.GetGroups()...),
-		AdGroups:         append([]string{}, u.GetIdpGroups()...),
+		IdpGroups:        append([]string{}, u.GetIdpGroups()...),
 		PolicyOverrides:  overrides,
 		IsRoot:           u.GetIsRoot(),
 		Permissions:      userPermissions(u),

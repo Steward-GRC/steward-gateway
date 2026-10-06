@@ -1,7 +1,6 @@
 # --- Audit: query, export, verify ---
-# Backed by modules/audit (AuditService). Caller identity is implicit on the
-# server side (read from per-request claims via context); the gateway still
-# constructs the request as expected. Record ids are surfaced as Strings to
+# Backed by audit (AuditService). The gateway sends the signed-in caller as
+# the requester on every call. Record ids are surfaced as Strings to
 # avoid 32-bit-int truncation in JS clients (the underlying type is int64).
 
 type AuditRecord {

@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 
-	auditv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/audit/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 	"google.golang.org/grpc"
@@ -261,44 +260,4 @@ func (f *fakeWorkflowClient) GetStageEligiblePool(_ context.Context, in *workflo
 		return nil, status.Error(codes.Unimplemented, "GetStageEligiblePool not stubbed")
 	}
 	return f.poolResp, nil
-}
-
-// fakeAuditClient stubs auditv1.AuditServiceClient.
-type fakeAuditClient struct {
-	auditv1.AuditServiceClient
-	queryResp    *auditv1.QueryAuditLogResponse
-	queryErr     error
-	lastQueryReq *auditv1.QueryAuditLogRequest
-
-	exportResp    *auditv1.ExportAuditSegmentResponse
-	exportErr     error
-	lastExportReq *auditv1.ExportAuditSegmentRequest
-
-	verifyResp    *auditv1.VerifyAuditChainResponse
-	verifyErr     error
-	lastVerifyReq *auditv1.VerifyAuditChainRequest
-}
-
-func (f *fakeAuditClient) QueryAuditLog(_ context.Context, in *auditv1.QueryAuditLogRequest, _ ...grpc.CallOption) (*auditv1.QueryAuditLogResponse, error) {
-	f.lastQueryReq = in
-	if f.queryErr != nil {
-		return nil, f.queryErr
-	}
-	return f.queryResp, nil
-}
-
-func (f *fakeAuditClient) ExportAuditSegment(_ context.Context, in *auditv1.ExportAuditSegmentRequest, _ ...grpc.CallOption) (*auditv1.ExportAuditSegmentResponse, error) {
-	f.lastExportReq = in
-	if f.exportErr != nil {
-		return nil, f.exportErr
-	}
-	return f.exportResp, nil
-}
-
-func (f *fakeAuditClient) VerifyAuditChain(_ context.Context, in *auditv1.VerifyAuditChainRequest, _ ...grpc.CallOption) (*auditv1.VerifyAuditChainResponse, error) {
-	f.lastVerifyReq = in
-	if f.verifyErr != nil {
-		return nil, f.verifyErr
-	}
-	return f.verifyResp, nil
 }

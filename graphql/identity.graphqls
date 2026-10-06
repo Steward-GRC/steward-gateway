@@ -1,7 +1,7 @@
-# --- Identity / RBAC (ADM-03) ---
-# Backed by external/identity (IdentityReadService / IdentityAdminService) via
-# the gateway. The caller's identity for `me` is sourced from authmw claims at
-# the gateway — never from input. Mutations are admin-gated server-side.
+# --- Identity / RBAC ---
+# Backed by identity (IdentityReadService / IdentityAdminService). The caller
+# for `me` is the signed-in user, never taken from input. Mutations are
+# admin-gated at the gateway and again in identity.
 
 type User {
   userId: ID!
@@ -12,17 +12,17 @@ type User {
   enabled: Boolean!
   roles: [String!]!              # global elevated roles; reader is implicit and never listed
   scopes: RoleScopes!            # category-scoped author/approver grants
-  directoryGroups: [ID!]!        # platform (directory-synced) group ids
-  adGroups: [String!]!           # AD group names (membership source for #3b)
+  directoryGroups: [ID!]!        # platform group ids the user belongs to
+  idpGroups: [String!]!          # IdP group names; category rules match them
   policyOverrides: [PolicyOverride!]!
-  isRoot: Boolean!               # the protected root site-admin (#19); cannot be disabled/demoted
+  isRoot: Boolean!               # the protected root site-admin; cannot be disabled/demoted
   permissions: [String!]!        # effective permission catalog entries, computed server-side from roles + grants
-  localAccount: Boolean!         # true = created via createLocalUser (lldap-backed); false = federated (SSO)
+  localAccount: Boolean!         # true = a local account created via createLocalUser; false = federated (SSO)
   username: String!              # login username; for SSO/JIT users derived from the email local-part
   needsOnboarding: Boolean!      # true until the user completes first-run onboarding (completeOnboarding); existing pre-feature users are already onboarded (false)
-  managedGroupIds: [ID!]!        # platform group ids this user is a LOCAL group-manager of (identity#22); empty when the user manages none
-  memberships: [GroupMembership!]!  # per-group membership provenance, parallel to directoryGroups; lets the UI mark IdP-synced memberships read-only (identity#22)
-  # Account-level BCP-47 language preference (ui#164), e.g. "en" / "en-US".
+  managedGroupIds: [ID!]!        # platform group ids this user is a LOCAL group-manager of; empty when the user manages none
+  memberships: [GroupMembership!]!  # per-group membership provenance, parallel to directoryGroups; lets the UI mark IdP-synced memberships read-only
+  # Account-level BCP-47 language preference, e.g. "en" / "en-US".
   # Modelled like firstName/lastName — non-null with "" as the unset sentinel
   # (identity stores an empty string for "never chosen"), so the client falls
   # back to its own default rather than treating null specially.
@@ -37,7 +37,7 @@ type User {
   mergedIntoUserId: ID
 }
 
-# GroupMembership is one directoryGroups entry with its provenance (identity#22).
+# GroupMembership is one directoryGroups entry with its provenance.
 # groupId matches an entry in User.directoryGroups; source is server-set:
 # "manual" (admin / self-service / group-manager grant) or "idp-sync" (created
 # by the IdP group-mapping path). The My Groups editor renders idp-sync rows
@@ -72,7 +72,7 @@ type UserLabel {
   name: String!
   # Secondary identifier for user pickers, so accounts that share a display
   # name are distinguishable — most sharply on the account-merge page, which
-  # deletes the source account irreversibly (gateway#76). NULLABLE and
+  # deletes the source account irreversibly. NULLABLE and
   # additive: existing consumers that select only { id name } are unaffected,
   # and a user that identity holds with no address resolves to null rather
   # than an empty string. Sourced from the user row the underlying identity
@@ -81,7 +81,7 @@ type UserLabel {
 }
 
 extend type Query {
-  # me -> IdentityReadService.ResolveClaims/GetUser for the caller (identity sourced from authmw claims).
+  # me -> IdentityReadService.ResolveClaims/GetUser for the caller (identity the signed-in user).
   # users -> IdentityReadService.ListUsersByEmail: search -> email_substring, pageSize -> limit, pageToken/nextPageToken -> the opaque cursor.
   #   includeDeleted -> include_deleted: also return soft-deleted (tombstoned) accounts, marked by
   #   User.deletedAt / User.mergedIntoUserId. Default false. Gated like the whole query (user.manage,
@@ -119,7 +119,7 @@ extend type Query {
   previewUserDeletion(userId: ID!): UserDeletionPreview!
   # managedGroupMembers -> IdentityReadService.ListUsersInGroup: the DIRECT
   # members of a platform group, for the group-manager "My Groups" editor
-  # (identity#22). Authorized for site-admins AND for a LOCAL group-manager of
+  #. Authorized for site-admins AND for a LOCAL group-manager of
   # groupId (unlike the site-admin-only `users` query). Each User carries
   # memberships[] so the client can mark IdP-synced memberships read-only.
   managedGroupMembers(groupId: ID!): [User!]!
@@ -144,14 +144,14 @@ extend type Mutation {
   # mergeAccounts -> IdentityAdminService.MergeAccounts: merges sourceUserId INTO
   # targetUserId (owned policies re-pointed, RACI grants rewritten, acknowledgments
   # moved/deduped, workflow items reassigned, preferences moved) in one auditable
-  # admin op. The actor is bound from authmw claims. confirmPrivileged must be true
+  # admin op. The actor is the signed-in user. confirmPrivileged must be true
   # when the preview's requiresPrivilegedConfirm is set; idempotencyKey makes the
   # op safe to retry (re-run with the same key to resume a PARTIAL). Site-admin only.
   mergeAccounts(sourceUserId: ID!, targetUserId: ID!, confirmPrivileged: Boolean, idempotencyKey: String): MergeAccountsResult!
   addUserToGroup(userId: ID!, groupId: ID!): User!
   removeUserFromGroup(userId: ID!, groupId: ID!): User!
   # grantGroupManager -> IdentityAdminService.GrantGroupManager: makes userId a
-  # LOCAL group-manager of groupId (identity#22). Site-admin only — granting the
+  # LOCAL group-manager of groupId. Site-admin only — granting the
   # manager role is not itself something a group-manager may do; managers only
   # manage membership. Idempotent; returns the refreshed user.
   grantGroupManager(userId: ID!, groupId: ID!): User!
@@ -164,7 +164,7 @@ extend type Mutation {
   # transferRoot; the emailed code must then be passed as transferRoot(otp:).
   # Always returns true (anti-enumeration).
   requestStepUpOtp: Boolean!
-  # Moves the protected root site-admin (#19) to another user. Only the current
+  # Moves the protected root site-admin to another user. Only the current
   # root may call this; the target is granted site-admin + admin. Requires the
   # one-time code emailed by requestStepUpOtp, which the backend verifies
   # server-side before transferring — an invalid/absent code transfers nothing.
@@ -180,7 +180,7 @@ extend type Mutation {
   # false. Returns the updated user.
   completeOnboarding(acceptTerms: Boolean!, username: String, firstName: String, lastName: String, email: String): User!
   # updateMyProfile lets the CALLING user edit their OWN name and language
-  # preference from account settings (identity#23, ui#164; pairs with ui#137).
+  # preference from account settings.
   # Self-service — bound to the context actor, NOT admin-gated, and it never
   # takes a userId (the admin path for editing OTHER users is
   # updateUserProfile). Every argument is optional: an omitted field is left
@@ -189,7 +189,7 @@ extend type Mutation {
   # (whose IdP may not supply a name) and local users alike. Returns the
   # updated user.
   #
-  # locale is the account-level BCP-47 language tag (ui#164). It is VALIDATED at
+  # locale is the account-level BCP-47 language tag. It is VALIDATED at
   # the gateway before it is forwarded: only language[-Script][-REGION] is
   # accepted ("en", "en-US", "zh-Hant-TW", "es-419"); anything else is refused
   # with the coded business error PROFILE_LOCALE_INVALID (1241) and nothing is
@@ -198,7 +198,7 @@ extend type Mutation {
   updateMyProfile(firstName: String, lastName: String, locale: String): User!
 }
 
-# Result of reassignUserPolicies (identity#30): the policies whose owner moved,
+# Result of reassignUserPolicies: the policies whose owner moved,
 # plus counts for the owner reassignment and the category RACI author-grant sweep.
 type ReassignUserPoliciesResult {
   reassignedPolicyIds: [ID!]!
@@ -206,14 +206,14 @@ type ReassignUserPoliciesResult {
   reassignedAuthorGrants: Int!
 }
 
-# Result of deleteUser (identity#30): the deleted user's id and how many active
+# Result of deleteUser: the deleted user's id and how many active
 # sessions were revoked by the soft-delete.
 type DeleteUserResult {
   userId: ID!
   revokedSessions: Int!
 }
 
-# --- Account merge (identity#31) ---
+# --- Account merge ---
 # The kind of thing a merge preview line item represents.
 enum MergeItemKind { POLICY_OWNER RACI_GRANT ACKNOWLEDGMENT WORKFLOW_ITEM PREFERENCE }
 
@@ -229,14 +229,14 @@ type MergeWarning { code: String!  message: String! }
 # Read-only projection of merging sourceUserId INTO targetUserId (previewAccountMerge).
 type AccountMergePreview { sourceUserId: ID!  targetUserId: ID!  counts: MergeCounts!  items: [MergePreviewItem!]!  warnings: [MergeWarning!]!  requiresPrivilegedConfirm: Boolean! }
 
-# --- User deletion preview (identity#51) ---
+# --- User deletion preview ---
 # What a user-deletion preview line is. A delete has no target account, so
 # nothing moves: each kind is blocked, orphaned or removed.
 enum DeletionItemKind {
   PENDING_APPROVAL  # an approval seat the account still holds; blocks the delete
   OWNED_POLICY      # a policy left orphaned for re-assignment
   RACI_GRANT        # a user-subject category RACI rule the delete purges
-  ACCESS_ROW        # a role, permission, group membership, AD group, per-policy override or break-glass grant that is dropped
+  ACCESS_ROW        # a role, permission, group membership, IdP group, per-policy override or break-glass grant that is dropped
   CREDENTIAL        # the account's local-login credential, revoked before the tombstone
 }
 
@@ -247,7 +247,7 @@ type UserDeletionPreviewItem { kind: DeletionItemKind!  refId: ID!  label: Strin
 # Per-class counts. managedGroups is the one class the delete does NOT remove:
 # group-manager grants stay behind pointing at the tombstone (see the
 # RETAINED_MANAGED_GROUPS warning).
-type UserDeletionCounts { pendingApprovals: Int!  ownedPolicies: Int!  raciGrants: Int!  roles: Int!  permissions: Int!  groupMemberships: Int!  adGroups: Int!  policyOverrides: Int!  breakGlassGrants: Int!  managedGroups: Int! }
+type UserDeletionCounts { pendingApprovals: Int!  ownedPolicies: Int!  raciGrants: Int!  roles: Int!  permissions: Int!  groupMemberships: Int!  idpGroups: Int!  policyOverrides: Int!  breakGlassGrants: Int!  managedGroups: Int! }
 
 # code is stable: DELETE_BLOCKED_PENDING_APPROVALS | DELETE_BLOCKED_ROOT_PROTECTED |
 # POLICIES_ORPHANED | RACI_GRANTS_REMOVED | RETAINED_MANAGED_GROUPS |
@@ -271,13 +271,13 @@ enum MergeStepStatus { PENDING COMPLETED FAILED SKIPPED }
 # The result of one step in a merge operation.
 type MergeStepResult { step: String!  status: MergeStepStatus!  detail: String!  error: String! }
 
-# Result of mergeAccounts (identity#31): the operation id, overall status, the
+# Result of mergeAccounts: the operation id, overall status, the
 # counts actually applied, and the per-step results.
 type MergeAccountsResult { mergeOperationId: ID!  status: MergeStatus!  counts: MergeCounts!  steps: [MergeStepResult!]! }
 
 
-# --- Session management (T12) ---
-# Backed by external/identity (IdentityAdminService / IdentityReadService).
+# --- Session management ---
+# Backed by identity's session API (IdentityAdminService / IdentityReadService).
 # listUserSessions + revokeUserSessions are admin-gated (site-admin).
 # revokeMySessions is self-service (any authenticated user).
 
@@ -285,21 +285,11 @@ type Session {
   sessionId: ID!
   userId: ID!
   issuedAt: String!
-  lastSeenAt: String!
+  # When the user last authenticated in this session (sign-in or step-up).
+  authenticatedAt: String!
   expiresAt: String!
-  revokedAt: String
-  revokeReason: String!
-  clientIp: String!
+  active: Boolean!
   userAgent: String!
-  # Who revoked this session (identity#34). Nullable, and null in two distinct
-  # cases: the session is still active, or it was revoked by the hourly sweeper,
-  # which has no human actor — revokeReason "idle"/"max" identifies that case,
-  # and identity's audit trail carries it as "system:session-sweeper".
-  #
-  # identity has written this column since its baseline migration but exposed it
-  # nowhere, so "who revoked this session" was recorded and then unreadable
-  # through every API.
-  revokedByUserId: ID
 }
 
 extend type Query { listUserSessions(userId: ID!): [Session!]! }
@@ -309,17 +299,8 @@ extend type Mutation {
   revokeMySessions: Int!
 }
 
-# --- Directory: lldap-backed local user + group management ---
-# Backed by external/identity (IdentityAdminService lldap proxy).
-# All mutations are admin-gated (UserManage/GroupManage) server-side.
-
-type DirectoryGroup { id: Int! name: String! }
-type DirectoryMember { userId: ID! username: String! name: String! email: String! }
-
-extend type Query {
-  directoryGroups: [DirectoryGroup!]!
-  groupMembers(groupId: Int!): [DirectoryMember!]!
-}
+# --- Local accounts ---
+# Admin-gated (user.manage) at the gateway and in identity.
 
 extend type Mutation {
   createLocalUser(username: String!, email: String!, name: String!, password: String!): User!
@@ -327,20 +308,15 @@ extend type Mutation {
   # Re-send the welcome-account onboarding email to a user (admin action).
   resendWelcomeEmail(userId: ID!): Boolean!
   updateUserProfile(userId: ID!, name: String!, email: String!): User!
-  createDirectoryGroup(name: String!): DirectoryGroup!
-  renameDirectoryGroup(groupId: Int!, name: String!): DirectoryGroup!
-  deleteDirectoryGroup(groupId: Int!): Boolean!
-  addUserToDirectoryGroup(userId: ID!, groupId: Int!): Boolean!
-  removeUserFromDirectoryGroup(userId: ID!, groupId: Int!): Boolean!
 }
 
 
-# --- Second-factor management (MFA Phase 4) ---
+# --- Second-factor management ---
 # Factor-management surface consumed by the enrollment widget. EVERY operation
 # acts on the AUTHENTICATED CALLER'S OWN factors: the user id is sourced from
 # the session claims server-side — there is deliberately no userId argument —
 # and any authenticated user may manage their own factors (same gate as `me`).
-# Backed by external/identity (IdentityReadService MFA + WebAuthn RPCs).
+# Backed by identity (IdentityReadService MFA + WebAuthn RPCs).
 
 # One second factor the caller can satisfy. kind: "totp" | "email" | "passkey".
 # enrolledAt: RFC3339 activation time; null for implicit factors (email).
@@ -420,7 +396,7 @@ extend type Mutation {
 
 
 # ---------------------------------------------------------------------------
-# Admin MFA factor management (identity#11 + #22 admin counterpart)
+# Admin MFA factor management
 #
 # The ADMIN side of the shared profile Security tab: a site-admin views, resets
 # (removes) and relabels a TARGET user's second factors. Distinct from the
@@ -466,7 +442,7 @@ extend type Mutation {
 # audited session acting as a non-privileged target user, assuming that user's
 # roles/RACI with full write capability. The record lives on the admin's
 # server-side BFF session (single source of truth) and auto-expires after 30
-# minutes. See docs/superpowers/specs/2026-08-24-site-admin-impersonation-design.md.
+# minutes.
 type ImpersonationSession {
   # The user being acted as.
   targetUserId: ID!

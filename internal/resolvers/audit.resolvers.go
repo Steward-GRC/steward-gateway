@@ -9,20 +9,19 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 )
 
 // AuditLog is the resolver for the auditLog field.
 func (r *queryResolver) AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) (*AuditQueryPage, error) {
-	panic(fmt.Errorf("not implemented: AuditLog - auditLog"))
+	return QueryAuditLogResolver(ctx, r.AuditClient, r.IdentityClient, r.CategoryClient, r.PolicyClient, r.TemplateClient, tier, groupID, actorUserID, subject, pageSize, pageToken)
 }
 
 // AuditSegment is the resolver for the auditSegment field.
 func (r *queryResolver) AuditSegment(ctx context.Context, fromRecordID string, toRecordID string) (*AuditSegment, error) {
-	panic(fmt.Errorf("not implemented: AuditSegment - auditSegment"))
+	return ExportAuditSegmentResolver(ctx, r.AuditClient, fromRecordID, toRecordID)
 }
 
 // VerifyAuditChain is the resolver for the verifyAuditChain field.
 func (r *queryResolver) VerifyAuditChain(ctx context.Context, fromRecordID string, toRecordID string) (*AuditChainVerification, error) {
-	panic(fmt.Errorf("not implemented: VerifyAuditChain - verifyAuditChain"))
+	return VerifyAuditChainResolver(ctx, r.AuditClient, fromRecordID, toRecordID)
 }

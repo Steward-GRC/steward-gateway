@@ -614,7 +614,7 @@ func TestViewerIsApprover(t *testing.T) {
 		}
 	})
 
-	// (e) group-rule approve matched via AdGroups → true.
+	// (e) group-rule approve matched via IdP groups → true.
 	t.Run("group_rule_via_ad_groups", func(t *testing.T) {
 		gc := makeGC([]*corev1.CategoryRule{
 			{
@@ -632,7 +632,7 @@ func TestViewerIsApprover(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if !got {
-			t.Error("expected true (group rule via AdGroups), got false")
+			t.Error("expected true (group rule via IdP groups), got false")
 		}
 	})
 }

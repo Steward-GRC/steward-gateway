@@ -19,8 +19,8 @@ import (
 // label is decoration and must never fail the page.
 //
 // Subjects are the "type:id" strings the audit writers emit: user, policy,
-// policy_version, category (core), group (identity), template and
-// template_version. Anything else is returned unchanged.
+// policy_version, category (also "group", the original name of a core
+// category), template and template_version. Anything else is returned unchanged.
 type labelResolver struct {
 	identity   identityv1.IdentityReadServiceClient
 	categories corev1.CategoryServiceClient
@@ -30,7 +30,6 @@ type labelResolver struct {
 	userNames    map[string]string
 	userEmails   map[string]string
 	categoryName map[string]string
-	groupName    map[string]string
 	subjects     map[string]string
 	polByVer     map[string]string
 	polLabel     map[string]string
@@ -54,7 +53,6 @@ func newLabelResolver(
 		userNames:    map[string]string{},
 		userEmails:   map[string]string{},
 		categoryName: map[string]string{},
-		groupName:    map[string]string{},
 		subjects:     map[string]string{},
 		polByVer:     map[string]string{},
 		polLabel:     map[string]string{},
@@ -106,22 +104,6 @@ func (l *labelResolver) categoryNameByID(ctx context.Context, id string) string 
 		name = resp.GetCategory().GetName()
 	}
 	l.categoryName[id] = name
-	return name
-}
-
-// groupNameByID resolves an identity group id to its name; "" on a miss.
-func (l *labelResolver) groupNameByID(ctx context.Context, id string) string {
-	if id == "" || l.identity == nil {
-		return ""
-	}
-	if v, ok := l.groupName[id]; ok {
-		return v
-	}
-	name := ""
-	if resp, err := l.identity.GetGroup(ctx, &identityv1.GetGroupRequest{GroupId: id}); err == nil {
-		name = resp.GetGroup().GetName()
-	}
-	l.groupName[id] = name
 	return name
 }
 
@@ -298,10 +280,8 @@ func (l *labelResolver) resolveSubject(ctx context.Context, subject string) stri
 		return base + " (version)"
 	case "policy":
 		return l.policyLabelByID(ctx, id)
-	case "category":
+	case "category", "group":
 		return l.categoryNameByID(ctx, id)
-	case "group":
-		return l.groupNameByID(ctx, id)
 	case "template_version":
 		return l.templateVersionLabel(ctx, id)
 	case "template":

@@ -23,6 +23,10 @@ type Session struct {
 	ExpiresAt    time.Time `json:"expires_at"`
 	CSRFToken    string    `json:"csrf_token"`
 	UserID       string    `json:"user_id"`
+	// KratosSessionID is the Kratos session behind AccessToken, passed to
+	// identity on each request so it can record the session as used. Empty
+	// for an SSO sign-in, which has no Kratos session.
+	KratosSessionID string `json:"kratos_session_id,omitempty"`
 	// MFAVerified records whether this session was issued after a verified
 	// second factor (2-step login). Server-side marker only — not exposed on
 	// any endpoint yet; authorization may distinguish on it later.

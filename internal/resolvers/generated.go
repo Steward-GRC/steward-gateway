@@ -1118,6 +1118,7 @@ type ComplexityRoot struct {
 		ClientIP        func(childComplexity int) int
 		ExpiresAt       func(childComplexity int) int
 		IssuedAt        func(childComplexity int) int
+		LastSeenAt      func(childComplexity int) int
 		SessionID       func(childComplexity int) int
 		UserAgent       func(childComplexity int) int
 		UserID          func(childComplexity int) int
@@ -7123,6 +7124,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Session.IssuedAt(childComplexity), true
+	case "Session.lastSeenAt":
+		if e.ComplexityRoot.Session.LastSeenAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Session.LastSeenAt(childComplexity), true
 	case "Session.sessionId":
 		if e.ComplexityRoot.Session.SessionID == nil {
 			break
@@ -9857,6 +9864,9 @@ type Session {
   # The IP address of the device that last used the session; null when Kratos
   # recorded none for it.
   clientIp: String
+  # When the session was last used for a signed-in request (RFC 3339, to within
+  # identity's throttle window); null when it was never seen.
+  lastSeenAt: String
 }
 
 extend type Query { listUserSessions(userId: ID!): [Session!]! }
@@ -12650,6 +12660,8 @@ func (ec *executionContext) childFields_Session(ctx context.Context, field graph
 		return ec.fieldContext_Session_userAgent(ctx, field)
 	case "clientIp":
 		return ec.fieldContext_Session_clientIp(ctx, field)
+	case "lastSeenAt":
+		return ec.fieldContext_Session_lastSeenAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Session", field.Name)
 }
@@ -39281,6 +39293,29 @@ func (ec *executionContext) fieldContext_Session_clientIp(_ context.Context, fie
 	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _Session_lastSeenAt(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Session_lastSeenAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastSeenAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Session_lastSeenAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _SpCertificate_serial(ctx context.Context, field graphql.CollectedField, obj *SpCertificate) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -54850,6 +54885,11 @@ func (ec *executionContext) _Session(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "clientIp":
 			out.Values[i] = ec._Session_clientIp(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "lastSeenAt":
+			out.Values[i] = ec._Session_lastSeenAt(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}

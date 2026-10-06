@@ -298,6 +298,9 @@ type Session {
   # The IP address of the device that last used the session; null when Kratos
   # recorded none for it.
   clientIp: String
+  # When the session was last used for a signed-in request (RFC 3339, to within
+  # identity's throttle window); null when it was never seen.
+  lastSeenAt: String
 }
 
 extend type Query { listUserSessions(userId: ID!): [Session!]! }

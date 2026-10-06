@@ -1,5 +1,3 @@
-// Copyright 2026 The Steward Authors
-// SPDX-License-Identifier: Apache-2.0
 package resolvers
 
 // This file will be automatically regenerated based on the schema, any resolver
@@ -9,80 +7,79 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 )
 
 // SubmitWorkflow is the resolver for the submitWorkflow field.
-func (r *mutationResolver) SubmitWorkflow(ctx context.Context, policyVersionID string, policyID string, groupID string, ancestorGroupIds []string) (*WorkflowSubmitResult, error) {
-	panic(fmt.Errorf("not implemented: SubmitWorkflow - submitWorkflow"))
+func (r *mutationResolver) SubmitWorkflow(ctx context.Context, policyVersionID string, policyID string, categoryID string, ancestorCategoryIds []string) (*WorkflowSubmitResult, error) {
+	return SubmitWorkflowResolver(ctx, r.WorkflowClient, r.CategoryClient, r.PolicyClient, policyVersionID, policyID, categoryID, ancestorCategoryIds)
 }
 
 // SignalWorkflow is the resolver for the signalWorkflow field.
 func (r *mutationResolver) SignalWorkflow(ctx context.Context, policyVersionID string, runID string, taskID string, signal SignalType, comment string) (bool, error) {
-	panic(fmt.Errorf("not implemented: SignalWorkflow - signalWorkflow"))
+	return SignalWorkflowResolver(ctx, r.WorkflowClient, policyVersionID, runID, taskID, signal, comment)
 }
 
 // SwapAssignee is the resolver for the swapAssignee field.
 func (r *mutationResolver) SwapAssignee(ctx context.Context, input SwapAssigneeInput) (*SwapAssigneeResult, error) {
-	panic(fmt.Errorf("not implemented: SwapAssignee - swapAssignee"))
+	return SwapAssigneeResolver(ctx, r.WorkflowClient, input)
 }
 
 // BulkDecide is the resolver for the bulkDecide field.
 func (r *mutationResolver) BulkDecide(ctx context.Context, input BulkDecideInput) (*BulkDecideResult, error) {
-	panic(fmt.Errorf("not implemented: BulkDecide - bulkDecide"))
+	return BulkDecideResolver(ctx, r.WorkflowClient, input)
 }
 
 // CreateWorkflowDef is the resolver for the createWorkflowDef field.
 func (r *mutationResolver) CreateWorkflowDef(ctx context.Context, name string, description *string, stages []*WorkflowStageInput) (*WorkflowDef, error) {
-	panic(fmt.Errorf("not implemented: CreateWorkflowDef - createWorkflowDef"))
+	return CreateWorkflowDefResolver(ctx, r.WorkflowClient, name, description, stages)
 }
 
 // UpdateWorkflowDef is the resolver for the updateWorkflowDef field.
 func (r *mutationResolver) UpdateWorkflowDef(ctx context.Context, id string, name string, description *string, stages []*WorkflowStageInput) (*WorkflowDef, error) {
-	panic(fmt.Errorf("not implemented: UpdateWorkflowDef - updateWorkflowDef"))
+	return UpdateWorkflowDefResolver(ctx, r.WorkflowClient, id, name, description, stages)
 }
 
 // ArchiveWorkflowDef is the resolver for the archiveWorkflowDef field.
 func (r *mutationResolver) ArchiveWorkflowDef(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: ArchiveWorkflowDef - archiveWorkflowDef"))
+	return ArchiveWorkflowDefResolver(ctx, r.WorkflowClient, id)
 }
 
 // WorkflowStatus is the resolver for the workflowStatus field.
 func (r *queryResolver) WorkflowStatus(ctx context.Context, policyVersionID string) (*WorkflowStatus, error) {
-	panic(fmt.Errorf("not implemented: WorkflowStatus - workflowStatus"))
+	return WorkflowStatusResolver(ctx, r.WorkflowClient, r.IdentityClient, r.CategoryClient, policyVersionID)
 }
 
 // PendingTasks is the resolver for the pendingTasks field.
 func (r *queryResolver) PendingTasks(ctx context.Context) ([]*PendingTask, error) {
-	panic(fmt.Errorf("not implemented: PendingTasks - pendingTasks"))
+	return PendingTasksResolver(ctx, r.WorkflowClient, r.PolicyClient)
 }
 
 // UpcomingApprovals is the resolver for the upcomingApprovals field.
 func (r *queryResolver) UpcomingApprovals(ctx context.Context) ([]*UpcomingApproval, error) {
-	panic(fmt.Errorf("not implemented: UpcomingApprovals - upcomingApprovals"))
+	return UpcomingApprovalsResolver(ctx, r.WorkflowClient, r.PolicyClient)
 }
 
 // EffectiveWorkflow is the resolver for the effectiveWorkflow field.
 func (r *queryResolver) EffectiveWorkflow(ctx context.Context, policyID string) (*EffectiveWorkflow, error) {
-	panic(fmt.Errorf("not implemented: EffectiveWorkflow - effectiveWorkflow"))
+	return ResolveEffectiveWorkflowResolver(ctx, r.PolicyClient, r.CategoryClient, r.WorkflowClient, policyID)
 }
 
 // AssignmentHistory is the resolver for the assignmentHistory field.
 func (r *queryResolver) AssignmentHistory(ctx context.Context, policyVersionID string, stageIndex int) ([]*AssignmentHistoryEntry, error) {
-	panic(fmt.Errorf("not implemented: AssignmentHistory - assignmentHistory"))
+	return AssignmentHistoryResolver(ctx, r.WorkflowClient, r.IdentityClient, r.CategoryClient, policyVersionID, stageIndex)
 }
 
 // StageEligibleAssignees is the resolver for the stageEligibleAssignees field.
 func (r *queryResolver) StageEligibleAssignees(ctx context.Context, policyVersionID string, stageIndex int) (*StageEligibleAssignees, error) {
-	panic(fmt.Errorf("not implemented: StageEligibleAssignees - stageEligibleAssignees"))
+	return StageEligibleAssigneesResolver(ctx, r.WorkflowClient, r.IdentityClient, policyVersionID, stageIndex)
 }
 
 // WorkflowDefs is the resolver for the workflowDefs field.
 func (r *queryResolver) WorkflowDefs(ctx context.Context) ([]*WorkflowDef, error) {
-	panic(fmt.Errorf("not implemented: WorkflowDefs - workflowDefs"))
+	return WorkflowDefsResolver(ctx, r.WorkflowClient)
 }
 
 // WorkflowDef is the resolver for the workflowDef field.
 func (r *queryResolver) WorkflowDef(ctx context.Context, id string) (*WorkflowDef, error) {
-	panic(fmt.Errorf("not implemented: WorkflowDef - workflowDef"))
+	return WorkflowDefResolver(ctx, r.WorkflowClient, id)
 }

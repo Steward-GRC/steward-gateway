@@ -11,6 +11,7 @@ import (
 	auditv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/audit/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
 	"google.golang.org/grpc"
 )
@@ -263,5 +264,72 @@ func TestAuditLogPolicySubjectsAreDocTypeAware(t *testing.T) {
 		if got == nil || *got != w {
 			t.Fatalf("record %d subjectLabel: got %v, want %q", i+1, got, w)
 		}
+	}
+}
+
+func TestAssignmentHistoryResolvesActorNames(t *testing.T) {
+	identity := &labelIdentityFake{users: map[string]*identityv1.User{
+		"u1":    {Id: "u1", Name: "Alice Example"},
+		"u2":    {Id: "u2", Name: "Grace Hopper"},
+		"admin": {Id: "admin", Name: "Root Admin"},
+	}}
+	c := &fakeWorkflowClient{
+		historyResp: &workflowv1.GetAssignmentHistoryResponse{
+			Entries: []*workflowv1.AssignmentHistoryEntry{
+				{Id: 42, AssignmentId: "a1", Event: "created", ActorUserId: "u1"},
+				{Id: 43, AssignmentId: "a1", Event: "swapped_out", ActorUserId: "admin", PreviousUserId: "u1", NewUserId: "u2"},
+			},
+		},
+	}
+	out, err := resolvers.AssignmentHistoryResolver(
+		ctxWithClaims(t, "admin", "site-admin"), c, identity, nil, "pv-1", 0,
+	)
+	if err != nil {
+		t.Fatalf("AssignmentHistory: %v", err)
+	}
+	if out[0].ActorName == nil || *out[0].ActorName != "Alice Example" {
+		t.Fatalf("entry0 actorName: %v", out[0].ActorName)
+	}
+	if out[1].ActorName == nil || *out[1].ActorName != "Root Admin" {
+		t.Fatalf("entry1 actorName: %v", out[1].ActorName)
+	}
+	if out[1].PreviousUserName == nil || *out[1].PreviousUserName != "Alice Example" {
+		t.Fatalf("entry1 previousUserName: %v", out[1].PreviousUserName)
+	}
+	if out[1].NewUserName == nil || *out[1].NewUserName != "Grace Hopper" {
+		t.Fatalf("entry1 newUserName: %v", out[1].NewUserName)
+	}
+	// u1 appears as actor on entry0 and previous on entry1 -> one GetUser only.
+	u1Count := 0
+	for _, id := range identity.getUserMu {
+		if id == "u1" {
+			u1Count++
+		}
+	}
+	if u1Count != 1 {
+		t.Fatalf("u1 GetUser calls: got %d, want 1 (dedupe)", u1Count)
+	}
+}
+
+func TestAssignmentHistoryActorNameNilOnMiss(t *testing.T) {
+	identity := &labelIdentityFake{users: map[string]*identityv1.User{}}
+	c := &fakeWorkflowClient{
+		historyResp: &workflowv1.GetAssignmentHistoryResponse{
+			Entries: []*workflowv1.AssignmentHistoryEntry{
+				{Id: 1, AssignmentId: "a1", Event: "created", ActorUserId: "u-unknown"},
+			},
+		},
+	}
+	out, err := resolvers.AssignmentHistoryResolver(
+		ctxWithClaims(t, "admin", "site-admin"), c, identity, nil, "pv-1", 0,
+	)
+	if err != nil {
+		t.Fatalf("AssignmentHistory: %v", err)
+	}
+	if out[0].ActorName != nil {
+		t.Fatalf("expected nil actorName on miss, got %v", out[0].ActorName)
+	}
+	if out[0].ActorUserID != "u-unknown" {
+		t.Fatalf("raw actor id should survive: %q", out[0].ActorUserID)
 	}
 }

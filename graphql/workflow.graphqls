@@ -1,7 +1,7 @@
 # --- Workflow: approval-saga submit/signal/status/pending-tasks ---
-# Backed by modules/workflow (WorkflowService). Caller identity is bound from
-# authmw claims at the gateway: submitWorkflow's submittedBy, signalWorkflow's
-# actorUserId, and pendingTasks's approver-filter are NEVER trusted from input.
+# Backed by workflow (WorkflowService). The caller is the signed-in user:
+# submitWorkflow's submitter, signalWorkflow's actor and pendingTasks's
+# approver filter are never taken from input.
 # The schema therefore omits actor / approver / submitter inputs.
 
 enum ApprovalStatus {
@@ -44,9 +44,12 @@ type StageAssignee {
   comment: String
   # ISO-8601 decision timestamp, present once decided.
   decidedAt: String
+  # The group whose seat this is, when the user holds a group seat; null for
+  # an individual seat.
+  groupId: ID
 }
 
-# One approve-as-group unit's live tally on a stage (workflow#14). groupName is
+# One approve-as-group unit's live tally on a stage. groupName is
 # resolved by the gateway from groupId.
 type StageUnitProgress {
   groupId: String!
@@ -70,7 +73,7 @@ type WorkflowStatus {
   # and their decision state/comment/time. This is the stepper's roster source.
   stageAssignees: [[StageAssignee!]!]!
   # Per-stage approve-as-group unit progress, index-aligned with stageNames; an
-  # empty inner list means the stage has no unit-mode groups (workflow#14).
+  # empty inner list means the stage has no group units.
   stageUnitProgress: [[StageUnitProgress!]!]!
 }
 
@@ -93,7 +96,7 @@ type UpcomingApproval {
 type EffectiveWorkflow {
   # The resolved workflow-definition id, or null when none is attached/inherited.
   workflowDefId: ID
-  # True when an approval workflow is attached to the policy's group or inherited
+  # True when an approval workflow is attached to the policy's category or inherited
   # from an ancestor up to top level — i.e. the policy can be submitted.
   hasWorkflow: Boolean!
   # True when the resolved workflow is USABLE — every required stage has at least
@@ -116,22 +119,22 @@ extend type Query {
 
   """
   Pending approval tasks awaiting the authenticated user. The approver id is
-  bound from authmw claims and is never client-supplied.
+  bound from the signed-in user and is never client-supplied.
   """
   pendingTasks: [PendingTask!]!
 
   """
   Approvals where the authenticated user is an approver on a future (not-yet-
   reached) stage — visibility/heads-up, not yet actionable. Approver id is bound
-  from authmw claims and is never client-supplied.
+  from the signed-in user and is never client-supplied.
   """
   upcomingApprovals: [UpcomingApproval!]!
 
   """
-  The approval workflow EFFECTIVE for a policy — attached to its group or
+  The approval workflow EFFECTIVE for a policy — attached to its category or
   inherited from an ancestor up to top level. hasWorkflow=false means the policy
   cannot be submitted for approval until an admin attaches one. The gateway
-  resolves the group lineage and delegates to the workflow service so this is
+  resolves the category lineage and delegates to the workflow service so this is
   the same resolution Submit enforces.
   """
   effectiveWorkflow(policyId: ID!): EffectiveWorkflow!
@@ -140,20 +143,20 @@ extend type Query {
 extend type Mutation {
   """
   Start an approval saga for a policy version. The submittedBy field is bound
-  from authmw claims; ancestorGroupIds is the policy's group lineage leaf→root
+  from the signed-in user; ancestorCategoryIds is the policy's category lineage leaf→root
   so the workflow service can resolve the effective workflow without a
   cross-service call back into policy-core.
   """
   submitWorkflow(
     policyVersionId: ID!
     policyId: ID!
-    groupId: ID!
-    ancestorGroupIds: [ID!]!
+    categoryId: ID!
+    ancestorCategoryIds: [ID!]!
   ): WorkflowSubmitResult!
 
   """
   Deliver an approver decision to an active run. The actor is bound from
-  authmw claims. The comment is required for APPROVE and REJECT signals
+  the signed-in user. The comment is required for APPROVE and REJECT signals
   (the workflow service rejects empty comments with InvalidArgument).
 
   policyVersionId is authoritative: the decision targets that version's CURRENT
@@ -171,11 +174,10 @@ extend type Mutation {
   ): Boolean!
 
   """
-  Swap the active approver on a stage. Phase 5 audited swap — the
-  initiator role is server-derived from authmw claims (admin /
+  Swap the active approver on a stage. Audited swap; the
+  initiator role is server-derived from the signed-in user (admin /
   self-delegate / workflow-author). outOfEligibilityAck must be true
-  when an admin swaps in a user that is not a member of the stage's
-  approver_groups. stageEligibleAssignees lists the users accepted without it.
+  when an admin swaps in a user outside the seat's eligible pool. stageEligibleAssignees lists the users accepted without it.
 
   Workflow refusals relay as coded errors: extensions.code is the symbol,
   extensions.codeNum the number, extensions.domain "workflow", and each
@@ -196,15 +198,14 @@ extend type Mutation {
 
   """
   Approve or reject several pending assignments in one call. Every
-  decision in the batch must include a non-empty comment (the bulk UI
-  groups by approver_groups and prompts once per group, but the server
-  stores per-decision comments). Returns per-row results so a partially-
+  decision in the batch must include a non-empty comment (the server stores
+  one comment per decision). Returns per-row results so a partially-
   failed batch can be surfaced to the operator.
   """
   bulkDecide(input: BulkDecideInput!): BulkDecideResult!
 }
 
-# --- Phase 5 workflow refinements ---
+# --- Reassignment, bulk decisions and history ---
 
 enum InitiatorRole {
   INITIATOR_ROLE_UNSPECIFIED
@@ -220,8 +221,8 @@ input SwapAssigneeInput {
   newUserId: ID!
   reason: String!
   """
-  Must be true when an admin is swapping in a user outside the stage's
-  approver_groups; the swap is audited with out_of_eligibility=true.
+  Must be true when an admin is swapping in a user outside the seat's
+  eligible pool; the swap is audited with out_of_eligibility=true.
   """
   outOfEligibilityAck: Boolean
 }
@@ -289,8 +290,8 @@ type AssignmentHistoryEntry {
 extend type Query {
   """
   Append-only audit history for one stage of one policy version's approval
-  run. Authorized via policy-authz/policies/workflow.rego (admin, auditor,
-  policy author, or a current/past assignee on the stage).
+  run. Workflow authorizes it (admin, auditor, the policy's author, or a current
+  or past assignee on the stage).
   """
   assignmentHistory(policyVersionId: ID!, stageIndex: Int!): [AssignmentHistoryEntry!]!
 
@@ -324,21 +325,25 @@ type StageEligibleAssignees {
 
 
 # --- Workflow definitions (admin management) ---
-type GroupApprovers {
-  groupId: ID!
+# The individual approvers a stage names for one category.
+type CategoryApprovers {
+  categoryId: ID!
   approverIds: [ID!]!
-  # How the group participates on the stage: "expand" (default — members are
-  # individual voters) or "unit" (approve-as-group: the member roster is tallied
-  # against internalQuorum and the group counts as ONE vote in the stage quorum).
-  mode: String
-  # "one" | "majority" | "all" — the group's internal quorum in "unit" mode.
-  internalQuorum: String
+}
+# A group that approves as a whole: its members hold group seats, the group is
+# satisfied once internalQuorum of them approve, and it counts as one vote in
+# the stage quorum.
+type GroupUnit {
+  groupId: ID!
+  internalQuorum: String!  # one | majority | all
+  memberUserIds: [ID!]!
 }
 type WorkflowStageDef {
   id: ID!
   name: String!
   approvers: [ID!]!
-  approversByGroup: [GroupApprovers!]!
+  approversByCategory: [CategoryApprovers!]!
+  groupUnits: [GroupUnit!]!
   quorum: String!
   slaDays: Int
   rejectOnSlaBreach: Boolean
@@ -351,17 +356,21 @@ type WorkflowDef {
   version: Int!
   stages: [WorkflowStageDef!]!
 }
-input GroupApproversInput {
-  groupId: ID!
+input CategoryApproversInput {
+  categoryId: ID!
   approverIds: [ID!]!
-  mode: String            # "expand" (default) | "unit"
-  internalQuorum: String  # "one" | "majority" | "all" (unit mode)
+}
+input GroupUnitInput {
+  groupId: ID!
+  internalQuorum: String!  # one | majority | all
+  memberUserIds: [ID!]!
 }
 input WorkflowStageInput {
   id: ID
   name: String!
   approvers: [ID!]!
-  approversByGroup: [GroupApproversInput!]
+  approversByCategory: [CategoryApproversInput!]
+  groupUnits: [GroupUnitInput!]
   quorum: String!
   slaDays: Int
   rejectOnSlaBreach: Boolean

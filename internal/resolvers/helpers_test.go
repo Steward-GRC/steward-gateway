@@ -5,12 +5,16 @@ package resolvers_test
 
 import (
 	"context"
+	"maps"
+	"strconv"
 	"testing"
 
 	"github.com/Bugs5382/go-apperr"
 	"github.com/Bugs5382/go-apperr/apperrgrpc"
 	"github.com/Steward-GRC/steward-gateway/internal/errcodes"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -56,4 +60,16 @@ func wireStatus(err error) *status.Status {
 func gatewayEntry(code int) apperr.Entry {
 	e, _ := errcodes.Registry().Describe(code)
 	return e
+}
+
+// backendCodedErr is a coded refusal as a backend sends it: a status carrying
+// an ErrorInfo with the backend's symbol, domain, code and metadata.
+func backendCodedErr(code codes.Code, num int, symbol, domain string, md map[string]string) error {
+	meta := map[string]string{apperrgrpc.MetaCodeNum: strconv.Itoa(num)}
+	maps.Copy(meta, md)
+	st, err := status.New(code, symbol).WithDetails(&errdetails.ErrorInfo{Reason: symbol, Domain: domain, Metadata: meta})
+	if err != nil {
+		panic(err)
+	}
+	return st.Err()
 }

@@ -1,0 +1,219 @@
+# --- Reporting: concerns from reporters, case work for officers ---
+# Backed by reporting (IntakeService, CaseService). Field for field the
+# reporting API; reporting decides who is an officer.
+#
+# Anonymous operations (submitAnonymousReport, checkReport, replyToReport)
+# work signed out, and a signed-in user may use them too: the gateway calls
+# reporting as itself for them and sends nothing that identifies the caller.
+# checkReport and replyToReport are throttled per case code and overall.
+# checkReport is a mutation so the passphrase is never part of a GET URL.
+
+enum CaseStatus { NEW IN_REVIEW NEEDS_REPORTER_REPLY RISK_ASSESSMENT NOTIFICATION_DUE CLOSED }
+enum ReportKind { ANONYMOUS NAMED }
+enum InformationKind { HEALTH CONTACT FINANCIAL NOT_SURE }
+enum ReportAnswer { YES NO NOT_SURE }
+enum MessageAuthor { REPORTER OFFICER }
+enum RiskRecipient { STAFF_ONLY UNKNOWN_PEOPLE ANOTHER_ORGANISATION }
+enum RiskViewed { YES PROBABLY NO }
+enum RiskMitigation { FULLY PARTLY NOT_AT_ALL }
+enum RiskSuggestion { NOTIFICATION_LIKELY_REQUIRED LOW_PROBABILITY_OF_COMPROMISE }
+enum BreachDecision { REPORTABLE NOT_REPORTABLE }
+enum NoticeRecipient { AFFECTED_PEOPLE REGULATOR MEDIA OTHER }
+enum NoticeStatus { NOT_SENT DRAFT SENT NOT_NEEDED }
+enum CaseOutcome { SUBSTANTIATED NOT_SUBSTANTIATED INCONCLUSIVE }
+
+# What the reporter tells us. Nothing here asks who the reporter is.
+type ReportDetails {
+  whatHappened: String!
+  occurred: String!          # in the reporter's words
+  location: String!
+  informationKinds: [InformationKind!]!
+  stillHappening: ReportAnswer   # null when not answered
+}
+
+input ReportDetailsInput {
+  whatHappened: String!
+  occurred: String
+  location: String
+  informationKinds: [InformationKind!]
+  stillHappening: ReportAnswer
+}
+
+# A file sent with a report. reporting strips its metadata and takes JPEG,
+# PNG, GIF and plain text only, up to three of 10 MB each.
+input ReportAttachmentInput {
+  filename: String!
+  contentType: String!
+  data: String!              # base64
+}
+
+type ThreadMessage {
+  id: ID!
+  author: MessageAuthor!
+  officerUserId: ID          # officers' view only; never sent to a reporter
+  body: String!
+  createdAt: String!         # RFC3339
+}
+
+# Everything a reporter may see of their report.
+type ReporterView {
+  caseCode: String!
+  status: CaseStatus!
+  details: ReportDetails!
+  thread: [ThreadMessage!]!
+  receivedAt: String!        # RFC3339
+}
+
+type AnonymousReportReceipt {
+  caseCode: String!          # shown once, grouped in threes
+}
+
+type NamedReportReceipt {
+  caseId: ID!
+  caseCode: String!
+}
+
+type MyReport {
+  caseId: ID!
+  report: ReporterView!
+}
+
+type ReportAttachment {
+  id: ID!
+  filename: String!
+  contentType: String!
+  sizeBytes: Int!
+  metadataStripped: Boolean!
+}
+
+type ReportAttachmentContent {
+  attachment: ReportAttachment!
+  data: String!              # base64
+}
+
+type CaseNote {
+  id: ID!
+  authorUserId: ID!
+  body: String!
+  createdAt: String!         # RFC3339
+}
+
+type RiskFactors {
+  information: [InformationKind!]!
+  recipient: RiskRecipient
+  viewed: RiskViewed
+  mitigation: RiskMitigation
+}
+
+input RiskFactorsInput {
+  information: [InformationKind!]!
+  recipient: RiskRecipient!
+  viewed: RiskViewed!
+  mitigation: RiskMitigation!
+}
+
+type RiskAssessment {
+  factors: RiskFactors!
+  suggestion: RiskSuggestion
+  decision: BreachDecision
+  reason: String!
+  decidedByUserId: ID!
+  decidedAt: String!         # RFC3339
+}
+
+type CaseNotice {
+  id: ID!
+  recipient: NoticeRecipient!
+  label: String!
+  method: String!
+  daysAllowed: Int!
+  dueOn: String!             # YYYY-MM-DD
+  status: NoticeStatus!
+  sentOn: String             # YYYY-MM-DD, once sent
+}
+
+type CorrectiveAction {
+  description: String!
+  policyId: ID               # the core policy the action changes
+}
+
+input CorrectiveActionInput {
+  description: String!
+  policyId: ID
+}
+
+type CaseSummary {
+  id: ID!
+  caseCode: String!
+  kind: ReportKind!
+  status: CaseStatus!
+  summary: String!
+  assigneeUserId: ID
+  receivedAt: String!        # RFC3339
+  nextDeadline: String       # YYYY-MM-DD
+}
+
+type CaseStatusCount {
+  status: CaseStatus!
+  count: Int!
+}
+
+type CaseQueue {
+  cases: [CaseSummary!]!
+  counts: [CaseStatusCount!]!   # over every case, whatever the filter
+}
+
+type ReportCase {
+  id: ID!
+  caseCode: String!
+  kind: ReportKind!
+  status: CaseStatus!
+  details: ReportDetails!
+  reporterUserId: ID         # named reports only
+  assigneeUserId: ID
+  receivedAt: String!        # RFC3339
+  discoveredOn: String       # YYYY-MM-DD
+  attachments: [ReportAttachment!]!
+  thread: [ThreadMessage!]!
+  notes: [CaseNote!]!
+  assessment: RiskAssessment # the latest
+  notices: [CaseNotice!]!
+  outcome: CaseOutcome
+  correctiveActions: [CorrectiveAction!]!
+  closedAt: String           # RFC3339
+}
+
+extend type Query {
+  # The signed-in user's own named reports.
+  myReports: [MyReport!]!
+  myReport(caseId: ID!): ReporterView!
+  # Officers only.
+  reportCases(statuses: [CaseStatus!], assigneeUserId: ID): CaseQueue!
+  reportCase(caseId: ID!): ReportCase!
+  reportAttachment(caseId: ID!, attachmentId: ID!): ReportAttachmentContent!
+}
+
+extend type Mutation {
+  # Anonymous: work signed out.
+  submitAnonymousReport(details: ReportDetailsInput!, passphrase: String!, attachments: [ReportAttachmentInput!]): AnonymousReportReceipt!
+  checkReport(caseCode: String!, passphrase: String!): ReporterView!
+  replyToReport(caseCode: String!, passphrase: String!, body: String!): ReporterView!
+
+  # Named: the signed-in user.
+  submitNamedReport(details: ReportDetailsInput!, attachments: [ReportAttachmentInput!]): NamedReportReceipt!
+  replyToMyReport(caseId: ID!, body: String!): ReporterView!
+
+  # Officers only.
+  postCaseMessage(caseId: ID!, body: String!): ThreadMessage!
+  addCaseNote(caseId: ID!, body: String!): CaseNote!
+  # A null assigneeUserId clears the assignee.
+  assignCase(caseId: ID!, assigneeUserId: ID): ReportCase!
+  # Any status but CLOSED; closing goes through closeCase.
+  setCaseStatus(caseId: ID!, status: CaseStatus!): ReportCase!
+  setCaseDiscoveryDate(caseId: ID!, discoveredOn: String!): ReportCase!
+  recordRiskAssessment(caseId: ID!, factors: RiskFactorsInput!, decision: BreachDecision!, reason: String!): RiskAssessment!
+  addCaseNotice(caseId: ID!, recipient: NoticeRecipient!, label: String, method: String): CaseNotice!
+  # sentOn (YYYY-MM-DD) is required with SENT.
+  updateCaseNotice(caseId: ID!, noticeId: ID!, status: NoticeStatus!, sentOn: String): CaseNotice!
+  closeCase(caseId: ID!, outcome: CaseOutcome!, correctiveActions: [CorrectiveActionInput!], closingMessage: String): ReportCase!
+}

@@ -183,6 +183,10 @@ type AnnouncementInput struct {
 	Message string `json:"message"`
 }
 
+type AnonymousReportReceipt struct {
+	CaseCode string `json:"caseCode"`
+}
+
 type AnswerSegment struct {
 	Start   int              `json:"start"`
 	End     int              `json:"end"`
@@ -294,6 +298,45 @@ type BulkDecideResult struct {
 	BulkBatchID string            `json:"bulkBatchId"`
 }
 
+type CaseNote struct {
+	ID           string `json:"id"`
+	AuthorUserID string `json:"authorUserId"`
+	Body         string `json:"body"`
+	CreatedAt    string `json:"createdAt"`
+}
+
+type CaseNotice struct {
+	ID          string          `json:"id"`
+	Recipient   NoticeRecipient `json:"recipient"`
+	Label       string          `json:"label"`
+	Method      string          `json:"method"`
+	DaysAllowed int             `json:"daysAllowed"`
+	DueOn       string          `json:"dueOn"`
+	Status      NoticeStatus    `json:"status"`
+	SentOn      *string         `json:"sentOn,omitempty"`
+}
+
+type CaseQueue struct {
+	Cases  []*CaseSummary     `json:"cases"`
+	Counts []*CaseStatusCount `json:"counts"`
+}
+
+type CaseStatusCount struct {
+	Status CaseStatus `json:"status"`
+	Count  int        `json:"count"`
+}
+
+type CaseSummary struct {
+	ID             string     `json:"id"`
+	CaseCode       string     `json:"caseCode"`
+	Kind           ReportKind `json:"kind"`
+	Status         CaseStatus `json:"status"`
+	Summary        string     `json:"summary"`
+	AssigneeUserID *string    `json:"assigneeUserId,omitempty"`
+	ReceivedAt     string     `json:"receivedAt"`
+	NextDeadline   *string    `json:"nextDeadline,omitempty"`
+}
+
 type Category struct {
 	ID                  string        `json:"id"`
 	Name                string        `json:"name"`
@@ -365,6 +408,16 @@ type ContactBlockInput struct {
 	Phone      *string `json:"phone,omitempty"`
 	Hours      *string `json:"hours,omitempty"`
 	Notes      *string `json:"notes,omitempty"`
+}
+
+type CorrectiveAction struct {
+	Description string  `json:"description"`
+	PolicyID    *string `json:"policyId,omitempty"`
+}
+
+type CorrectiveActionInput struct {
+	Description string  `json:"description"`
+	PolicyID    *string `json:"policyId,omitempty"`
 }
 
 type DecisionInput struct {
@@ -599,6 +652,16 @@ type MfaFactor struct {
 type Mutation struct {
 }
 
+type MyReport struct {
+	CaseID string        `json:"caseId"`
+	Report *ReporterView `json:"report"`
+}
+
+type NamedReportReceipt struct {
+	CaseID   string `json:"caseId"`
+	CaseCode string `json:"caseCode"`
+}
+
 type NotifTypeDef struct {
 	Kind      string        `json:"kind"`
 	Category  NotifCategory `json:"category"`
@@ -828,6 +891,92 @@ type RenderedContent struct {
 	HTML string `json:"html"`
 }
 
+type ReportAttachment struct {
+	ID               string `json:"id"`
+	Filename         string `json:"filename"`
+	ContentType      string `json:"contentType"`
+	SizeBytes        int    `json:"sizeBytes"`
+	MetadataStripped bool   `json:"metadataStripped"`
+}
+
+type ReportAttachmentContent struct {
+	Attachment *ReportAttachment `json:"attachment"`
+	Data       string            `json:"data"`
+}
+
+type ReportAttachmentInput struct {
+	Filename    string `json:"filename"`
+	ContentType string `json:"contentType"`
+	Data        string `json:"data"`
+}
+
+type ReportCase struct {
+	ID                string              `json:"id"`
+	CaseCode          string              `json:"caseCode"`
+	Kind              ReportKind          `json:"kind"`
+	Status            CaseStatus          `json:"status"`
+	Details           *ReportDetails      `json:"details"`
+	ReporterUserID    *string             `json:"reporterUserId,omitempty"`
+	AssigneeUserID    *string             `json:"assigneeUserId,omitempty"`
+	ReceivedAt        string              `json:"receivedAt"`
+	DiscoveredOn      *string             `json:"discoveredOn,omitempty"`
+	Attachments       []*ReportAttachment `json:"attachments"`
+	Thread            []*ThreadMessage    `json:"thread"`
+	Notes             []*CaseNote         `json:"notes"`
+	Assessment        *RiskAssessment     `json:"assessment,omitempty"`
+	Notices           []*CaseNotice       `json:"notices"`
+	Outcome           *CaseOutcome        `json:"outcome,omitempty"`
+	CorrectiveActions []*CorrectiveAction `json:"correctiveActions"`
+	ClosedAt          *string             `json:"closedAt,omitempty"`
+}
+
+type ReportDetails struct {
+	WhatHappened     string            `json:"whatHappened"`
+	Occurred         string            `json:"occurred"`
+	Location         string            `json:"location"`
+	InformationKinds []InformationKind `json:"informationKinds"`
+	StillHappening   *ReportAnswer     `json:"stillHappening,omitempty"`
+}
+
+type ReportDetailsInput struct {
+	WhatHappened     string            `json:"whatHappened"`
+	Occurred         *string           `json:"occurred,omitempty"`
+	Location         *string           `json:"location,omitempty"`
+	InformationKinds []InformationKind `json:"informationKinds,omitempty"`
+	StillHappening   *ReportAnswer     `json:"stillHappening,omitempty"`
+}
+
+type ReporterView struct {
+	CaseCode   string           `json:"caseCode"`
+	Status     CaseStatus       `json:"status"`
+	Details    *ReportDetails   `json:"details"`
+	Thread     []*ThreadMessage `json:"thread"`
+	ReceivedAt string           `json:"receivedAt"`
+}
+
+type RiskAssessment struct {
+	Factors         *RiskFactors    `json:"factors"`
+	Suggestion      *RiskSuggestion `json:"suggestion,omitempty"`
+	Decision        *BreachDecision `json:"decision,omitempty"`
+	Reason          string          `json:"reason"`
+	DecidedByUserID string          `json:"decidedByUserId"`
+	DecidedAt       string          `json:"decidedAt"`
+}
+
+type RiskFactors struct {
+	Information []InformationKind `json:"information"`
+	Recipient   *RiskRecipient    `json:"recipient,omitempty"`
+	Viewed      *RiskViewed       `json:"viewed,omitempty"`
+	Mitigation  *RiskMitigation   `json:"mitigation,omitempty"`
+}
+
+type RiskFactorsInput struct {
+	Information []InformationKind `json:"information"`
+	Recipient   RiskRecipient     `json:"recipient"`
+	Viewed      RiskViewed        `json:"viewed"`
+	Mitigation  RiskMitigation    `json:"mitigation"`
+}
+
 type RoleScopes struct {
 	Author   []string `json:"author"`
 	Approver []string `json:"approver"`
@@ -1017,6 +1166,14 @@ type TemplateVersion struct {
 	VersionNo  int        `json:"versionNo"`
 	Status     string     `json:"status"`
 	Sections   []*Section `json:"sections"`
+}
+
+type ThreadMessage struct {
+	ID            string        `json:"id"`
+	Author        MessageAuthor `json:"author"`
+	OfficerUserID *string       `json:"officerUserId,omitempty"`
+	Body          string        `json:"body"`
+	CreatedAt     string        `json:"createdAt"`
 }
 
 type TotpEnrollment struct {
@@ -1486,6 +1643,181 @@ func (e AssistOperation) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type BreachDecision string
+
+const (
+	BreachDecisionReportable    BreachDecision = "REPORTABLE"
+	BreachDecisionNotReportable BreachDecision = "NOT_REPORTABLE"
+)
+
+var AllBreachDecision = []BreachDecision{
+	BreachDecisionReportable,
+	BreachDecisionNotReportable,
+}
+
+func (e BreachDecision) IsValid() bool {
+	switch e {
+	case BreachDecisionReportable, BreachDecisionNotReportable:
+		return true
+	}
+	return false
+}
+
+func (e BreachDecision) String() string {
+	return string(e)
+}
+
+func (e *BreachDecision) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BreachDecision(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BreachDecision", str)
+	}
+	return nil
+}
+
+func (e BreachDecision) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BreachDecision) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BreachDecision) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type CaseOutcome string
+
+const (
+	CaseOutcomeSubstantiated    CaseOutcome = "SUBSTANTIATED"
+	CaseOutcomeNotSubstantiated CaseOutcome = "NOT_SUBSTANTIATED"
+	CaseOutcomeInconclusive     CaseOutcome = "INCONCLUSIVE"
+)
+
+var AllCaseOutcome = []CaseOutcome{
+	CaseOutcomeSubstantiated,
+	CaseOutcomeNotSubstantiated,
+	CaseOutcomeInconclusive,
+}
+
+func (e CaseOutcome) IsValid() bool {
+	switch e {
+	case CaseOutcomeSubstantiated, CaseOutcomeNotSubstantiated, CaseOutcomeInconclusive:
+		return true
+	}
+	return false
+}
+
+func (e CaseOutcome) String() string {
+	return string(e)
+}
+
+func (e *CaseOutcome) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CaseOutcome(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CaseOutcome", str)
+	}
+	return nil
+}
+
+func (e CaseOutcome) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CaseOutcome) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CaseOutcome) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type CaseStatus string
+
+const (
+	CaseStatusNew                CaseStatus = "NEW"
+	CaseStatusInReview           CaseStatus = "IN_REVIEW"
+	CaseStatusNeedsReporterReply CaseStatus = "NEEDS_REPORTER_REPLY"
+	CaseStatusRiskAssessment     CaseStatus = "RISK_ASSESSMENT"
+	CaseStatusNotificationDue    CaseStatus = "NOTIFICATION_DUE"
+	CaseStatusClosed             CaseStatus = "CLOSED"
+)
+
+var AllCaseStatus = []CaseStatus{
+	CaseStatusNew,
+	CaseStatusInReview,
+	CaseStatusNeedsReporterReply,
+	CaseStatusRiskAssessment,
+	CaseStatusNotificationDue,
+	CaseStatusClosed,
+}
+
+func (e CaseStatus) IsValid() bool {
+	switch e {
+	case CaseStatusNew, CaseStatusInReview, CaseStatusNeedsReporterReply, CaseStatusRiskAssessment, CaseStatusNotificationDue, CaseStatusClosed:
+		return true
+	}
+	return false
+}
+
+func (e CaseStatus) String() string {
+	return string(e)
+}
+
+func (e *CaseStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CaseStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CaseStatus", str)
+	}
+	return nil
+}
+
+func (e CaseStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CaseStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CaseStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type DecisionType string
 
 const (
@@ -1654,6 +1986,65 @@ func (e *DocumentType) UnmarshalJSON(b []byte) error {
 }
 
 func (e DocumentType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type InformationKind string
+
+const (
+	InformationKindHealth    InformationKind = "HEALTH"
+	InformationKindContact   InformationKind = "CONTACT"
+	InformationKindFinancial InformationKind = "FINANCIAL"
+	InformationKindNotSure   InformationKind = "NOT_SURE"
+)
+
+var AllInformationKind = []InformationKind{
+	InformationKindHealth,
+	InformationKindContact,
+	InformationKindFinancial,
+	InformationKindNotSure,
+}
+
+func (e InformationKind) IsValid() bool {
+	switch e {
+	case InformationKindHealth, InformationKindContact, InformationKindFinancial, InformationKindNotSure:
+		return true
+	}
+	return false
+}
+
+func (e InformationKind) String() string {
+	return string(e)
+}
+
+func (e *InformationKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InformationKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InformationKind", str)
+	}
+	return nil
+}
+
+func (e InformationKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *InformationKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e InformationKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -1890,6 +2281,179 @@ func (e *MergeStepStatus) UnmarshalJSON(b []byte) error {
 }
 
 func (e MergeStepStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type MessageAuthor string
+
+const (
+	MessageAuthorReporter MessageAuthor = "REPORTER"
+	MessageAuthorOfficer  MessageAuthor = "OFFICER"
+)
+
+var AllMessageAuthor = []MessageAuthor{
+	MessageAuthorReporter,
+	MessageAuthorOfficer,
+}
+
+func (e MessageAuthor) IsValid() bool {
+	switch e {
+	case MessageAuthorReporter, MessageAuthorOfficer:
+		return true
+	}
+	return false
+}
+
+func (e MessageAuthor) String() string {
+	return string(e)
+}
+
+func (e *MessageAuthor) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = MessageAuthor(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid MessageAuthor", str)
+	}
+	return nil
+}
+
+func (e MessageAuthor) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *MessageAuthor) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e MessageAuthor) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type NoticeRecipient string
+
+const (
+	NoticeRecipientAffectedPeople NoticeRecipient = "AFFECTED_PEOPLE"
+	NoticeRecipientRegulator      NoticeRecipient = "REGULATOR"
+	NoticeRecipientMedia          NoticeRecipient = "MEDIA"
+	NoticeRecipientOther          NoticeRecipient = "OTHER"
+)
+
+var AllNoticeRecipient = []NoticeRecipient{
+	NoticeRecipientAffectedPeople,
+	NoticeRecipientRegulator,
+	NoticeRecipientMedia,
+	NoticeRecipientOther,
+}
+
+func (e NoticeRecipient) IsValid() bool {
+	switch e {
+	case NoticeRecipientAffectedPeople, NoticeRecipientRegulator, NoticeRecipientMedia, NoticeRecipientOther:
+		return true
+	}
+	return false
+}
+
+func (e NoticeRecipient) String() string {
+	return string(e)
+}
+
+func (e *NoticeRecipient) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = NoticeRecipient(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid NoticeRecipient", str)
+	}
+	return nil
+}
+
+func (e NoticeRecipient) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *NoticeRecipient) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e NoticeRecipient) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type NoticeStatus string
+
+const (
+	NoticeStatusNotSent   NoticeStatus = "NOT_SENT"
+	NoticeStatusDraft     NoticeStatus = "DRAFT"
+	NoticeStatusSent      NoticeStatus = "SENT"
+	NoticeStatusNotNeeded NoticeStatus = "NOT_NEEDED"
+)
+
+var AllNoticeStatus = []NoticeStatus{
+	NoticeStatusNotSent,
+	NoticeStatusDraft,
+	NoticeStatusSent,
+	NoticeStatusNotNeeded,
+}
+
+func (e NoticeStatus) IsValid() bool {
+	switch e {
+	case NoticeStatusNotSent, NoticeStatusDraft, NoticeStatusSent, NoticeStatusNotNeeded:
+		return true
+	}
+	return false
+}
+
+func (e NoticeStatus) String() string {
+	return string(e)
+}
+
+func (e *NoticeStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = NoticeStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid NoticeStatus", str)
+	}
+	return nil
+}
+
+func (e NoticeStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *NoticeStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e NoticeStatus) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -2300,6 +2864,118 @@ func (e ReferenceKind) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type ReportAnswer string
+
+const (
+	ReportAnswerYes     ReportAnswer = "YES"
+	ReportAnswerNo      ReportAnswer = "NO"
+	ReportAnswerNotSure ReportAnswer = "NOT_SURE"
+)
+
+var AllReportAnswer = []ReportAnswer{
+	ReportAnswerYes,
+	ReportAnswerNo,
+	ReportAnswerNotSure,
+}
+
+func (e ReportAnswer) IsValid() bool {
+	switch e {
+	case ReportAnswerYes, ReportAnswerNo, ReportAnswerNotSure:
+		return true
+	}
+	return false
+}
+
+func (e ReportAnswer) String() string {
+	return string(e)
+}
+
+func (e *ReportAnswer) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ReportAnswer(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ReportAnswer", str)
+	}
+	return nil
+}
+
+func (e ReportAnswer) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ReportAnswer) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ReportAnswer) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type ReportKind string
+
+const (
+	ReportKindAnonymous ReportKind = "ANONYMOUS"
+	ReportKindNamed     ReportKind = "NAMED"
+)
+
+var AllReportKind = []ReportKind{
+	ReportKindAnonymous,
+	ReportKindNamed,
+}
+
+func (e ReportKind) IsValid() bool {
+	switch e {
+	case ReportKindAnonymous, ReportKindNamed:
+		return true
+	}
+	return false
+}
+
+func (e ReportKind) String() string {
+	return string(e)
+}
+
+func (e *ReportKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ReportKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ReportKind", str)
+	}
+	return nil
+}
+
+func (e ReportKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ReportKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ReportKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type ReviewCadence string
 
 const (
@@ -2354,6 +3030,232 @@ func (e *ReviewCadence) UnmarshalJSON(b []byte) error {
 }
 
 func (e ReviewCadence) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RiskMitigation string
+
+const (
+	RiskMitigationFully    RiskMitigation = "FULLY"
+	RiskMitigationPartly   RiskMitigation = "PARTLY"
+	RiskMitigationNotAtAll RiskMitigation = "NOT_AT_ALL"
+)
+
+var AllRiskMitigation = []RiskMitigation{
+	RiskMitigationFully,
+	RiskMitigationPartly,
+	RiskMitigationNotAtAll,
+}
+
+func (e RiskMitigation) IsValid() bool {
+	switch e {
+	case RiskMitigationFully, RiskMitigationPartly, RiskMitigationNotAtAll:
+		return true
+	}
+	return false
+}
+
+func (e RiskMitigation) String() string {
+	return string(e)
+}
+
+func (e *RiskMitigation) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RiskMitigation(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RiskMitigation", str)
+	}
+	return nil
+}
+
+func (e RiskMitigation) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RiskMitigation) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RiskMitigation) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RiskRecipient string
+
+const (
+	RiskRecipientStaffOnly           RiskRecipient = "STAFF_ONLY"
+	RiskRecipientUnknownPeople       RiskRecipient = "UNKNOWN_PEOPLE"
+	RiskRecipientAnotherOrganisation RiskRecipient = "ANOTHER_ORGANISATION"
+)
+
+var AllRiskRecipient = []RiskRecipient{
+	RiskRecipientStaffOnly,
+	RiskRecipientUnknownPeople,
+	RiskRecipientAnotherOrganisation,
+}
+
+func (e RiskRecipient) IsValid() bool {
+	switch e {
+	case RiskRecipientStaffOnly, RiskRecipientUnknownPeople, RiskRecipientAnotherOrganisation:
+		return true
+	}
+	return false
+}
+
+func (e RiskRecipient) String() string {
+	return string(e)
+}
+
+func (e *RiskRecipient) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RiskRecipient(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RiskRecipient", str)
+	}
+	return nil
+}
+
+func (e RiskRecipient) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RiskRecipient) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RiskRecipient) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RiskSuggestion string
+
+const (
+	RiskSuggestionNotificationLikelyRequired RiskSuggestion = "NOTIFICATION_LIKELY_REQUIRED"
+	RiskSuggestionLowProbabilityOfCompromise RiskSuggestion = "LOW_PROBABILITY_OF_COMPROMISE"
+)
+
+var AllRiskSuggestion = []RiskSuggestion{
+	RiskSuggestionNotificationLikelyRequired,
+	RiskSuggestionLowProbabilityOfCompromise,
+}
+
+func (e RiskSuggestion) IsValid() bool {
+	switch e {
+	case RiskSuggestionNotificationLikelyRequired, RiskSuggestionLowProbabilityOfCompromise:
+		return true
+	}
+	return false
+}
+
+func (e RiskSuggestion) String() string {
+	return string(e)
+}
+
+func (e *RiskSuggestion) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RiskSuggestion(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RiskSuggestion", str)
+	}
+	return nil
+}
+
+func (e RiskSuggestion) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RiskSuggestion) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RiskSuggestion) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RiskViewed string
+
+const (
+	RiskViewedYes      RiskViewed = "YES"
+	RiskViewedProbably RiskViewed = "PROBABLY"
+	RiskViewedNo       RiskViewed = "NO"
+)
+
+var AllRiskViewed = []RiskViewed{
+	RiskViewedYes,
+	RiskViewedProbably,
+	RiskViewedNo,
+}
+
+func (e RiskViewed) IsValid() bool {
+	switch e {
+	case RiskViewedYes, RiskViewedProbably, RiskViewedNo:
+		return true
+	}
+	return false
+}
+
+func (e RiskViewed) String() string {
+	return string(e)
+}
+
+func (e *RiskViewed) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RiskViewed(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RiskViewed", str)
+	}
+	return nil
+}
+
+func (e RiskViewed) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RiskViewed) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RiskViewed) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

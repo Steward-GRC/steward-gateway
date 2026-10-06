@@ -53,6 +53,8 @@ const (
 	CodeCollabFlushUnavailable         = 1242
 	CodeCollabFlushRejected            = 1243
 	CodeCollabFlushFailed              = 1244
+	CodeReportChecksThrottled          = 1245
+	CodeReportThrottleUnavailable      = 1246
 )
 
 // Entries returns the registry entries.
@@ -128,6 +130,12 @@ func Entries() []apperr.Entry {
 			UserSafe: true, Message: "The latest edits couldn't be saved, so the policy was not published: {reason}"},
 		{Code: CodeCollabFlushFailed, Symbol: "COLLAB_FLUSH_FAILED", Category: apperr.CategoryInternal,
 			Title: "publish", Cause: "collab's flush failed for any other reason; nothing was published"},
+		{Code: CodeReportChecksThrottled, Symbol: "REPORT_CHECKS_THROTTLED", Category: apperr.CategoryUnavailable,
+			Title: "anonymous report", Cause: "too many checks or replies for this case code, or for all case codes together, in the throttle window; reporting was not called",
+			UserSafe: true, Message: "Too many tries. Wait a while and try again."},
+		{Code: CodeReportThrottleUnavailable, Symbol: "REPORT_THROTTLE_UNAVAILABLE", Category: apperr.CategoryUnavailable,
+			Title: "anonymous report", Cause: "the throttle store (Valkey) could not be asked, so the check or reply was refused rather than let through unthrottled",
+			UserSafe: true, Message: "Checking a report is unavailable right now. Please try again later."},
 	}
 }
 

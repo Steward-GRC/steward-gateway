@@ -101,6 +101,10 @@ type Resolver struct {
 	// live: Bus feeds the liveEvents subscription. Nil makes it return an
 	// error.
 	Bus *live.Bus
+
+	// reporting: ReportLimiter throttles anonymous report checks and replies.
+	// Nil refuses them.
+	ReportLimiter ReportLimiter
 }
 
 // logger returns r.Log, or a logger that writes nothing.

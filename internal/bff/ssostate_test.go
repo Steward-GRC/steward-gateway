@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alicebob/miniredis/v2"
 	goredis "github.com/Bugs5382/go-redis"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/stretchr/testify/require"
 )
 

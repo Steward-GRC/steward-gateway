@@ -195,7 +195,7 @@ func TestSSOStart_Login_InactiveConnectionBlocked(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			store := newTestStore(t)
 			h := &Handler{
-				Polis: testPolis(),
+				Polis:           testPolis(),
 				SSOState:        store,
 				SSORedirectBase: "https://app",
 				Identity:        fakeIdentity{discover: disc},
@@ -215,7 +215,7 @@ func TestSSOStart_Login_InactiveConnectionBlocked(t *testing.T) {
 func TestSSOStart_Login_MissingIdentifierBlocked(t *testing.T) {
 	store := newTestStore(t)
 	h := &Handler{
-		Polis: testPolis(),
+		Polis:           testPolis(),
 		SSOState:        store,
 		SSORedirectBase: "https://app",
 		Identity:        fakeIdentity{discover: &identityv1.DiscoverResponse{Method: "sso", ConnectionAlias: "example-sso"}},
@@ -233,7 +233,7 @@ func TestSSOStart_Login_MissingIdentifierBlocked(t *testing.T) {
 func TestSSOStart_Login_ActiveConnectionProceeds(t *testing.T) {
 	store := newTestStore(t)
 	h := &Handler{
-		Polis: testPolis(),
+		Polis:           testPolis(),
 		SSOState:        store,
 		SSORedirectBase: "https://app",
 		Identity:        fakeIdentity{discover: &identityv1.DiscoverResponse{Method: "sso", ConnectionAlias: "example-sso"}},

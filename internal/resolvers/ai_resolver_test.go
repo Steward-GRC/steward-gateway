@@ -325,7 +325,7 @@ func TestSearchAndAnswerMapsCitationDocumentType(t *testing.T) {
 			Answer: "answer",
 			Citations: []*aiv1.Citation{
 				{PolicyId: "p1", PolicyTitle: "Leave Policy", VersionNo: 3, DocumentType: "POLICY"},
-				{PolicyId: "p2", PolicyTitle: "Hand Hygiene", VersionNo: 1, DocumentType: "PROCEDURE"},
+				{PolicyId: "p2", PolicyTitle: "Desk Booking Policy", VersionNo: 1, DocumentType: "PROCEDURE"},
 			},
 		},
 	}

@@ -223,7 +223,7 @@ func TestAuditLogPolicySubjectsAreDocTypeAware(t *testing.T) {
 			// Explicit POLICY.
 			"pol": {Id: "pol", Number: "POL-0012", Title: "Acceptable Use", DocumentType: corev1.DocumentType_DOCUMENT_TYPE_POLICY},
 			// PROCEDURE.
-			"prc": {Id: "prc", Number: "PRC-0003", Title: "Hand Hygiene", DocumentType: corev1.DocumentType_DOCUMENT_TYPE_PROCEDURE},
+			"prc": {Id: "prc", Number: "PRC-0003", Title: "Desk Booking Policy", DocumentType: corev1.DocumentType_DOCUMENT_TYPE_PROCEDURE},
 			// Unspecified document type -> treated as a policy (back-compat).
 			"uns": {Id: "uns", Number: "POL-0099", Title: "Legacy"},
 			// Unnumbered draft -> title fallback, still human (no raw uuid).
@@ -270,7 +270,7 @@ func TestAuditLogPolicySubjectsAreDocTypeAware(t *testing.T) {
 func TestAssignmentHistoryResolvesActorNames(t *testing.T) {
 	identity := &labelIdentityFake{users: map[string]*identityv1.User{
 		"u1":    {Id: "u1", Name: "Alice Example"},
-		"u2":    {Id: "u2", Name: "Grace Hopper"},
+		"u2":    {Id: "u2", Name: "Grace Example"},
 		"admin": {Id: "admin", Name: "Root Admin"},
 	}}
 	c := &fakeWorkflowClient{
@@ -296,7 +296,7 @@ func TestAssignmentHistoryResolvesActorNames(t *testing.T) {
 	if out[1].PreviousUserName == nil || *out[1].PreviousUserName != "Alice Example" {
 		t.Fatalf("entry1 previousUserName: %v", out[1].PreviousUserName)
 	}
-	if out[1].NewUserName == nil || *out[1].NewUserName != "Grace Hopper" {
+	if out[1].NewUserName == nil || *out[1].NewUserName != "Grace Example" {
 		t.Fatalf("entry1 newUserName: %v", out[1].NewUserName)
 	}
 	// u1 appears as actor on entry0 and previous on entry1 -> one GetUser only.

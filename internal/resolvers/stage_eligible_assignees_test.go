@@ -26,9 +26,9 @@ import (
 
 func poolIdentity() *labelIdentityFake {
 	return &labelIdentityFake{users: map[string]*identityv1.User{
-		"u-3": {Id: "u-3", Name: "Grace Hopper", Email: "grace@example.com"},
-		"u-1": {Id: "u-1", Name: "Alan Turing", Email: "alan@example.com"},
-		"u-2": {Id: "u-2", Name: "Ada Lovelace"},
+		"u-3": {Id: "u-3", Name: "Grace Example", Email: "grace@example.com"},
+		"u-1": {Id: "u-1", Name: "Dave Example", Email: "alan@example.com"},
+		"u-2": {Id: "u-2", Name: "Bob Example"},
 	}}
 }
 
@@ -53,9 +53,9 @@ func TestStageEligibleAssignees_ResolvesThePoolInDefinitionOrder(t *testing.T) {
 		id, name string
 		email    *string
 	}{
-		{"u-3", "Grace Hopper", new("grace@example.com")},
-		{"u-1", "Alan Turing", new("alan@example.com")},
-		{"u-2", "Ada Lovelace", nil},
+		{"u-3", "Grace Example", new("grace@example.com")},
+		{"u-1", "Dave Example", new("alan@example.com")},
+		{"u-2", "Bob Example", nil},
 		{"u-gone", "u-gone", nil},
 	}
 	if len(got.Assignees) != len(want) {
@@ -203,7 +203,7 @@ func TestStageEligibleAssignees_ThroughTheSchema(t *testing.T) {
 		t.Fatalf("errors: %+v", out.Errors)
 	}
 	p := out.Data.Pool
-	if p.StageName != "Review" || len(p.Assignees) != 2 || p.Assignees[0].ID != "u-1" || p.Assignees[1].Name != "Ada Lovelace" {
+	if p.StageName != "Review" || len(p.Assignees) != 2 || p.Assignees[0].ID != "u-1" || p.Assignees[1].Name != "Bob Example" {
 		t.Fatalf("pool = %+v", p)
 	}
 	if p.Assignees[0].Email == nil || *p.Assignees[0].Email != "alan@example.com" || p.Assignees[1].Email != nil {

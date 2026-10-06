@@ -14,6 +14,7 @@ import (
 
 	"github.com/Steward-GRC/steward-gateway/internal/backend"
 	"github.com/Steward-GRC/steward-gateway/internal/bff"
+	"github.com/Steward-GRC/steward-gateway/internal/diagnostics"
 
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
 	auditv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/audit/v1"
@@ -84,6 +85,9 @@ type Resolver struct {
 	AllowHardDelete bool
 
 	// Area-owned dependencies go below, one block per area.
+
+	// diagnostics
+	Diagnostics *diagnostics.Service
 }
 
 // AuditEmitter publishes one steward-audit AuditEvent.

@@ -38,3 +38,4 @@ caller; every other code is sent as a generic message with the code as a referen
 | 1242 | `COLLAB_FLUSH_UNAVAILABLE` | publish | collab couldn't save the live room's newest checkpoint to core in time, or collab couldn't be reached; nothing was published | yes |
 | 1243 | `COLLAB_FLUSH_REJECTED` | publish | core refused the live room's content, or the room belongs to another policy; nothing was published | yes |
 | 1244 | `COLLAB_FLUSH_FAILED` | publish | collab's flush failed for any other reason; nothing was published | no |
+| 1250 | `UNAUTHENTICATED` | session | the request has no signed-in session | yes |

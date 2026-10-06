@@ -12,6 +12,7 @@ import (
 	"math"
 	"strconv"
 	"sync/atomic"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
@@ -254,6 +255,13 @@ type ComplexityRoot struct {
 		ViewedNotAckedCount func(childComplexity int) int
 	}
 
+	ComponentVersion struct {
+		Commit  func(childComplexity int) int
+		Name    func(childComplexity int) int
+		Status  func(childComplexity int) int
+		Version func(childComplexity int) int
+	}
+
 	ContactBlock struct {
 		Archived    func(childComplexity int) int
 		Department  func(childComplexity int) int
@@ -289,6 +297,30 @@ type ComplexityRoot struct {
 	DeleteUserResult struct {
 		RevokedSessions func(childComplexity int) int
 		UserID          func(childComplexity int) int
+	}
+
+	Diagnostics struct {
+		Actor       func(childComplexity int) int
+		Appliance   func(childComplexity int) int
+		Gateway     func(childComplexity int) int
+		GeneratedAt func(childComplexity int) int
+		Release     func(childComplexity int) int
+		Services    func(childComplexity int) int
+		ThirdParty  func(childComplexity int) int
+		TraceID     func(childComplexity int) int
+	}
+
+	DiagnosticsActingAs struct {
+		ID       func(childComplexity int) int
+		Roles    func(childComplexity int) int
+		Username func(childComplexity int) int
+	}
+
+	DiagnosticsActor struct {
+		ActingAs func(childComplexity int) int
+		ID       func(childComplexity int) int
+		Roles    func(childComplexity int) int
+		Username func(childComplexity int) int
 	}
 
 	DigestWindow struct {
@@ -737,6 +769,7 @@ type ComplexityRoot struct {
 		CompletionReport           func(childComplexity int, policyVersionID string, groupID *string) int
 		ContactBlocks              func(childComplexity int, includeArchived *bool) int
 		Definitions                func(childComplexity int, categoryID *string, includeArchived *bool) int
+		Diagnostics                func(childComplexity int) int
 		DiffVersions               func(childComplexity int, fromVersionID string, toVersionID string) int
 		DirectoryGroups            func(childComplexity int) int
 		EffectiveGovernance        func(childComplexity int, groupID string) int
@@ -1319,6 +1352,7 @@ type QueryResolver interface {
 	RenderedContent(ctx context.Context, policyVersionID string) (*RenderedContent, error)
 	PolicyDiff(ctx context.Context, fromVersionID string, toVersionID string) (*PolicyDiff, error)
 	PDFDownloadLink(ctx context.Context, jobID string) (*PDFDownloadLink, error)
+	Diagnostics(ctx context.Context) (*Diagnostics, error)
 	Me(ctx context.Context) (*User, error)
 	Users(ctx context.Context, search *string, pageSize *int, pageToken *string, includeDeleted *bool) (*UserPage, error)
 	ResolveUserLabels(ctx context.Context, ids []string) ([]*UserLabel, error)
@@ -2145,6 +2179,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.CompletionReport.ViewedNotAckedCount(childComplexity), true
 
+	case "ComponentVersion.commit":
+		if e.ComplexityRoot.ComponentVersion.Commit == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ComponentVersion.Commit(childComplexity), true
+	case "ComponentVersion.name":
+		if e.ComplexityRoot.ComponentVersion.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ComponentVersion.Name(childComplexity), true
+	case "ComponentVersion.status":
+		if e.ComplexityRoot.ComponentVersion.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ComponentVersion.Status(childComplexity), true
+	case "ComponentVersion.version":
+		if e.ComplexityRoot.ComponentVersion.Version == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ComponentVersion.Version(childComplexity), true
+
 	case "ContactBlock.archived":
 		if e.ComplexityRoot.ContactBlock.Archived == nil {
 			break
@@ -2298,6 +2357,99 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.DeleteUserResult.UserID(childComplexity), true
+
+	case "Diagnostics.actor":
+		if e.ComplexityRoot.Diagnostics.Actor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Diagnostics.Actor(childComplexity), true
+	case "Diagnostics.appliance":
+		if e.ComplexityRoot.Diagnostics.Appliance == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Diagnostics.Appliance(childComplexity), true
+	case "Diagnostics.gateway":
+		if e.ComplexityRoot.Diagnostics.Gateway == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Diagnostics.Gateway(childComplexity), true
+	case "Diagnostics.generatedAt":
+		if e.ComplexityRoot.Diagnostics.GeneratedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Diagnostics.GeneratedAt(childComplexity), true
+	case "Diagnostics.release":
+		if e.ComplexityRoot.Diagnostics.Release == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Diagnostics.Release(childComplexity), true
+	case "Diagnostics.services":
+		if e.ComplexityRoot.Diagnostics.Services == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Diagnostics.Services(childComplexity), true
+	case "Diagnostics.thirdParty":
+		if e.ComplexityRoot.Diagnostics.ThirdParty == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Diagnostics.ThirdParty(childComplexity), true
+	case "Diagnostics.traceId":
+		if e.ComplexityRoot.Diagnostics.TraceID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Diagnostics.TraceID(childComplexity), true
+
+	case "DiagnosticsActingAs.id":
+		if e.ComplexityRoot.DiagnosticsActingAs.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DiagnosticsActingAs.ID(childComplexity), true
+	case "DiagnosticsActingAs.roles":
+		if e.ComplexityRoot.DiagnosticsActingAs.Roles == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DiagnosticsActingAs.Roles(childComplexity), true
+	case "DiagnosticsActingAs.username":
+		if e.ComplexityRoot.DiagnosticsActingAs.Username == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DiagnosticsActingAs.Username(childComplexity), true
+
+	case "DiagnosticsActor.actingAs":
+		if e.ComplexityRoot.DiagnosticsActor.ActingAs == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DiagnosticsActor.ActingAs(childComplexity), true
+	case "DiagnosticsActor.id":
+		if e.ComplexityRoot.DiagnosticsActor.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DiagnosticsActor.ID(childComplexity), true
+	case "DiagnosticsActor.roles":
+		if e.ComplexityRoot.DiagnosticsActor.Roles == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DiagnosticsActor.Roles(childComplexity), true
+	case "DiagnosticsActor.username":
+		if e.ComplexityRoot.DiagnosticsActor.Username == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DiagnosticsActor.Username(childComplexity), true
 
 	case "DigestWindow.dailyHour":
 		if e.ComplexityRoot.DigestWindow.DailyHour == nil {
@@ -4957,6 +5109,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Definitions(childComplexity, args["categoryId"].(*string), args["includeArchived"].(*bool)), true
+	case "Query.diagnostics":
+		if e.ComplexityRoot.Query.Diagnostics == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.Diagnostics(childComplexity), true
 	case "Query.diffVersions":
 		if e.ComplexityRoot.Query.DiffVersions == nil {
 			break
@@ -8323,6 +8481,56 @@ extend type Mutation {
 
 
 `, BuiltIn: false},
+	{Name: "../../graphql/diagnostics.graphqls", Input: `# The diagnostics read behind the web's Copy diagnostics button.
+
+scalar DateTime
+
+extend type Query {
+  "Build and version facts for a bug report. Any signed-in user."
+  diagnostics: Diagnostics!
+}
+
+type Diagnostics {
+  generatedAt: DateTime!
+  "This read's own trace id."
+  traceId: String!
+  actor: DiagnosticsActor!
+  gateway: ComponentVersion!
+  "Null when unknown."
+  release: String
+  "Null when not on the appliance."
+  appliance: String
+  services: [ComponentVersion!]!
+  thirdParty: [ComponentVersion!]!
+}
+
+type DiagnosticsActor {
+  id: ID!
+  username: String!
+  roles: [String!]!
+  "Set during act-as: the user the signed-in admin is acting as."
+  actingAs: DiagnosticsActingAs
+}
+
+type DiagnosticsActingAs {
+  id: ID!
+  username: String!
+  roles: [String!]!
+}
+
+type ComponentVersion {
+  name: String!
+  "unavailable or unknown when it can't be read."
+  version: String!
+  commit: String
+  status: ComponentStatus!
+}
+
+enum ComponentStatus {
+  OK
+  UNAVAILABLE
+}
+`, BuiltIn: false},
 	{Name: "../../graphql/identity.graphqls", Input: `# --- Identity / RBAC (ADM-03) ---
 # Backed by external/identity (IdentityReadService / IdentityAdminService) via
 # the gateway. The caller's identity for ` + "`" + `me` + "`" + ` is sourced from authmw claims at
@@ -9947,6 +10155,20 @@ func (ec *executionContext) childFields_CompletionReport(ctx context.Context, fi
 	return nil, fmt.Errorf("no field named %q was found under type CompletionReport", field.Name)
 }
 
+func (ec *executionContext) childFields_ComponentVersion(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "name":
+		return ec.fieldContext_ComponentVersion_name(ctx, field)
+	case "version":
+		return ec.fieldContext_ComponentVersion_version(ctx, field)
+	case "commit":
+		return ec.fieldContext_ComponentVersion_commit(ctx, field)
+	case "status":
+		return ec.fieldContext_ComponentVersion_status(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ComponentVersion", field.Name)
+}
+
 func (ec *executionContext) childFields_ContactBlock(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "id":
@@ -10019,6 +10241,54 @@ func (ec *executionContext) childFields_DeleteUserResult(ctx context.Context, fi
 		return ec.fieldContext_DeleteUserResult_revokedSessions(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type DeleteUserResult", field.Name)
+}
+
+func (ec *executionContext) childFields_Diagnostics(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "generatedAt":
+		return ec.fieldContext_Diagnostics_generatedAt(ctx, field)
+	case "traceId":
+		return ec.fieldContext_Diagnostics_traceId(ctx, field)
+	case "actor":
+		return ec.fieldContext_Diagnostics_actor(ctx, field)
+	case "gateway":
+		return ec.fieldContext_Diagnostics_gateway(ctx, field)
+	case "release":
+		return ec.fieldContext_Diagnostics_release(ctx, field)
+	case "appliance":
+		return ec.fieldContext_Diagnostics_appliance(ctx, field)
+	case "services":
+		return ec.fieldContext_Diagnostics_services(ctx, field)
+	case "thirdParty":
+		return ec.fieldContext_Diagnostics_thirdParty(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Diagnostics", field.Name)
+}
+
+func (ec *executionContext) childFields_DiagnosticsActingAs(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_DiagnosticsActingAs_id(ctx, field)
+	case "username":
+		return ec.fieldContext_DiagnosticsActingAs_username(ctx, field)
+	case "roles":
+		return ec.fieldContext_DiagnosticsActingAs_roles(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type DiagnosticsActingAs", field.Name)
+}
+
+func (ec *executionContext) childFields_DiagnosticsActor(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_DiagnosticsActor_id(ctx, field)
+	case "username":
+		return ec.fieldContext_DiagnosticsActor_username(ctx, field)
+	case "roles":
+		return ec.fieldContext_DiagnosticsActor_roles(ctx, field)
+	case "actingAs":
+		return ec.fieldContext_DiagnosticsActor_actingAs(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type DiagnosticsActor", field.Name)
 }
 
 func (ec *executionContext) childFields_DigestWindow(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -18089,6 +18359,98 @@ func (ec *executionContext) fieldContext_CompletionReport_overdue(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _ComponentVersion_name(ctx context.Context, field graphql.CollectedField, obj *ComponentVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ComponentVersion_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ComponentVersion_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ComponentVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ComponentVersion_version(ctx context.Context, field graphql.CollectedField, obj *ComponentVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ComponentVersion_version(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Version, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ComponentVersion_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ComponentVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ComponentVersion_commit(ctx context.Context, field graphql.CollectedField, obj *ComponentVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ComponentVersion_commit(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Commit, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ComponentVersion_commit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ComponentVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ComponentVersion_status(ctx context.Context, field graphql.CollectedField, obj *ComponentVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ComponentVersion_status(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v ComponentStatus) graphql.Marshaler {
+			return ec.marshalNComponentStatus2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComponentStatus(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ComponentVersion_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ComponentVersion", field, false, false, errors.New("field of type ComponentStatus does not have child fields"))
+}
+
 func (ec *executionContext) _ContactBlock_id(ctx context.Context, field graphql.CollectedField, obj *ContactBlock) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18662,6 +19024,396 @@ func (ec *executionContext) _DeleteUserResult_revokedSessions(ctx context.Contex
 }
 func (ec *executionContext) fieldContext_DeleteUserResult_revokedSessions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("DeleteUserResult", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _Diagnostics_generatedAt(ctx context.Context, field graphql.CollectedField, obj *Diagnostics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Diagnostics_generatedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GeneratedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNDateTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Diagnostics_generatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Diagnostics", field, false, false, errors.New("field of type DateTime does not have child fields"))
+}
+
+func (ec *executionContext) _Diagnostics_traceId(ctx context.Context, field graphql.CollectedField, obj *Diagnostics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Diagnostics_traceId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TraceID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Diagnostics_traceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Diagnostics", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Diagnostics_actor(ctx context.Context, field graphql.CollectedField, obj *Diagnostics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Diagnostics_actor(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Actor, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *DiagnosticsActor) graphql.Marshaler {
+			return ec.marshalNDiagnosticsActor2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDiagnosticsActor(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Diagnostics_actor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_DiagnosticsActor(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostics_gateway(ctx context.Context, field graphql.CollectedField, obj *Diagnostics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Diagnostics_gateway(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Gateway, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ComponentVersion) graphql.Marshaler {
+			return ec.marshalNComponentVersion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComponentVersion(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Diagnostics_gateway(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ComponentVersion(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostics_release(ctx context.Context, field graphql.CollectedField, obj *Diagnostics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Diagnostics_release(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Release, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Diagnostics_release(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Diagnostics", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Diagnostics_appliance(ctx context.Context, field graphql.CollectedField, obj *Diagnostics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Diagnostics_appliance(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Appliance, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Diagnostics_appliance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Diagnostics", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Diagnostics_services(ctx context.Context, field graphql.CollectedField, obj *Diagnostics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Diagnostics_services(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Services, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*ComponentVersion) graphql.Marshaler {
+			return ec.marshalNComponentVersion2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComponentVersionᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Diagnostics_services(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ComponentVersion(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Diagnostics_thirdParty(ctx context.Context, field graphql.CollectedField, obj *Diagnostics) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Diagnostics_thirdParty(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ThirdParty, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*ComponentVersion) graphql.Marshaler {
+			return ec.marshalNComponentVersion2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComponentVersionᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Diagnostics_thirdParty(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Diagnostics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ComponentVersion(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DiagnosticsActingAs_id(ctx context.Context, field graphql.CollectedField, obj *DiagnosticsActingAs) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DiagnosticsActingAs_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DiagnosticsActingAs_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DiagnosticsActingAs", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _DiagnosticsActingAs_username(ctx context.Context, field graphql.CollectedField, obj *DiagnosticsActingAs) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DiagnosticsActingAs_username(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Username, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DiagnosticsActingAs_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DiagnosticsActingAs", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _DiagnosticsActingAs_roles(ctx context.Context, field graphql.CollectedField, obj *DiagnosticsActingAs) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DiagnosticsActingAs_roles(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Roles, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DiagnosticsActingAs_roles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DiagnosticsActingAs", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _DiagnosticsActor_id(ctx context.Context, field graphql.CollectedField, obj *DiagnosticsActor) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DiagnosticsActor_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DiagnosticsActor_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DiagnosticsActor", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _DiagnosticsActor_username(ctx context.Context, field graphql.CollectedField, obj *DiagnosticsActor) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DiagnosticsActor_username(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Username, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DiagnosticsActor_username(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DiagnosticsActor", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _DiagnosticsActor_roles(ctx context.Context, field graphql.CollectedField, obj *DiagnosticsActor) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DiagnosticsActor_roles(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Roles, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DiagnosticsActor_roles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DiagnosticsActor", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _DiagnosticsActor_actingAs(ctx context.Context, field graphql.CollectedField, obj *DiagnosticsActor) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DiagnosticsActor_actingAs(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ActingAs, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *DiagnosticsActingAs) graphql.Marshaler {
+			return ec.marshalODiagnosticsActingAs2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDiagnosticsActingAs(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_DiagnosticsActor_actingAs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DiagnosticsActor",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_DiagnosticsActingAs(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _DigestWindow_dailyHour(ctx context.Context, field graphql.CollectedField, obj *DigestWindow) (ret graphql.Marshaler) {
@@ -30222,6 +30974,38 @@ func (ec *executionContext) fieldContext_Query_pdfDownloadLink(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_diagnostics(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_diagnostics(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().Diagnostics(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *Diagnostics) graphql.Marshaler {
+			return ec.marshalNDiagnostics2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDiagnostics(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_diagnostics(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Diagnostics(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_me(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -40947,6 +41731,59 @@ func (ec *executionContext) _CompletionReport(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var componentVersionImplementors = []string{"ComponentVersion"}
+
+func (ec *executionContext) _ComponentVersion(ctx context.Context, sel ast.SelectionSet, obj *ComponentVersion) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, componentVersionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ComponentVersion")
+		case "name":
+			out.Values[i] = ec._ComponentVersion_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "version":
+			out.Values[i] = ec._ComponentVersion_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "commit":
+			out.Values[i] = ec._ComponentVersion_commit(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._ComponentVersion_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var contactBlockImplementors = []string{"ContactBlock"}
 
 func (ec *executionContext) _ContactBlock(ctx context.Context, sel ast.SelectionSet, obj *ContactBlock) graphql.Marshaler {
@@ -41181,6 +42018,180 @@ func (ec *executionContext) _DeleteUserResult(ctx context.Context, sel ast.Selec
 		case "revokedSessions":
 			out.Values[i] = ec._DeleteUserResult_revokedSessions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var diagnosticsImplementors = []string{"Diagnostics"}
+
+func (ec *executionContext) _Diagnostics(ctx context.Context, sel ast.SelectionSet, obj *Diagnostics) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, diagnosticsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Diagnostics")
+		case "generatedAt":
+			out.Values[i] = ec._Diagnostics_generatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "traceId":
+			out.Values[i] = ec._Diagnostics_traceId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "actor":
+			out.Values[i] = ec._Diagnostics_actor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "gateway":
+			out.Values[i] = ec._Diagnostics_gateway(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "release":
+			out.Values[i] = ec._Diagnostics_release(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "appliance":
+			out.Values[i] = ec._Diagnostics_appliance(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "services":
+			out.Values[i] = ec._Diagnostics_services(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "thirdParty":
+			out.Values[i] = ec._Diagnostics_thirdParty(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var diagnosticsActingAsImplementors = []string{"DiagnosticsActingAs"}
+
+func (ec *executionContext) _DiagnosticsActingAs(ctx context.Context, sel ast.SelectionSet, obj *DiagnosticsActingAs) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, diagnosticsActingAsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DiagnosticsActingAs")
+		case "id":
+			out.Values[i] = ec._DiagnosticsActingAs_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "username":
+			out.Values[i] = ec._DiagnosticsActingAs_username(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roles":
+			out.Values[i] = ec._DiagnosticsActingAs_roles(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var diagnosticsActorImplementors = []string{"DiagnosticsActor"}
+
+func (ec *executionContext) _DiagnosticsActor(ctx context.Context, sel ast.SelectionSet, obj *DiagnosticsActor) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, diagnosticsActorImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DiagnosticsActor")
+		case "id":
+			out.Values[i] = ec._DiagnosticsActor_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "username":
+			out.Values[i] = ec._DiagnosticsActor_username(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roles":
+			out.Values[i] = ec._DiagnosticsActor_roles(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "actingAs":
+			out.Values[i] = ec._DiagnosticsActor_actingAs(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -45393,6 +46404,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_pdfDownloadLink(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "diagnostics":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_diagnostics(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -49709,6 +50742,42 @@ func (ec *executionContext) marshalNCompletionReport2ᚖgithubᚗcomᚋSteward�
 	return ec._CompletionReport(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNComponentStatus2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComponentStatus(ctx context.Context, v any) (ComponentStatus, error) {
+	var res ComponentStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNComponentStatus2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComponentStatus(ctx context.Context, sel ast.SelectionSet, v ComponentStatus) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNComponentVersion2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComponentVersionᚄ(ctx context.Context, sel ast.SelectionSet, v []*ComponentVersion) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNComponentVersion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComponentVersion(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNComponentVersion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComponentVersion(ctx context.Context, sel ast.SelectionSet, v *ComponentVersion) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ComponentVersion(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNContactBlock2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐContactBlock(ctx context.Context, sel ast.SelectionSet, v ContactBlock) graphql.Marshaler {
 	return ec._ContactBlock(ctx, sel, &v)
 }
@@ -49742,6 +50811,22 @@ func (ec *executionContext) marshalNContactBlock2ᚖgithubᚗcomᚋStewardᚑGRC
 func (ec *executionContext) unmarshalNContactBlockInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐContactBlockInput(ctx context.Context, v any) (ContactBlockInput, error) {
 	res, err := ec.unmarshalInputContactBlockInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNDateTime2timeᚐTime(ctx context.Context, v any) (time.Time, error) {
+	res, err := graphql.UnmarshalTime(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDateTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalTime(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNDecisionInput2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDecisionInputᚄ(ctx context.Context, v any) ([]*DecisionInput, error) {
@@ -49856,6 +50941,30 @@ func (ec *executionContext) unmarshalNDeletionItemKind2githubᚗcomᚋStewardᚑ
 
 func (ec *executionContext) marshalNDeletionItemKind2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDeletionItemKind(ctx context.Context, sel ast.SelectionSet, v DeletionItemKind) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNDiagnostics2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDiagnostics(ctx context.Context, sel ast.SelectionSet, v Diagnostics) graphql.Marshaler {
+	return ec._Diagnostics(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDiagnostics2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDiagnostics(ctx context.Context, sel ast.SelectionSet, v *Diagnostics) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Diagnostics(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNDiagnosticsActor2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDiagnosticsActor(ctx context.Context, sel ast.SelectionSet, v *DiagnosticsActor) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DiagnosticsActor(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNDigestWindow2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDigestWindow(ctx context.Context, sel ast.SelectionSet, v *DigestWindow) graphql.Marshaler {
@@ -52161,6 +53270,13 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) marshalODiagnosticsActingAs2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDiagnosticsActingAs(ctx context.Context, sel ast.SelectionSet, v *DiagnosticsActingAs) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._DiagnosticsActingAs(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalODocumentType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDocumentType(ctx context.Context, v any) (*DocumentType, error) {

@@ -53,6 +53,7 @@ const (
 	CodeCollabFlushUnavailable         = 1242
 	CodeCollabFlushRejected            = 1243
 	CodeCollabFlushFailed              = 1244
+	CodeUnauthenticated                = 1250
 )
 
 // Entries returns the registry entries.
@@ -128,6 +129,9 @@ func Entries() []apperr.Entry {
 			UserSafe: true, Message: "The latest edits couldn't be saved, so the policy was not published: {reason}"},
 		{Code: CodeCollabFlushFailed, Symbol: "COLLAB_FLUSH_FAILED", Category: apperr.CategoryInternal,
 			Title: "publish", Cause: "collab's flush failed for any other reason; nothing was published"},
+		{Code: CodeUnauthenticated, Symbol: "UNAUTHENTICATED", Category: apperr.CategoryUnauthenticated,
+			Title: "session", Cause: "the request has no signed-in session",
+			UserSafe: true, Message: "Sign in to continue."},
 	}
 }
 

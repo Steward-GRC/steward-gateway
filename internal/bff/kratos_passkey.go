@@ -119,8 +119,8 @@ type PasskeyRegisterResult struct {
 // newFlowClient is a client for one browser-flow ceremony: its own cookie jar,
 // seeded with the cookies a previous step captured, and no redirects followed.
 // The shared c.http never gets a jar, so the password paths stay cookieless.
-func (c *KratosClient) newFlowClient(seed map[string]string) (*http.Client, *recoveryCookieJar) {
-	jar := newRecoveryCookieJar()
+func (c *KratosClient) newFlowClient(seed map[string]string) (*http.Client, *flowCookieJar) {
+	jar := newFlowCookieJar()
 	maps.Copy(jar.cookies, seed)
 	return &http.Client{
 		Timeout:   c.http.Timeout,
@@ -132,7 +132,7 @@ func (c *KratosClient) newFlowClient(seed map[string]string) (*http.Client, *rec
 	}, jar
 }
 
-func (j *recoveryCookieJar) snapshot() map[string]string {
+func (j *flowCookieJar) snapshot() map[string]string {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	out := make(map[string]string, len(j.cookies))

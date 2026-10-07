@@ -72,6 +72,19 @@ failed). An unreadable entry is `unavailable` (`unknown` for a service without t
 never fails the read. It never returns tokens, cookies, request headers, secrets, policy content,
 addresses or probe errors.
 
+## Break-glass reads
+
+A site admin who sees a document obfuscated can ask for a time-boxed reveal of that one document
+(`breakGlassReveal`, with a reason). Identity grants it and sets the expiry. While the grant is
+active, `policyVersion` and `policyVersions` serve that document's real content to that admin and
+no other document's.
+
+Each such read is recorded first: when only the grant allows it, the gateway calls core's
+`RecordBreakGlassRead` (the policy and, for one version, the version) before returning anything.
+Core audits it, naming the real admin and the user acted as during act-as, and obligations alerts
+the owner and the compliance admins. If the call fails, the gateway returns its error and serves
+nothing. A read the access rules already allow is not a break-glass read and isn't recorded.
+
 ## Calling other services
 
 The gateway calls every Steward service over gRPC, never importing their Go modules: each proto is
@@ -102,7 +115,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - core SettingsService: GetGlobalSettings, SetGlobalSettings, SetEmailServiceConfig, EmailServiceConfigStatus
 - core ReferenceService: ListReferences, CreateReference, UpdateReference, DeleteReference, SetReferenceArchived, ListPolicyReferences, SetPolicyReferences
 - core CategoryService: CreateCategory, GetCategory, ListCategoryChildren, SetCategoryDefaults, RenameCategory, DeleteCategory, MoveCategory, SetGovernance, GetEffectiveGovernance, GetCategoryRuleset, SetCategoryRuleset
-- core PolicyService: CreatePolicy, GetPolicy, GetPolicyByNumber, ListPolicies, GetPolicyVersion, ListPolicyVersions, SaveDraft, PublishDraft, DiscardDraft, DeletePolicy, RetirePolicy, SetPolicyOwner, ListPoliciesByOwner, ReassignUserPolicies, MovePolicy, DiffVersions, GetEffectiveTemplate, SetPolicyTemplate, SetPolicySensitivity, RenamePolicy, SetAck, ReindexPolicy, ReindexPolicyVersion
+- core PolicyService: CreatePolicy, GetPolicy, GetPolicyByNumber, ListPolicies, GetPolicyVersion, ListPolicyVersions, SaveDraft, PublishDraft, DiscardDraft, DeletePolicy, RetirePolicy, RecordBreakGlassRead, SetPolicyOwner, ListPoliciesByOwner, ReassignUserPolicies, MovePolicy, DiffVersions, GetEffectiveTemplate, SetPolicyTemplate, SetPolicySensitivity, RenamePolicy, SetAck, ReindexPolicy, ReindexPolicyVersion
 - delivery DeliveryService: GetRenderedContent, GetDiff, RequestPDFExport, GetPDFDownloadLink, CreateMagicLink, RevokeMagicLink
 - reporting IntakeService: SubmitAnonymousReport, CheckReport, ReplyToReport, SubmitNamedReport, ListMyReports, GetMyReport, ReplyToMyReport
 - reporting CaseService: ListCases, GetCase, GetAttachment, PostMessage, AddNote, AssignCase, SetCaseStatus, SetDiscoveryDate, RecordRiskAssessment, AddNotice, UpdateNotice, CloseCase

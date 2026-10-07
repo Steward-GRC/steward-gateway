@@ -27,6 +27,9 @@ type Organization {
   # When true, this org's users may sign in with a local password as a fallback
   # even while SSO is configured. Defaults false (SSO-only).
   allowLocal: Boolean!
+  # True when the stored OIDC client secret reference was cleared because it
+  # wasn't a key reference; an admin must enter the client secret again.
+  secretReentryRequired: Boolean!
 }
 
 # One SP (service-provider) signing certificate. notAfter is RFC3339; active is
@@ -69,7 +72,11 @@ input KeyValueInput {
 
 # New organization SSO connection. The actor is bound from the caller's claims
 # at the gateway (never from input). config carries protocol-specific IdP
-# connection settings; secretRef names the stored client secret (OIDC).
+# connection settings and never a secret. An OIDC connection takes its client
+# secret one of two ways, never both: clientSecret is the secret itself,
+# write-only (identity keeps it in a Kubernetes Secret, never in its database,
+# and no response returns it); secretRef names a key an operator created in
+# that Secret beforehand. SAML takes neither.
 input AddOrganizationInput {
   orgName: String!
   domain: String!
@@ -77,6 +84,7 @@ input AddOrganizationInput {
   displayName: String
   config: [KeyValueInput!]
   secretRef: String
+  clientSecret: String
 }
 
 extend type Query {
@@ -110,15 +118,18 @@ extend type Mutation {
   disableOrganization(domain: String!): Organization!
   # Update an organization's per-org login toggles: jitEnabled
   # and allowLocal. Each argument is optional — omit one to leave
-  # it unchanged and flip only the other.
-  updateIdPConnection(domain: String!, jitEnabled: Boolean, allowLocal: Boolean): Organization!
+  # it unchanged and flip only the other. clientSecret (write-only) or
+  # secretRef replaces an OIDC connection's client secret, as in
+  # AddOrganizationInput; omit both to keep it.
+  updateIdPConnection(domain: String!, jitEnabled: Boolean, allowLocal: Boolean, secretRef: String, clientSecret: String): Organization!
   # Change an organization's IdP protocol (SAML<->OIDC). DESTRUCTIVE: it
   # re-provisions the backend IdP for the new protocol and resets the org to the
   # start — clearing both gates (verified + testPassed) and disabling the
   # connection — so the domain must be re-verified and the IdP re-tested before
-  # re-activation. config carries the new protocol's IdP settings; secretRef
-  # names the stored client secret (OIDC).
-  changeOrgProtocol(domain: String!, protocol: String!, config: [KeyValueInput!], secretRef: String): Organization!
+  # re-activation. config carries the new protocol's IdP settings; an OIDC
+  # target takes clientSecret (write-only) or secretRef, as in
+  # AddOrganizationInput.
+  changeOrgProtocol(domain: String!, protocol: String!, config: [KeyValueInput!], secretRef: String, clientSecret: String): Organization!
   # Remove an organization SSO connection.
   deleteOrganization(domain: String!): Boolean!
   # Add an IdP-group-claim-to-platform-group mapping for a connection.

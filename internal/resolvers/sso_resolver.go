@@ -26,6 +26,8 @@ func ssoOrgFromProto(o *identityv1.Organization) *Organization {
 		ConnectionID:    o.GetConnectionId(),
 		JitEnabled:      o.GetJitEnabled(),
 		AllowLocal:      o.GetAllowLocal(),
+
+		SecretReentryRequired: o.GetSecretReentryRequired(),
 	}
 }
 
@@ -144,6 +146,9 @@ func AddOrganizationResolver(ctx context.Context, client identityv1.IdentitySSOA
 	if input.SecretRef != nil {
 		req.SecretRef = *input.SecretRef
 	}
+	if input.ClientSecret != nil {
+		req.ClientSecret = *input.ClientSecret
+	}
 	if len(input.Config) > 0 {
 		req.Config = make(map[string]string, len(input.Config))
 		for _, kv := range input.Config {
@@ -181,8 +186,8 @@ func StartDomainVerificationResolver(ctx context.Context, client identityv1.Iden
 }
 
 // ChangeOrgProtocolResolver switches an organization's IdP protocol (SAML<->OIDC), resetting the
-// org to the start.
-func ChangeOrgProtocolResolver(ctx context.Context, client identityv1.IdentitySSOAdminServiceClient, domain, protocol string, config []*KeyValueInput, secretRef *string) (*Organization, error) {
+// org to the start. clientSecret is write-only and goes to identity unchanged.
+func ChangeOrgProtocolResolver(ctx context.Context, client identityv1.IdentitySSOAdminServiceClient, domain, protocol string, config []*KeyValueInput, secretRef, clientSecret *string) (*Organization, error) {
 	if _, err := requireSiteAdmin(ctx); err != nil {
 		return nil, err
 	}
@@ -192,6 +197,9 @@ func ChangeOrgProtocolResolver(ctx context.Context, client identityv1.IdentitySS
 	}
 	if secretRef != nil {
 		req.SecretRef = *secretRef
+	}
+	if clientSecret != nil {
+		req.ClientSecret = *clientSecret
 	}
 	if len(config) > 0 {
 		req.Config = make(map[string]string, len(config))
@@ -250,16 +258,24 @@ func DisableOrganizationResolver(ctx context.Context, client identityv1.Identity
 }
 
 // UpdateIdPConnectionResolver flips an organization's per-org login toggles: jitEnabled and
-// allowLocal.
-func UpdateIdPConnectionResolver(ctx context.Context, client identityv1.IdentitySSOAdminServiceClient, domain string, jitEnabled, allowLocal *bool) (*Organization, error) {
+// allowLocal. secretRef or the write-only clientSecret replaces an OIDC connection's client
+// secret.
+func UpdateIdPConnectionResolver(ctx context.Context, client identityv1.IdentitySSOAdminServiceClient, domain string, jitEnabled, allowLocal *bool, secretRef, clientSecret *string) (*Organization, error) {
 	if _, err := requireSiteAdmin(ctx); err != nil {
 		return nil, err
 	}
-	resp, err := client.UpdateIdPConnection(ctx, &identityv1.UpdateIdPConnectionRequest{
+	req := &identityv1.UpdateIdPConnectionRequest{
 		Domain:     domain,
 		JitEnabled: jitEnabled,
 		AllowLocal: allowLocal,
-	})
+	}
+	if secretRef != nil {
+		req.SecretRef = *secretRef
+	}
+	if clientSecret != nil {
+		req.ClientSecret = *clientSecret
+	}
+	resp, err := client.UpdateIdPConnection(ctx, req)
 	if err != nil {
 		return nil, err
 	}

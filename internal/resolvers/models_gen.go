@@ -164,12 +164,13 @@ type Acknowledgment struct {
 }
 
 type AddOrganizationInput struct {
-	OrgName     string           `json:"orgName"`
-	Domain      string           `json:"domain"`
-	Protocol    string           `json:"protocol"`
-	DisplayName *string          `json:"displayName,omitempty"`
-	Config      []*KeyValueInput `json:"config,omitempty"`
-	SecretRef   *string          `json:"secretRef,omitempty"`
+	OrgName      string           `json:"orgName"`
+	Domain       string           `json:"domain"`
+	Protocol     string           `json:"protocol"`
+	DisplayName  *string          `json:"displayName,omitempty"`
+	Config       []*KeyValueInput `json:"config,omitempty"`
+	SecretRef    *string          `json:"secretRef,omitempty"`
+	ClientSecret *string          `json:"clientSecret,omitempty"`
 }
 
 type Announcement struct {
@@ -750,17 +751,18 @@ type Obligation struct {
 }
 
 type Organization struct {
-	Domain          string `json:"domain"`
-	OrgName         string `json:"orgName"`
-	Protocol        string `json:"protocol"`
-	DisplayName     string `json:"displayName"`
-	ConnectionAlias string `json:"connectionAlias"`
-	Verified        bool   `json:"verified"`
-	TestPassed      bool   `json:"testPassed"`
-	Enabled         bool   `json:"enabled"`
-	ConnectionID    string `json:"connectionId"`
-	JitEnabled      bool   `json:"jitEnabled"`
-	AllowLocal      bool   `json:"allowLocal"`
+	Domain                string `json:"domain"`
+	OrgName               string `json:"orgName"`
+	Protocol              string `json:"protocol"`
+	DisplayName           string `json:"displayName"`
+	ConnectionAlias       string `json:"connectionAlias"`
+	Verified              bool   `json:"verified"`
+	TestPassed            bool   `json:"testPassed"`
+	Enabled               bool   `json:"enabled"`
+	ConnectionID          string `json:"connectionId"`
+	JitEnabled            bool   `json:"jitEnabled"`
+	AllowLocal            bool   `json:"allowLocal"`
+	SecretReentryRequired bool   `json:"secretReentryRequired"`
 }
 
 type OverdueEntry struct {

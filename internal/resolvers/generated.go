@@ -594,7 +594,7 @@ type ComplexityRoot struct {
 		AssignCase                    func(childComplexity int, caseID string, assigneeUserID *string) int
 		BreakGlassReveal              func(childComplexity int, policyID string, reason string) int
 		BulkDecide                    func(childComplexity int, input BulkDecideInput) int
-		ChangeOrgProtocol             func(childComplexity int, domain string, protocol string, config []*KeyValueInput, secretRef *string) int
+		ChangeOrgProtocol             func(childComplexity int, domain string, protocol string, config []*KeyValueInput, secretRef *string, clientSecret *string) int
 		CheckReport                   func(childComplexity int, caseCode string, passphrase string) int
 		CloseCase                     func(childComplexity int, caseID string, outcome CaseOutcome, correctiveActions []*CorrectiveActionInput, closingMessage *string) int
 		CompleteOnboarding            func(childComplexity int, acceptTerms bool, username *string, firstName *string, lastName *string, email *string) int
@@ -716,7 +716,7 @@ type ComplexityRoot struct {
 		UpdateCaseNotice              func(childComplexity int, caseID string, noticeID string, status NoticeStatus, sentOn *string) int
 		UpdateContactBlock            func(childComplexity int, id string, block ContactBlockInput) int
 		UpdateDefinition              func(childComplexity int, id string, input DefinitionEntryInput) int
-		UpdateIDPConnection           func(childComplexity int, domain string, jitEnabled *bool, allowLocal *bool) int
+		UpdateIDPConnection           func(childComplexity int, domain string, jitEnabled *bool, allowLocal *bool, secretRef *string, clientSecret *string) int
 		UpdateMyProfile               func(childComplexity int, firstName *string, lastName *string, locale *string) int
 		UpdateReference               func(childComplexity int, id string, input ReferenceInput) int
 		UpdateTemplateVersionSections func(childComplexity int, id string, sections []*SectionInput) int
@@ -769,17 +769,18 @@ type ComplexityRoot struct {
 	}
 
 	Organization struct {
-		AllowLocal      func(childComplexity int) int
-		ConnectionAlias func(childComplexity int) int
-		ConnectionID    func(childComplexity int) int
-		DisplayName     func(childComplexity int) int
-		Domain          func(childComplexity int) int
-		Enabled         func(childComplexity int) int
-		JitEnabled      func(childComplexity int) int
-		OrgName         func(childComplexity int) int
-		Protocol        func(childComplexity int) int
-		TestPassed      func(childComplexity int) int
-		Verified        func(childComplexity int) int
+		AllowLocal            func(childComplexity int) int
+		ConnectionAlias       func(childComplexity int) int
+		ConnectionID          func(childComplexity int) int
+		DisplayName           func(childComplexity int) int
+		Domain                func(childComplexity int) int
+		Enabled               func(childComplexity int) int
+		JitEnabled            func(childComplexity int) int
+		OrgName               func(childComplexity int) int
+		Protocol              func(childComplexity int) int
+		SecretReentryRequired func(childComplexity int) int
+		TestPassed            func(childComplexity int) int
+		Verified              func(childComplexity int) int
 	}
 
 	OverdueEntry struct {
@@ -1508,8 +1509,8 @@ type MutationResolver interface {
 	VerifyDomain(ctx context.Context, domain string) (*Organization, error)
 	ActivateOrganization(ctx context.Context, domain string) (*Organization, error)
 	DisableOrganization(ctx context.Context, domain string) (*Organization, error)
-	UpdateIDPConnection(ctx context.Context, domain string, jitEnabled *bool, allowLocal *bool) (*Organization, error)
-	ChangeOrgProtocol(ctx context.Context, domain string, protocol string, config []*KeyValueInput, secretRef *string) (*Organization, error)
+	UpdateIDPConnection(ctx context.Context, domain string, jitEnabled *bool, allowLocal *bool, secretRef *string, clientSecret *string) (*Organization, error)
+	ChangeOrgProtocol(ctx context.Context, domain string, protocol string, config []*KeyValueInput, secretRef *string, clientSecret *string) (*Organization, error)
 	DeleteOrganization(ctx context.Context, domain string) (bool, error)
 	AddGroupMapping(ctx context.Context, connectionID string, idpGroupClaimValue string, targetGroupID string) (*GroupMapping, error)
 	DeleteGroupMapping(ctx context.Context, mappingID string) (bool, error)
@@ -3740,7 +3741,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.ChangeOrgProtocol(childComplexity, args["domain"].(string), args["protocol"].(string), args["config"].([]*KeyValueInput), args["secretRef"].(*string)), true
+		return e.ComplexityRoot.Mutation.ChangeOrgProtocol(childComplexity, args["domain"].(string), args["protocol"].(string), args["config"].([]*KeyValueInput), args["secretRef"].(*string), args["clientSecret"].(*string)), true
 	case "Mutation.checkReport":
 		if e.ComplexityRoot.Mutation.CheckReport == nil {
 			break
@@ -5047,7 +5048,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.UpdateIDPConnection(childComplexity, args["domain"].(string), args["jitEnabled"].(*bool), args["allowLocal"].(*bool)), true
+		return e.ComplexityRoot.Mutation.UpdateIDPConnection(childComplexity, args["domain"].(string), args["jitEnabled"].(*bool), args["allowLocal"].(*bool), args["secretRef"].(*string), args["clientSecret"].(*string)), true
 	case "Mutation.updateMyProfile":
 		if e.ComplexityRoot.Mutation.UpdateMyProfile == nil {
 			break
@@ -5340,6 +5341,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Organization.Protocol(childComplexity), true
+	case "Organization.secretReentryRequired":
+		if e.ComplexityRoot.Organization.SecretReentryRequired == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Organization.SecretReentryRequired(childComplexity), true
 	case "Organization.testPassed":
 		if e.ComplexityRoot.Organization.TestPassed == nil {
 			break
@@ -10711,6 +10718,9 @@ type Organization {
   # When true, this org's users may sign in with a local password as a fallback
   # even while SSO is configured. Defaults false (SSO-only).
   allowLocal: Boolean!
+  # True when the stored OIDC client secret reference was cleared because it
+  # wasn't a key reference; an admin must enter the client secret again.
+  secretReentryRequired: Boolean!
 }
 
 # One SP (service-provider) signing certificate. notAfter is RFC3339; active is
@@ -10753,7 +10763,11 @@ input KeyValueInput {
 
 # New organization SSO connection. The actor is bound from the caller's claims
 # at the gateway (never from input). config carries protocol-specific IdP
-# connection settings; secretRef names the stored client secret (OIDC).
+# connection settings and never a secret. An OIDC connection takes its client
+# secret one of two ways, never both: clientSecret is the secret itself,
+# write-only (identity keeps it in a Kubernetes Secret, never in its database,
+# and no response returns it); secretRef names a key an operator created in
+# that Secret beforehand. SAML takes neither.
 input AddOrganizationInput {
   orgName: String!
   domain: String!
@@ -10761,6 +10775,7 @@ input AddOrganizationInput {
   displayName: String
   config: [KeyValueInput!]
   secretRef: String
+  clientSecret: String
 }
 
 extend type Query {
@@ -10794,15 +10809,18 @@ extend type Mutation {
   disableOrganization(domain: String!): Organization!
   # Update an organization's per-org login toggles: jitEnabled
   # and allowLocal. Each argument is optional — omit one to leave
-  # it unchanged and flip only the other.
-  updateIdPConnection(domain: String!, jitEnabled: Boolean, allowLocal: Boolean): Organization!
+  # it unchanged and flip only the other. clientSecret (write-only) or
+  # secretRef replaces an OIDC connection's client secret, as in
+  # AddOrganizationInput; omit both to keep it.
+  updateIdPConnection(domain: String!, jitEnabled: Boolean, allowLocal: Boolean, secretRef: String, clientSecret: String): Organization!
   # Change an organization's IdP protocol (SAML<->OIDC). DESTRUCTIVE: it
   # re-provisions the backend IdP for the new protocol and resets the org to the
   # start — clearing both gates (verified + testPassed) and disabling the
   # connection — so the domain must be re-verified and the IdP re-tested before
-  # re-activation. config carries the new protocol's IdP settings; secretRef
-  # names the stored client secret (OIDC).
-  changeOrgProtocol(domain: String!, protocol: String!, config: [KeyValueInput!], secretRef: String): Organization!
+  # re-activation. config carries the new protocol's IdP settings; an OIDC
+  # target takes clientSecret (write-only) or secretRef, as in
+  # AddOrganizationInput.
+  changeOrgProtocol(domain: String!, protocol: String!, config: [KeyValueInput!], secretRef: String, clientSecret: String): Organization!
   # Remove an organization SSO connection.
   deleteOrganization(domain: String!): Boolean!
   # Add an IdP-group-claim-to-platform-group mapping for a connection.
@@ -12397,6 +12415,8 @@ func (ec *executionContext) childFields_Organization(ctx context.Context, field 
 		return ec.fieldContext_Organization_jitEnabled(ctx, field)
 	case "allowLocal":
 		return ec.fieldContext_Organization_allowLocal(ctx, field)
+	case "secretReentryRequired":
+		return ec.fieldContext_Organization_secretReentryRequired(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Organization", field.Name)
 }
@@ -13780,6 +13800,14 @@ func (ec *executionContext) field_Mutation_changeOrgProtocol_args(ctx context.Co
 		return nil, err
 	}
 	args["secretRef"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "clientSecret",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["clientSecret"] = arg4
 	return args, nil
 }
 
@@ -16294,6 +16322,22 @@ func (ec *executionContext) field_Mutation_updateIdPConnection_args(ctx context.
 		return nil, err
 	}
 	args["allowLocal"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "secretRef",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["secretRef"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "clientSecret",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["clientSecret"] = arg4
 	return args, nil
 }
 
@@ -30920,7 +30964,7 @@ func (ec *executionContext) _Mutation_updateIdPConnection(ctx context.Context, f
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().UpdateIDPConnection(ctx, fc.Args["domain"].(string), fc.Args["jitEnabled"].(*bool), fc.Args["allowLocal"].(*bool))
+			return ec.Resolvers.Mutation().UpdateIDPConnection(ctx, fc.Args["domain"].(string), fc.Args["jitEnabled"].(*bool), fc.Args["allowLocal"].(*bool), fc.Args["secretRef"].(*string), fc.Args["clientSecret"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *Organization) graphql.Marshaler {
@@ -30964,7 +31008,7 @@ func (ec *executionContext) _Mutation_changeOrgProtocol(ctx context.Context, fie
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().ChangeOrgProtocol(ctx, fc.Args["domain"].(string), fc.Args["protocol"].(string), fc.Args["config"].([]*KeyValueInput), fc.Args["secretRef"].(*string))
+			return ec.Resolvers.Mutation().ChangeOrgProtocol(ctx, fc.Args["domain"].(string), fc.Args["protocol"].(string), fc.Args["config"].([]*KeyValueInput), fc.Args["secretRef"].(*string), fc.Args["clientSecret"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *Organization) graphql.Marshaler {
@@ -32248,6 +32292,29 @@ func (ec *executionContext) _Organization_allowLocal(ctx context.Context, field 
 	)
 }
 func (ec *executionContext) fieldContext_Organization_allowLocal(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Organization", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Organization_secretReentryRequired(ctx context.Context, field graphql.CollectedField, obj *Organization) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Organization_secretReentryRequired(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SecretReentryRequired, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Organization_secretReentryRequired(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Organization", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
@@ -44663,7 +44730,7 @@ func (ec *executionContext) unmarshalInputAddOrganizationInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"orgName", "domain", "protocol", "displayName", "config", "secretRef"}
+	fieldsInOrder := [...]string{"orgName", "domain", "protocol", "displayName", "config", "secretRef", "clientSecret"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -44712,6 +44779,13 @@ func (ec *executionContext) unmarshalInputAddOrganizationInput(ctx context.Conte
 				return it, err
 			}
 			it.SecretRef = data
+		case "clientSecret":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientSecret"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientSecret = data
 		}
 	}
 	return it, nil
@@ -51997,6 +52071,11 @@ func (ec *executionContext) _Organization(ctx context.Context, sel ast.Selection
 			}
 		case "allowLocal":
 			out.Values[i] = ec._Organization_allowLocal(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "secretReentryRequired":
+			out.Values[i] = ec._Organization_secretReentryRequired(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

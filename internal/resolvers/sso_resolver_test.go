@@ -5,6 +5,7 @@ package resolvers_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	grpcactor "github.com/Bugs5382/go-grpc-actor"
@@ -230,7 +231,7 @@ func TestSSOResolvers_AllRejectNonSiteAdmin(t *testing.T) {
 			return e
 		},
 		func() error {
-			_, e := resolvers.ChangeOrgProtocolResolver(ctx, f, "partner.example.net", "saml", nil, nil)
+			_, e := resolvers.ChangeOrgProtocolResolver(ctx, f, "partner.example.net", "saml", nil, nil, nil)
 			return e
 		},
 		func() error { _, e := resolvers.VerifyDomainResolver(ctx, f, "partner.example.net"); return e },
@@ -303,14 +304,14 @@ func TestUpdateIdPConnectionResolver(t *testing.T) {
 	// Non-site-admin is rejected and never reaches the client.
 	fake := &fakeSSOAdmin{}
 	jitOff := false
-	_, err := resolvers.UpdateIdPConnectionResolver(ctxWithRoles(t, "u-9", []string{"policy-author"}), fake, "partner.example.net", &jitOff, nil)
+	_, err := resolvers.UpdateIdPConnectionResolver(ctxWithRoles(t, "u-9", []string{"policy-author"}), fake, "partner.example.net", &jitOff, nil, nil, nil)
 	require.Equal(t, codes.PermissionDenied, status.Code(err))
 	require.Nil(t, fake.lastUpdateIdP, "must not call identity when unauthorized")
 
 	// Site-admin: both toggles forwarded, actor bound, response mapped.
 	fake = &fakeSSOAdmin{}
 	jitOff, allowOn := false, true
-	org, err := resolvers.UpdateIdPConnectionResolver(siteAdminCtx(t), fake, "partner.example.net", &jitOff, &allowOn)
+	org, err := resolvers.UpdateIdPConnectionResolver(siteAdminCtx(t), fake, "partner.example.net", &jitOff, &allowOn, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, fake.lastUpdateIdP)
 	require.Equal(t, "partner.example.net", fake.lastUpdateIdP.GetDomain())
@@ -325,7 +326,7 @@ func TestUpdateIdPConnectionResolver(t *testing.T) {
 	// Only one toggle supplied: the other is forwarded as nil (unset).
 	fake = &fakeSSOAdmin{}
 	allowOff := false
-	_, err = resolvers.UpdateIdPConnectionResolver(siteAdminCtx(t), fake, "partner.example.net", nil, &allowOff)
+	_, err = resolvers.UpdateIdPConnectionResolver(siteAdminCtx(t), fake, "partner.example.net", nil, &allowOff, nil, nil)
 	require.NoError(t, err)
 	require.Nil(t, fake.lastUpdateIdP.JitEnabled, "unset jitEnabled must forward as nil")
 	require.NotNil(t, fake.lastUpdateIdP.AllowLocal)
@@ -359,7 +360,7 @@ func TestStartDomainVerificationResolver_Rotate(t *testing.T) {
 // (actor bound from claims, config folded into the map), returns the reset org,
 // and rejects a non-site-admin caller before reaching the gRPC client.
 func TestChangeOrgProtocolResolver(t *testing.T) {
-	_, err := resolvers.ChangeOrgProtocolResolver(anonCtx(), &fakeSSOAdmin{}, "partner.example.net", "saml", nil, nil)
+	_, err := resolvers.ChangeOrgProtocolResolver(anonCtx(), &fakeSSOAdmin{}, "partner.example.net", "saml", nil, nil, nil)
 	require.Error(t, err) // site-admin gate
 
 	fake := &fakeSSOAdmin{changeProtoResp: &identityv1.Organization{
@@ -367,7 +368,7 @@ func TestChangeOrgProtocolResolver(t *testing.T) {
 	}}
 	secret := "vault://ds/saml"
 	org, err := resolvers.ChangeOrgProtocolResolver(siteAdminCtx(t), fake, "partner.example.net", "saml",
-		[]*resolvers.KeyValueInput{{Key: "entityId", Value: "https://partner.example.net/saml"}}, &secret)
+		[]*resolvers.KeyValueInput{{Key: "entityId", Value: "https://partner.example.net/saml"}}, &secret, nil)
 	require.NoError(t, err)
 
 	// The resolver returns the org reset to the start with the new protocol.
@@ -382,4 +383,50 @@ func TestChangeOrgProtocolResolver(t *testing.T) {
 	require.Equal(t, "admin-1", fake.lastActor)
 	require.Equal(t, "vault://ds/saml", fake.lastChangeProto.GetSecretRef())
 	require.Equal(t, "https://partner.example.net/saml", fake.lastChangeProto.GetConfig()["entityId"])
+}
+
+// The OIDC client secret is write-only: every mutation that takes it passes it
+// to identity unchanged, and no GraphQL field can carry it back.
+func TestSSOResolvers_ClientSecretIsPassedThroughAndNeverReturned(t *testing.T) {
+	const plain = "aaaa-bbbb-test-only" // #nosec G101 -- test value
+	secret := plain
+	fake := &fakeSSOAdmin{changeProtoResp: &identityv1.Organization{Domain: "partner.example.net", Protocol: "oidc"}}
+
+	org, err := resolvers.AddOrganizationResolver(siteAdminCtx(t), fake, resolvers.AddOrganizationInput{
+		Domain: "partner.example.net", OrgName: "DS", Protocol: "oidc", ClientSecret: &secret,
+	})
+	require.NoError(t, err)
+	require.Equal(t, plain, fake.lastAddOrg.GetClientSecret())
+	require.Empty(t, fake.lastAddOrg.GetSecretRef())
+	requireNoSecretInJSON(t, org, plain)
+
+	org, err = resolvers.ChangeOrgProtocolResolver(siteAdminCtx(t), fake, "partner.example.net", "oidc", nil, nil, &secret)
+	require.NoError(t, err)
+	require.Equal(t, plain, fake.lastChangeProto.GetClientSecret())
+	requireNoSecretInJSON(t, org, plain)
+
+	ref := "operator-key"
+	_, err = resolvers.UpdateIdPConnectionResolver(siteAdminCtx(t), fake, "partner.example.net", nil, nil, &ref, nil)
+	require.NoError(t, err)
+	require.Equal(t, "operator-key", fake.lastUpdateIdP.GetSecretRef())
+	require.Empty(t, fake.lastUpdateIdP.GetClientSecret())
+
+	org, err = resolvers.UpdateIdPConnectionResolver(siteAdminCtx(t), fake, "partner.example.net", nil, nil, nil, &secret)
+	require.NoError(t, err)
+	require.Equal(t, plain, fake.lastUpdateIdP.GetClientSecret())
+	requireNoSecretInJSON(t, org, plain)
+}
+
+func TestSSOResolvers_SecretReentryRequiredIsShown(t *testing.T) {
+	fake := &fakeSSOAdmin{changeProtoResp: &identityv1.Organization{Domain: "partner.example.net", SecretReentryRequired: true}}
+	org, err := resolvers.ChangeOrgProtocolResolver(siteAdminCtx(t), fake, "partner.example.net", "saml", nil, nil, nil)
+	require.NoError(t, err)
+	require.True(t, org.SecretReentryRequired)
+}
+
+func requireNoSecretInJSON(t *testing.T, v any, secret string) {
+	t.Helper()
+	b, err := json.Marshal(v)
+	require.NoError(t, err)
+	require.NotContains(t, string(b), secret)
 }

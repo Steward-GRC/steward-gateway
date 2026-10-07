@@ -24,7 +24,7 @@ throttled per hash of the case code and overall, failing closed.
 
 **Act-as:** while a site admin acts as another user, every call is made as that user with the
 admin as the impersonator, and high-risk mutations (passwords, factors, roles, deletions,
-sessions) are refused with `IMPERSONATION_DENIED`.
+sessions, audit shreds and legal holds) are refused with `IMPERSONATION_DENIED`.
 
 **Platform groups vs categories:** `platformGroups` and `createPlatformGroup` (site-admin only)
 list and create identity's platform groups, the groups that memberships (`addUserToGroup`),
@@ -36,6 +36,18 @@ group manager of (id, name, parent), sorted by name; any signed-in caller may ru
 reads their own grants. `managedGroupMembers`, `addUserToGroup` and `removeUserFromGroup` are open
 to a site admin or to a manager of that group, and a manager cannot remove an IdP-synced
 membership.
+
+**Audit reads:** `auditLog` and `verifyAuditChain` are open to a caller with `audit.read`, who
+reads every group, and to a group manager: the gateway reads the caller's managed group ids from
+identity and sends them as `managed_groups`, and audit lets a manager query only a group it
+manages (named in `groupId`) and verify. Anyone else is refused with `PermissionDenied`.
+`auditSegment` (the raw export) needs `audit.read`, because record ids span every group.
+
+**Shred and legal holds:** `shredAuditSubject` (crypto-shred a subject: audit erases its key and
+clears its personal data from activity records), `createAuditLegalHold`, `releaseAuditLegalHold`
+and the query `auditLegalHolds` need `compliance.manage` (`compliance-admin` and `site-admin`
+today). The gateway checks it and sends the caller as the requester; audit checks it again and
+records every call, including the list. The three mutations are refused during act-as.
 
 **Live updates:** `liveEvents` streams every audit event, so it needs `audit.read`; anyone else
 is refused with `PermissionDenied`.
@@ -65,7 +77,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - obligations NotifPrefService: UpsertNotifPref, GetNotifPref, ListNotifTypes, GetNotificationSettings, SetCategoryCadence, SetTypeCadence, SetDigestWindow
 - obligations WelcomeService: ResendWelcome
 - obligations ReportingService: GetCompletionReport, GetAckRoster, GetAckActivity, ExportAcks
-- audit AuditService: QueryAuditLog, ExportAuditSegment, VerifyAuditChain
+- audit AuditService: QueryAuditLog, ExportAuditSegment, VerifyAuditChain, ShredSubject, CreateLegalHold, ListLegalHolds, ReleaseLegalHold
 - ai AiService: SearchAndAnswer, AuthoringAssist, SubmitAIJob, GetAIJob, GetProviderStatus, GetAIEnabled, SetAIEnabled, GetAIConfig, SetProviderConfig, SetProviderCredential, TestProvider, AcceptDataNotice, GetTopQuestions, GetPolicySummary, SetAIRetrievalConfig, SetUserAiQueryLimit, GetRelatedPolicies
 - identity IdentityAdminService: EnableUser, DisableUser, PreviewUserDeletion, DeleteUser, PreviewAccountMerge, MergeAccounts, GrantRole, RevokeRole, CreateGroup, AddUserToGroup, RemoveUserFromGroup, GrantGroupManager, RevokeGroupManager, SetUserPolicyOverride, RequestStepUpOtp, TransferRoot, RevokeUserSessions, ListUserSessions, BreakGlassReveal, ActiveBreakGlass, CreateLocalUser, ResetUserPassword, UpdateUserProfile, CompleteOnboarding, UpdateMyProfile, AdminListUserFactors, AdminRemoveUserFactor, AdminRenameUserFactor
 - identity IdentityReadService: GetUser, GetUserByEmail, JitProvisionByEmail, ListUsersInGroup, GetGroup, ListGroups, ListUsersByEmail, ListAllUsers, ListUserIdpGroups, RevokeMySessions, GetSetupState, BootstrapRoot, GetAuthConfig, RequestPasswordReset, ResetPasswordWithCode, RequestLoginOtp, VerifyLoginOtp, MarkEmailVerified, EnrollTotpBegin, EnrollTotpConfirm, VerifyTotp, SendEmailOtp, VerifyEmailOtp, ListUserFactors, RemoveFactor, WebauthnRegisterBegin, WebauthnRegisterFinish, WebauthnAssertBegin, WebauthnAssertFinish, ListWebauthnCredentials, RemoveWebauthnCredential, RenameMFAMethod, Discover, CheckBreakGlassEligibility

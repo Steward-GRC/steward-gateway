@@ -15,6 +15,8 @@ import (
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // requesterFromClaims projects principal.Claims onto the audit RequesterIdentity wire message.
@@ -28,6 +30,40 @@ func requesterFromClaims(ctx context.Context) (*auditv1.RequesterIdentity, bool)
 		Roles:  append([]string(nil), claims.Roles()...),
 		Groups: append([]string(nil), claims.Groups()...),
 	}, true
+}
+
+// auditReader is the requester for a scoped audit read (query or verify). A
+// caller holding audit.read reads every group. Anyone else must manage at
+// least one group: their managed group ids, read from identity, go in
+// managed_groups and audit decides per group. A caller with neither is
+// refused here, and an identity failure is returned rather than read as "no
+// groups".
+func auditReader(ctx context.Context, identity identityv1.IdentityReadServiceClient) (*auditv1.RequesterIdentity, error) {
+	s, err := subjectFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	req, ok := requesterFromClaims(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "unauthenticated")
+	}
+	if authz.Authorize(s, authz.AuditRead, nil).Allowed() {
+		return req, nil
+	}
+	denied := status.Error(codes.PermissionDenied, "not authorized: "+string(authz.AuditRead))
+	if identity == nil {
+		return nil, denied
+	}
+	me, err := identity.GetUser(ctx, &identityv1.GetUserRequest{UserId: req.GetUserId()})
+	if err != nil {
+		return nil, err
+	}
+	managed := me.GetUser().GetManagedGroupIds()
+	if len(managed) == 0 {
+		return nil, denied
+	}
+	req.ManagedGroups = append([]string(nil), managed...)
+	return req, nil
 }
 
 // parseRecordID converts a string-typed record id (as the GraphQL surface exposes int64 ids) into
@@ -93,12 +129,9 @@ func QueryAuditLogResolver(
 	tmpls corev1.TemplateServiceClient,
 	tier, groupID, actorUserID, subject *string, pageSize *int, pageToken *string,
 ) (*AuditQueryPage, error) {
-	if err := authorizeOp(ctx, authz.AuditRead); err != nil {
+	req, err := auditReader(ctx, identity)
+	if err != nil {
 		return nil, err
-	}
-	req, ok := requesterFromClaims(ctx)
-	if !ok {
-		return nil, fmt.Errorf("unauthenticated")
 	}
 	var size int32
 	if pageSize != nil {
@@ -178,13 +211,10 @@ func ExportAuditSegmentResolver(ctx context.Context, client auditv1.AuditService
 
 // VerifyAuditChainResolver re-walks the per-record hash chain in the supplied id range and returns
 // a verdict plus any tampering errors.
-func VerifyAuditChainResolver(ctx context.Context, client auditv1.AuditServiceClient, fromRecordID, toRecordID string) (*AuditChainVerification, error) {
-	if err := authorizeOp(ctx, authz.AuditRead); err != nil {
+func VerifyAuditChainResolver(ctx context.Context, client auditv1.AuditServiceClient, identity identityv1.IdentityReadServiceClient, fromRecordID, toRecordID string) (*AuditChainVerification, error) {
+	req, err := auditReader(ctx, identity)
+	if err != nil {
 		return nil, err
-	}
-	req, ok := requesterFromClaims(ctx)
-	if !ok {
-		return nil, fmt.Errorf("unauthenticated")
 	}
 	from, err := parseRecordID(fromRecordID)
 	if err != nil {

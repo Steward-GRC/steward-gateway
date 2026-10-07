@@ -161,3 +161,10 @@ func deniedEntry() apperr.Entry {
 	e, _ := errcodes.Registry().Describe(errcodes.CodeImpersonationDenied)
 	return e
 }
+
+func TestDenyIfImpersonating_BlocksTheAuditRetentionMutations(t *testing.T) {
+	ctx := impersonatingCtx()
+	for _, name := range []string{"shredAuditSubject", "createAuditLegalHold", "releaseAuditLegalHold"} {
+		require.Error(t, denyIfImpersonating(ctx, name), "%q must be blocked while impersonating", name)
+	}
+}

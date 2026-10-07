@@ -134,6 +134,12 @@ extend type Query {
   # and reporting's REPORTING_OFFICER_GROUPS name by id, not core's categories
   # (the admin app's "Groups" pages). Site-admin only.
   platformGroups(parentId: ID): [PlatformGroup!]!
+  # myManagedGroups -> IdentityReadService.GetUser for the caller, then
+  # GetGroup for each of their managedGroupIds: the platform groups the
+  # signed-in caller is a LOCAL group-manager of, sorted by name, for the
+  # "My Groups" editor. Any signed-in caller; only their own grants are read.
+  # Members come from managedGroupMembers.
+  myManagedGroups: [PlatformGroup!]!
 }
 
 # An identity platform group: a node in identity's group tree that users are

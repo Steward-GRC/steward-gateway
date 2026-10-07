@@ -4,7 +4,9 @@
 package resolvers
 
 import (
+	"cmp"
 	"context"
+	"slices"
 	"strings"
 
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
@@ -74,4 +76,35 @@ func CreatePlatformGroupResolver(ctx context.Context, admin identityv1.IdentityA
 		return nil, err
 	}
 	return platformGroupToGraphQL(resp.GetGroup()), nil
+}
+
+// MyManagedGroupsResolver returns the platform groups the signed-in caller is a
+// LOCAL group-manager of, sorted by name. Only the caller's own grants are
+// read, whatever their roles; a grant whose group identity no longer has is
+// skipped.
+func MyManagedGroupsResolver(ctx context.Context, read identityv1.IdentityReadServiceClient) ([]*PlatformGroup, error) {
+	userID, err := claimsUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if read == nil {
+		return nil, status.Error(codes.Unavailable, "identity unavailable")
+	}
+	me, err := read.GetUser(ctx, &identityv1.GetUserRequest{UserId: userID})
+	if err != nil {
+		return nil, err
+	}
+	out := []*PlatformGroup{}
+	for _, id := range me.GetUser().GetManagedGroupIds() {
+		resp, gerr := read.GetGroup(ctx, &identityv1.GetGroupRequest{GroupId: id})
+		if status.Code(gerr) == codes.NotFound {
+			continue
+		}
+		if gerr != nil {
+			return nil, gerr
+		}
+		out = append(out, platformGroupToGraphQL(resp.GetGroup()))
+	}
+	slices.SortFunc(out, func(a, b *PlatformGroup) int { return cmp.Compare(a.Name, b.Name) })
+	return out, nil
 }

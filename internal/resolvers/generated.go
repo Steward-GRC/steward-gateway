@@ -894,6 +894,7 @@ type ComplexityRoot struct {
 		MyAckSummary               func(childComplexity int) int
 		MyDrafts                   func(childComplexity int) int
 		MyFactors                  func(childComplexity int) int
+		MyManagedGroups            func(childComplexity int) int
 		MyObligations              func(childComplexity int) int
 		MyReport                   func(childComplexity int, caseID string) int
 		MyReports                  func(childComplexity int) int
@@ -1561,6 +1562,7 @@ type QueryResolver interface {
 	PreviewUserDeletion(ctx context.Context, userID string) (*UserDeletionPreview, error)
 	ManagedGroupMembers(ctx context.Context, groupID string) ([]*User, error)
 	PlatformGroups(ctx context.Context, parentID *string) ([]*PlatformGroup, error)
+	MyManagedGroups(ctx context.Context) ([]*PlatformGroup, error)
 	ListUserSessions(ctx context.Context, userID string) ([]*Session, error)
 	MyFactors(ctx context.Context) ([]*UserFactor, error)
 	MyWebauthnCredentials(ctx context.Context) ([]*WebauthnCredentialInfo, error)
@@ -5957,6 +5959,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MyFactors(childComplexity), true
+	case "Query.myManagedGroups":
+		if e.ComplexityRoot.Query.MyManagedGroups == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.MyManagedGroups(childComplexity), true
 	case "Query.myObligations":
 		if e.ComplexityRoot.Query.MyObligations == nil {
 			break
@@ -9751,6 +9759,12 @@ extend type Query {
   # and reporting's REPORTING_OFFICER_GROUPS name by id, not core's categories
   # (the admin app's "Groups" pages). Site-admin only.
   platformGroups(parentId: ID): [PlatformGroup!]!
+  # myManagedGroups -> IdentityReadService.GetUser for the caller, then
+  # GetGroup for each of their managedGroupIds: the platform groups the
+  # signed-in caller is a LOCAL group-manager of, sorted by name, for the
+  # "My Groups" editor. Any signed-in caller; only their own grants are read.
+  # Members come from managedGroupMembers.
+  myManagedGroups: [PlatformGroup!]!
 }
 
 # An identity platform group: a node in identity's group tree that users are
@@ -35373,6 +35387,38 @@ func (ec *executionContext) fieldContext_Query_platformGroups(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_myManagedGroups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_myManagedGroups(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().MyManagedGroups(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*PlatformGroup) graphql.Marshaler {
+			return ec.marshalNPlatformGroup2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPlatformGroupᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_myManagedGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PlatformGroup(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_listUserSessions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -53160,6 +53206,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_platformGroups(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myManagedGroups":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myManagedGroups(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

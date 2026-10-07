@@ -31,6 +31,12 @@ list and create identity's platform groups, the groups that memberships (`addUse
 group managers, SSO group mappings and reporting's `REPORTING_OFFICER_GROUPS` name by id. They
 are not core's categories, which the admin app's "Groups" pages manage through `createCategory`.
 
+**Group managers:** `myManagedGroups` returns the platform groups the signed-in caller is a local
+group manager of (id, name, parent), sorted by name; any signed-in caller may run it and it only
+reads their own grants. `managedGroupMembers`, `addUserToGroup` and `removeUserFromGroup` are open
+to a site admin or to a manager of that group, and a manager cannot remove an IdP-synced
+membership.
+
 **Live updates:** `liveEvents` streams every audit event, so it needs `audit.read`; anyone else
 is refused with `PermissionDenied`.
 

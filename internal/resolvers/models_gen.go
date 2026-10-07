@@ -772,6 +772,12 @@ type PendingTask struct {
 	DueAt           *string `json:"dueAt,omitempty"`
 }
 
+type PlatformGroup struct {
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	ParentID *string `json:"parentId,omitempty"`
+}
+
 type Policy struct {
 	ID                        string           `json:"id"`
 	HomeCategoryID            string           `json:"homeCategoryId"`

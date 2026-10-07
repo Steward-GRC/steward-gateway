@@ -588,6 +588,7 @@ type ComplexityRoot struct {
 		CreateDefinition              func(childComplexity int, input DefinitionEntryInput) int
 		CreateLocalUser               func(childComplexity int, username string, email string, name string, password string) int
 		CreateMagicLink               func(childComplexity int, policyVersionID string, sensitive bool) int
+		CreatePlatformGroup           func(childComplexity int, name string, parentID *string) int
 		CreatePolicy                  func(childComplexity int, homeCategoryID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) int
 		CreateReference               func(childComplexity int, input ReferenceInput) int
 		CreateTemplate                func(childComplexity int, name string, ownerCategoryID *string) int
@@ -787,6 +788,12 @@ type ComplexityRoot struct {
 		TaskID          func(childComplexity int) int
 	}
 
+	PlatformGroup struct {
+		ID       func(childComplexity int) int
+		Name     func(childComplexity int) int
+		ParentID func(childComplexity int) int
+	}
+
 	Policy struct {
 		AckAudienceOverride       func(childComplexity int) int
 		AckTriggers               func(childComplexity int) int
@@ -899,6 +906,7 @@ type ComplexityRoot struct {
 		Organizations              func(childComplexity int) int
 		PDFDownloadLink            func(childComplexity int, jobID string) int
 		PendingTasks               func(childComplexity int) int
+		PlatformGroups             func(childComplexity int, parentID *string) int
 		Policies                   func(childComplexity int, categoryID string, includeDescendants *bool, documentType *DocumentType) int
 		PoliciesByOwner            func(childComplexity int, userID string, includeRetired *bool) int
 		Policy                     func(childComplexity int, id string) int
@@ -1422,6 +1430,7 @@ type MutationResolver interface {
 	ReassignUserPolicies(ctx context.Context, fromUserID string, toUserID string) (*ReassignUserPoliciesResult, error)
 	DeleteUser(ctx context.Context, userID string) (*DeleteUserResult, error)
 	MergeAccounts(ctx context.Context, sourceUserID string, targetUserID string, confirmPrivileged *bool, idempotencyKey *string) (*MergeAccountsResult, error)
+	CreatePlatformGroup(ctx context.Context, name string, parentID *string) (*PlatformGroup, error)
 	AddUserToGroup(ctx context.Context, userID string, groupID string) (*User, error)
 	RemoveUserFromGroup(ctx context.Context, userID string, groupID string) (*User, error)
 	GrantGroupManager(ctx context.Context, userID string, groupID string) (*User, error)
@@ -1551,6 +1560,7 @@ type QueryResolver interface {
 	PreviewAccountMerge(ctx context.Context, sourceUserID string, targetUserID string) (*AccountMergePreview, error)
 	PreviewUserDeletion(ctx context.Context, userID string) (*UserDeletionPreview, error)
 	ManagedGroupMembers(ctx context.Context, groupID string) ([]*User, error)
+	PlatformGroups(ctx context.Context, parentID *string) ([]*PlatformGroup, error)
 	ListUserSessions(ctx context.Context, userID string) ([]*Session, error)
 	MyFactors(ctx context.Context) ([]*UserFactor, error)
 	MyWebauthnCredentials(ctx context.Context) ([]*WebauthnCredentialInfo, error)
@@ -3738,6 +3748,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateMagicLink(childComplexity, args["policyVersionId"].(string), args["sensitive"].(bool)), true
+	case "Mutation.createPlatformGroup":
+		if e.ComplexityRoot.Mutation.CreatePlatformGroup == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createPlatformGroup_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreatePlatformGroup(childComplexity, args["name"].(string), args["parentId"].(*string)), true
 	case "Mutation.createPolicy":
 		if e.ComplexityRoot.Mutation.CreatePolicy == nil {
 			break
@@ -5294,6 +5315,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PendingTask.TaskID(childComplexity), true
 
+	case "PlatformGroup.id":
+		if e.ComplexityRoot.PlatformGroup.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PlatformGroup.ID(childComplexity), true
+	case "PlatformGroup.name":
+		if e.ComplexityRoot.PlatformGroup.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PlatformGroup.Name(childComplexity), true
+	case "PlatformGroup.parentId":
+		if e.ComplexityRoot.PlatformGroup.ParentID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PlatformGroup.ParentID(childComplexity), true
+
 	case "Policy.ackAudienceOverride":
 		if e.ComplexityRoot.Policy.AckAudienceOverride == nil {
 			break
@@ -6009,6 +6049,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.PendingTasks(childComplexity), true
+	case "Query.platformGroups":
+		if e.ComplexityRoot.Query.PlatformGroups == nil {
+			break
+		}
+
+		args, err := ec.field_Query_platformGroups_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PlatformGroups(childComplexity, args["parentId"].(*string)), true
 	case "Query.policies":
 		if e.ComplexityRoot.Query.Policies == nil {
 			break
@@ -9694,6 +9745,21 @@ extend type Query {
   # groupId (unlike the site-admin-only ` + "`" + `users` + "`" + ` query). Each User carries
   # memberships[] so the client can mark IdP-synced memberships read-only.
   managedGroupMembers(groupId: ID!): [User!]!
+  # platformGroups -> IdentityReadService.ListGroups: the identity platform
+  # groups directly under parentId (the root groups when it is null), every
+  # page. These are the groups memberships, group managers, SSO group mappings
+  # and reporting's REPORTING_OFFICER_GROUPS name by id, not core's categories
+  # (the admin app's "Groups" pages). Site-admin only.
+  platformGroups(parentId: ID): [PlatformGroup!]!
+}
+
+# An identity platform group: a node in identity's group tree that users are
+# members of.
+type PlatformGroup {
+  id: ID!
+  name: String!
+  # Null for a root group.
+  parentId: ID
 }
 
 extend type Mutation {
@@ -9719,6 +9785,10 @@ extend type Mutation {
   # when the preview's requiresPrivilegedConfirm is set; idempotencyKey makes the
   # op safe to retry (re-run with the same key to resume a PARTIAL). Site-admin only.
   mergeAccounts(sourceUserId: ID!, targetUserId: ID!, confirmPrivileged: Boolean, idempotencyKey: String): MergeAccountsResult!
+  # createPlatformGroup -> IdentityAdminService.CreateGroup: a new identity
+  # platform group under parentId (a root group when it is null). The name is
+  # trimmed and must not be blank. Site-admin only.
+  createPlatformGroup(name: String!, parentId: ID): PlatformGroup!
   addUserToGroup(userId: ID!, groupId: ID!): User!
   removeUserFromGroup(userId: ID!, groupId: ID!): User!
   # grantGroupManager -> IdentityAdminService.GrantGroupManager: makes userId a
@@ -12180,6 +12250,18 @@ func (ec *executionContext) childFields_PendingTask(ctx context.Context, field g
 	return nil, fmt.Errorf("no field named %q was found under type PendingTask", field.Name)
 }
 
+func (ec *executionContext) childFields_PlatformGroup(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_PlatformGroup_id(ctx, field)
+	case "name":
+		return ec.fieldContext_PlatformGroup_name(ctx, field)
+	case "parentId":
+		return ec.fieldContext_PlatformGroup_parentId(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PlatformGroup", field.Name)
+}
+
 func (ec *executionContext) childFields_Policy(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "id":
@@ -13723,6 +13805,28 @@ func (ec *executionContext) field_Mutation_createMagicLink_args(ctx context.Cont
 		return nil, err
 	}
 	args["sensitive"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createPlatformGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "name",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "parentId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["parentId"] = arg1
 	return args, nil
 }
 
@@ -16685,6 +16789,20 @@ func (ec *executionContext) field_Query_pdfDownloadLink_args(ctx context.Context
 		return nil, err
 	}
 	args["jobId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_platformGroups_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "parentId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["parentId"] = arg0
 	return args, nil
 }
 
@@ -27862,6 +27980,50 @@ func (ec *executionContext) fieldContext_Mutation_mergeAccounts(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createPlatformGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createPlatformGroup(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreatePlatformGroup(ctx, fc.Args["name"].(string), fc.Args["parentId"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PlatformGroup) graphql.Marshaler {
+			return ec.marshalNPlatformGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPlatformGroup(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createPlatformGroup(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PlatformGroup(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createPlatformGroup_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addUserToGroup(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -31747,6 +31909,75 @@ func (ec *executionContext) fieldContext_PendingTask_dueAt(_ context.Context, fi
 	return graphql.NewScalarFieldContext("PendingTask", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _PlatformGroup_id(ctx context.Context, field graphql.CollectedField, obj *PlatformGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PlatformGroup_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PlatformGroup_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PlatformGroup", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PlatformGroup_name(ctx context.Context, field graphql.CollectedField, obj *PlatformGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PlatformGroup_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PlatformGroup_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PlatformGroup", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PlatformGroup_parentId(ctx context.Context, field graphql.CollectedField, obj *PlatformGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PlatformGroup_parentId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ParentID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PlatformGroup_parentId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PlatformGroup", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
 func (ec *executionContext) _Policy_id(ctx context.Context, field graphql.CollectedField, obj *Policy) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -35092,6 +35323,50 @@ func (ec *executionContext) fieldContext_Query_managedGroupMembers(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_managedGroupMembers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_platformGroups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_platformGroups(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PlatformGroups(ctx, fc.Args["parentId"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*PlatformGroup) graphql.Marshaler {
+			return ec.marshalNPlatformGroup2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPlatformGroupᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_platformGroups(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PlatformGroup(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_platformGroups_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -50032,6 +50307,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createPlatformGroup":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createPlatformGroup(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addUserToGroup":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addUserToGroup(ctx, field)
@@ -51081,6 +51363,54 @@ func (ec *executionContext) _PendingTask(ctx context.Context, sel ast.SelectionS
 			}
 		case "dueAt":
 			out.Values[i] = ec._PendingTask_dueAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var platformGroupImplementors = []string{"PlatformGroup"}
+
+func (ec *executionContext) _PlatformGroup(ctx context.Context, sel ast.SelectionSet, obj *PlatformGroup) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, platformGroupImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlatformGroup")
+		case "id":
+			out.Values[i] = ec._PlatformGroup_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._PlatformGroup_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "parentId":
+			out.Values[i] = ec._PlatformGroup_parentId(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
@@ -52808,6 +53138,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_managedGroupMembers(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "platformGroups":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_platformGroups(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -58946,6 +59298,36 @@ func (ec *executionContext) marshalNPendingTask2ᚖgithubᚗcomᚋStewardᚑGRC�
 		return graphql.Null
 	}
 	return ec._PendingTask(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPlatformGroup2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPlatformGroup(ctx context.Context, sel ast.SelectionSet, v PlatformGroup) graphql.Marshaler {
+	return ec._PlatformGroup(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPlatformGroup2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPlatformGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []*PlatformGroup) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPlatformGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPlatformGroup(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPlatformGroup2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPlatformGroup(ctx context.Context, sel ast.SelectionSet, v *PlatformGroup) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PlatformGroup(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPolicy2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicy(ctx context.Context, sel ast.SelectionSet, v Policy) graphql.Marshaler {

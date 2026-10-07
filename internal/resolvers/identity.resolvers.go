@@ -49,6 +49,11 @@ func (r *mutationResolver) MergeAccounts(ctx context.Context, sourceUserID strin
 	return MergeAccountsResolver(ctx, r.IdentityAdminClient, sourceUserID, targetUserID, confirmPrivileged, idempotencyKey)
 }
 
+// CreatePlatformGroup is the resolver for the createPlatformGroup field.
+func (r *mutationResolver) CreatePlatformGroup(ctx context.Context, name string, parentID *string) (*PlatformGroup, error) {
+	return CreatePlatformGroupResolver(ctx, r.IdentityAdminClient, name, parentID)
+}
+
 // AddUserToGroup is the resolver for the addUserToGroup field.
 func (r *mutationResolver) AddUserToGroup(ctx context.Context, userID string, groupID string) (*User, error) {
 	return AddUserToGroupResolver(ctx, r.IdentityAdminClient, r.IdentityClient, userID, groupID)
@@ -234,6 +239,11 @@ func (r *queryResolver) PreviewUserDeletion(ctx context.Context, userID string) 
 // ManagedGroupMembers is the resolver for the managedGroupMembers field.
 func (r *queryResolver) ManagedGroupMembers(ctx context.Context, groupID string) ([]*User, error) {
 	return ManagedGroupMembersResolver(ctx, r.IdentityClient, groupID)
+}
+
+// PlatformGroups is the resolver for the platformGroups field.
+func (r *queryResolver) PlatformGroups(ctx context.Context, parentID *string) ([]*PlatformGroup, error) {
+	return PlatformGroupsResolver(ctx, r.IdentityClient, parentID)
 }
 
 // ListUserSessions is the resolver for the listUserSessions field.

@@ -52,10 +52,42 @@ type AuditChainVerification {
   errors: [String!]!
 }
 
+# --- Audit: crypto-shred and legal holds ---
+# Each needs compliance.manage, and audit records every call.
+
+type AuditShredResult {
+  # How many activity records had their personal data cleared.
+  recordsTombstoned: Int!
+  # The id of the "subject.shredded" record.
+  recordId: String!
+}
+
+# A hold stops the retention purge for the records it matches. An empty
+# filter matches everything.
+type AuditLegalHold {
+  holdUuid: ID!
+  subjectFilter: String!
+  groupFilter: String!
+  reason: String!
+  # The user who placed it.
+  heldBy: ID!
+  createdAt: String!  # ISO-8601
+  # Null while the hold is in force.
+  releasedAt: String  # ISO-8601
+}
+
 extend type Query {
   auditLog(tier: String, groupId: ID, actorUserId: ID, subject: String, pageSize: Int, pageToken: String): AuditQueryPage!
   auditSegment(fromRecordId: String!, toRecordId: String!): AuditSegment!
   verifyAuditChain(fromRecordId: String!, toRecordId: String!): AuditChainVerification!
+  # Oldest first; released holds only with includeReleased.
+  auditLegalHolds(includeReleased: Boolean): [AuditLegalHold!]!
+}
+
+extend type Mutation {
+  shredAuditSubject(subjectKey: String!, reason: String!): AuditShredResult!
+  createAuditLegalHold(subjectFilter: String, groupFilter: String, reason: String!): AuditLegalHold!
+  releaseAuditLegalHold(holdUuid: ID!): AuditLegalHold!
 }
 
 

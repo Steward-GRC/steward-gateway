@@ -234,6 +234,16 @@ type AuditCheckpoint struct {
 	AnchoredAt     string `json:"anchoredAt"`
 }
 
+type AuditLegalHold struct {
+	HoldUUID      string  `json:"holdUuid"`
+	SubjectFilter string  `json:"subjectFilter"`
+	GroupFilter   string  `json:"groupFilter"`
+	Reason        string  `json:"reason"`
+	HeldBy        string  `json:"heldBy"`
+	CreatedAt     string  `json:"createdAt"`
+	ReleasedAt    *string `json:"releasedAt,omitempty"`
+}
+
 type AuditQueryPage struct {
 	Records       []*AuditRecord `json:"records"`
 	NextPageToken string         `json:"nextPageToken"`
@@ -259,6 +269,11 @@ type AuditRecord struct {
 type AuditSegment struct {
 	Records     []*AuditRecord     `json:"records"`
 	Checkpoints []*AuditCheckpoint `json:"checkpoints"`
+}
+
+type AuditShredResult struct {
+	RecordsTombstoned int    `json:"recordsTombstoned"`
+	RecordID          string `json:"recordId"`
 }
 
 type AuthoringAssistInput struct {

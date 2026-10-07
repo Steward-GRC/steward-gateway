@@ -11,6 +11,21 @@ import (
 	"context"
 )
 
+// ShredAuditSubject is the resolver for the shredAuditSubject field.
+func (r *mutationResolver) ShredAuditSubject(ctx context.Context, subjectKey string, reason string) (*AuditShredResult, error) {
+	return ShredAuditSubjectResolver(ctx, r.AuditClient, subjectKey, reason)
+}
+
+// CreateAuditLegalHold is the resolver for the createAuditLegalHold field.
+func (r *mutationResolver) CreateAuditLegalHold(ctx context.Context, subjectFilter *string, groupFilter *string, reason string) (*AuditLegalHold, error) {
+	return CreateAuditLegalHoldResolver(ctx, r.AuditClient, subjectFilter, groupFilter, reason)
+}
+
+// ReleaseAuditLegalHold is the resolver for the releaseAuditLegalHold field.
+func (r *mutationResolver) ReleaseAuditLegalHold(ctx context.Context, holdUUID string) (*AuditLegalHold, error) {
+	return ReleaseAuditLegalHoldResolver(ctx, r.AuditClient, holdUUID)
+}
+
 // AuditLog is the resolver for the auditLog field.
 func (r *queryResolver) AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) (*AuditQueryPage, error) {
 	return QueryAuditLogResolver(ctx, r.AuditClient, r.IdentityClient, r.CategoryClient, r.PolicyClient, r.TemplateClient, tier, groupID, actorUserID, subject, pageSize, pageToken)
@@ -24,4 +39,9 @@ func (r *queryResolver) AuditSegment(ctx context.Context, fromRecordID string, t
 // VerifyAuditChain is the resolver for the verifyAuditChain field.
 func (r *queryResolver) VerifyAuditChain(ctx context.Context, fromRecordID string, toRecordID string) (*AuditChainVerification, error) {
 	return VerifyAuditChainResolver(ctx, r.AuditClient, r.IdentityClient, fromRecordID, toRecordID)
+}
+
+// AuditLegalHolds is the resolver for the auditLegalHolds field.
+func (r *queryResolver) AuditLegalHolds(ctx context.Context, includeReleased *bool) ([]*AuditLegalHold, error) {
+	return AuditLegalHoldsResolver(ctx, r.AuditClient, includeReleased)
 }

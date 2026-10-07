@@ -56,6 +56,10 @@ var impersonationDenylist = map[string]struct{}{
 
 	"recordAck": {},
 
+	"shredAuditSubject":     {},
+	"createAuditLegalHold":  {},
+	"releaseAuditLegalHold": {},
+
 	"startImpersonation": {},
 }
 

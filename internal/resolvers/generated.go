@@ -224,6 +224,16 @@ type ComplexityRoot struct {
 		TsaToken       func(childComplexity int) int
 	}
 
+	AuditLegalHold struct {
+		CreatedAt     func(childComplexity int) int
+		GroupFilter   func(childComplexity int) int
+		HeldBy        func(childComplexity int) int
+		HoldUUID      func(childComplexity int) int
+		Reason        func(childComplexity int) int
+		ReleasedAt    func(childComplexity int) int
+		SubjectFilter func(childComplexity int) int
+	}
+
 	AuditQueryPage struct {
 		NextPageToken func(childComplexity int) int
 		Records       func(childComplexity int) int
@@ -249,6 +259,11 @@ type ComplexityRoot struct {
 	AuditSegment struct {
 		Checkpoints func(childComplexity int) int
 		Records     func(childComplexity int) int
+	}
+
+	AuditShredResult struct {
+		RecordID          func(childComplexity int) int
+		RecordsTombstoned func(childComplexity int) int
 	}
 
 	AuthoringAssistResult struct {
@@ -583,6 +598,7 @@ type ComplexityRoot struct {
 		CheckReport                   func(childComplexity int, caseCode string, passphrase string) int
 		CloseCase                     func(childComplexity int, caseID string, outcome CaseOutcome, correctiveActions []*CorrectiveActionInput, closingMessage *string) int
 		CompleteOnboarding            func(childComplexity int, acceptTerms bool, username *string, firstName *string, lastName *string, email *string) int
+		CreateAuditLegalHold          func(childComplexity int, subjectFilter *string, groupFilter *string, reason string) int
 		CreateCategory                func(childComplexity int, name string, slug string, parentID *string) int
 		CreateContactBlock            func(childComplexity int, block ContactBlockInput) int
 		CreateDefinition              func(childComplexity int, input DefinitionEntryInput) int
@@ -627,6 +643,7 @@ type ComplexityRoot struct {
 		RecordView                    func(childComplexity int, policyVersionID string) int
 		ReindexPolicy                 func(childComplexity int, policyID string) int
 		ReindexPolicyVersion          func(childComplexity int, policyVersionID string) int
+		ReleaseAuditLegalHold         func(childComplexity int, holdUUID string) int
 		RemoveFactor                  func(childComplexity int, kind string) int
 		RemoveUserFromGroup           func(childComplexity int, userID string, groupID string) int
 		RemoveUserMfaFactor           func(childComplexity int, userID string, methodID string) int
@@ -680,6 +697,7 @@ type ComplexityRoot struct {
 		SetTypeCadence                func(childComplexity int, kind string, cadence NotifCadence) int
 		SetUserAiQueryLimit           func(childComplexity int, userID string, limit int) int
 		SetUserPolicyOverride         func(childComplexity int, userID string, policyNumber string, effect *OverrideEffect) int
+		ShredAuditSubject             func(childComplexity int, subjectKey string, reason string) int
 		SignalWorkflow                func(childComplexity int, policyVersionID string, runID string, taskID string, signal SignalType, comment string) int
 		StartDomainVerification       func(childComplexity int, domain string, rotate *bool) int
 		StartImpersonation            func(childComplexity int, userID string, reason string) int
@@ -865,6 +883,7 @@ type ComplexityRoot struct {
 		AiJobResultContent         func(childComplexity int, resultRef string) int
 		AiRetrievalConfig          func(childComplexity int) int
 		AssignmentHistory          func(childComplexity int, policyVersionID string, stageIndex int) int
+		AuditLegalHolds            func(childComplexity int, includeReleased *bool) int
 		AuditLog                   func(childComplexity int, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) int
 		AuditSegment               func(childComplexity int, fromRecordID string, toRecordID string) int
 		AuthoringAssist            func(childComplexity int, input AuthoringAssistInput) int
@@ -1368,6 +1387,9 @@ type MutationResolver interface {
 	AcceptAIDataNotice(ctx context.Context, noticeVersion string) (*AIDataNotice, error)
 	SetAIRetrievalConfig(ctx context.Context, topK int) (*AIRetrievalConfig, error)
 	SetUserAiQueryLimit(ctx context.Context, userID string, limit int) (*AIUserQueryLimit, error)
+	ShredAuditSubject(ctx context.Context, subjectKey string, reason string) (*AuditShredResult, error)
+	CreateAuditLegalHold(ctx context.Context, subjectFilter *string, groupFilter *string, reason string) (*AuditLegalHold, error)
+	ReleaseAuditLegalHold(ctx context.Context, holdUUID string) (*AuditLegalHold, error)
 	IssueCollabToken(ctx context.Context, input IssueCollabTokenInput) (*IssueCollabTokenPayload, error)
 	CreateCategory(ctx context.Context, name string, slug string, parentID *string) (*Category, error)
 	SetCategoryDefaults(ctx context.Context, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) (*Category, error)
@@ -1519,6 +1541,7 @@ type QueryResolver interface {
 	AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) (*AuditQueryPage, error)
 	AuditSegment(ctx context.Context, fromRecordID string, toRecordID string) (*AuditSegment, error)
 	VerifyAuditChain(ctx context.Context, fromRecordID string, toRecordID string) (*AuditChainVerification, error)
+	AuditLegalHolds(ctx context.Context, includeReleased *bool) ([]*AuditLegalHold, error)
 	Category(ctx context.Context, id string) (*Category, error)
 	CategoryChildren(ctx context.Context, parentID *string) ([]*Category, error)
 	CategoryTree(ctx context.Context, rootID *string) ([]*Category, error)
@@ -2283,6 +2306,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.AuditCheckpoint.TsaToken(childComplexity), true
 
+	case "AuditLegalHold.createdAt":
+		if e.ComplexityRoot.AuditLegalHold.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuditLegalHold.CreatedAt(childComplexity), true
+	case "AuditLegalHold.groupFilter":
+		if e.ComplexityRoot.AuditLegalHold.GroupFilter == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuditLegalHold.GroupFilter(childComplexity), true
+	case "AuditLegalHold.heldBy":
+		if e.ComplexityRoot.AuditLegalHold.HeldBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuditLegalHold.HeldBy(childComplexity), true
+	case "AuditLegalHold.holdUuid":
+		if e.ComplexityRoot.AuditLegalHold.HoldUUID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuditLegalHold.HoldUUID(childComplexity), true
+	case "AuditLegalHold.reason":
+		if e.ComplexityRoot.AuditLegalHold.Reason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuditLegalHold.Reason(childComplexity), true
+	case "AuditLegalHold.releasedAt":
+		if e.ComplexityRoot.AuditLegalHold.ReleasedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuditLegalHold.ReleasedAt(childComplexity), true
+	case "AuditLegalHold.subjectFilter":
+		if e.ComplexityRoot.AuditLegalHold.SubjectFilter == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuditLegalHold.SubjectFilter(childComplexity), true
+
 	case "AuditQueryPage.nextPageToken":
 		if e.ComplexityRoot.AuditQueryPage.NextPageToken == nil {
 			break
@@ -2393,6 +2459,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AuditSegment.Records(childComplexity), true
+
+	case "AuditShredResult.recordId":
+		if e.ComplexityRoot.AuditShredResult.RecordID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuditShredResult.RecordID(childComplexity), true
+	case "AuditShredResult.recordsTombstoned":
+		if e.ComplexityRoot.AuditShredResult.RecordsTombstoned == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuditShredResult.RecordsTombstoned(childComplexity), true
 
 	case "AuthoringAssistResult.operationId":
 		if e.ComplexityRoot.AuthoringAssistResult.OperationID == nil {
@@ -3695,6 +3774,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CompleteOnboarding(childComplexity, args["acceptTerms"].(bool), args["username"].(*string), args["firstName"].(*string), args["lastName"].(*string), args["email"].(*string)), true
+	case "Mutation.createAuditLegalHold":
+		if e.ComplexityRoot.Mutation.CreateAuditLegalHold == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createAuditLegalHold_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateAuditLegalHold(childComplexity, args["subjectFilter"].(*string), args["groupFilter"].(*string), args["reason"].(string)), true
 	case "Mutation.createCategory":
 		if e.ComplexityRoot.Mutation.CreateCategory == nil {
 			break
@@ -4169,6 +4259,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ReindexPolicyVersion(childComplexity, args["policyVersionId"].(string)), true
+	case "Mutation.releaseAuditLegalHold":
+		if e.ComplexityRoot.Mutation.ReleaseAuditLegalHold == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_releaseAuditLegalHold_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ReleaseAuditLegalHold(childComplexity, args["holdUuid"].(string)), true
 	case "Mutation.removeFactor":
 		if e.ComplexityRoot.Mutation.RemoveFactor == nil {
 			break
@@ -4737,6 +4838,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetUserPolicyOverride(childComplexity, args["userId"].(string), args["policyNumber"].(string), args["effect"].(*OverrideEffect)), true
+	case "Mutation.shredAuditSubject":
+		if e.ComplexityRoot.Mutation.ShredAuditSubject == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_shredAuditSubject_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ShredAuditSubject(childComplexity, args["subjectKey"].(string), args["reason"].(string)), true
 	case "Mutation.signalWorkflow":
 		if e.ComplexityRoot.Mutation.SignalWorkflow == nil {
 			break
@@ -5684,6 +5796,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.AssignmentHistory(childComplexity, args["policyVersionId"].(string), args["stageIndex"].(int)), true
+	case "Query.auditLegalHolds":
+		if e.ComplexityRoot.Query.AuditLegalHolds == nil {
+			break
+		}
+
+		args, err := ec.field_Query_auditLegalHolds_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.AuditLegalHolds(childComplexity, args["includeReleased"].(*bool)), true
 	case "Query.auditLog":
 		if e.ComplexityRoot.Query.AuditLog == nil {
 			break
@@ -8812,10 +8935,42 @@ type AuditChainVerification {
   errors: [String!]!
 }
 
+# --- Audit: crypto-shred and legal holds ---
+# Each needs compliance.manage, and audit records every call.
+
+type AuditShredResult {
+  # How many activity records had their personal data cleared.
+  recordsTombstoned: Int!
+  # The id of the "subject.shredded" record.
+  recordId: String!
+}
+
+# A hold stops the retention purge for the records it matches. An empty
+# filter matches everything.
+type AuditLegalHold {
+  holdUuid: ID!
+  subjectFilter: String!
+  groupFilter: String!
+  reason: String!
+  # The user who placed it.
+  heldBy: ID!
+  createdAt: String!  # ISO-8601
+  # Null while the hold is in force.
+  releasedAt: String  # ISO-8601
+}
+
 extend type Query {
   auditLog(tier: String, groupId: ID, actorUserId: ID, subject: String, pageSize: Int, pageToken: String): AuditQueryPage!
   auditSegment(fromRecordId: String!, toRecordId: String!): AuditSegment!
   verifyAuditChain(fromRecordId: String!, toRecordId: String!): AuditChainVerification!
+  # Oldest first; released holds only with includeReleased.
+  auditLegalHolds(includeReleased: Boolean): [AuditLegalHold!]!
+}
+
+extend type Mutation {
+  shredAuditSubject(subjectKey: String!, reason: String!): AuditShredResult!
+  createAuditLegalHold(subjectFilter: String, groupFilter: String, reason: String!): AuditLegalHold!
+  releaseAuditLegalHold(holdUuid: ID!): AuditLegalHold!
 }
 
 
@@ -11426,6 +11581,26 @@ func (ec *executionContext) childFields_AuditCheckpoint(ctx context.Context, fie
 	return nil, fmt.Errorf("no field named %q was found under type AuditCheckpoint", field.Name)
 }
 
+func (ec *executionContext) childFields_AuditLegalHold(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "holdUuid":
+		return ec.fieldContext_AuditLegalHold_holdUuid(ctx, field)
+	case "subjectFilter":
+		return ec.fieldContext_AuditLegalHold_subjectFilter(ctx, field)
+	case "groupFilter":
+		return ec.fieldContext_AuditLegalHold_groupFilter(ctx, field)
+	case "reason":
+		return ec.fieldContext_AuditLegalHold_reason(ctx, field)
+	case "heldBy":
+		return ec.fieldContext_AuditLegalHold_heldBy(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_AuditLegalHold_createdAt(ctx, field)
+	case "releasedAt":
+		return ec.fieldContext_AuditLegalHold_releasedAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AuditLegalHold", field.Name)
+}
+
 func (ec *executionContext) childFields_AuditQueryPage(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "records":
@@ -11478,6 +11653,16 @@ func (ec *executionContext) childFields_AuditSegment(ctx context.Context, field 
 		return ec.fieldContext_AuditSegment_checkpoints(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type AuditSegment", field.Name)
+}
+
+func (ec *executionContext) childFields_AuditShredResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "recordsTombstoned":
+		return ec.fieldContext_AuditShredResult_recordsTombstoned(ctx, field)
+	case "recordId":
+		return ec.fieldContext_AuditShredResult_recordId(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AuditShredResult", field.Name)
 }
 
 func (ec *executionContext) childFields_AuthoringAssistResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -13704,6 +13889,36 @@ func (ec *executionContext) field_Mutation_completeOnboarding_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createAuditLegalHold_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "subjectFilter",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["subjectFilter"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "groupFilter",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["groupFilter"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "reason",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["reason"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createCategory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14513,6 +14728,20 @@ func (ec *executionContext) field_Mutation_reindexPolicy_args(ctx context.Contex
 		return nil, err
 	}
 	args["policyId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_releaseAuditLegalHold_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "holdUuid",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["holdUuid"] = arg0
 	return args, nil
 }
 
@@ -15632,6 +15861,28 @@ func (ec *executionContext) field_Mutation_setUserPolicyOverride_args(ctx contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_shredAuditSubject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "subjectKey",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["subjectKey"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "reason",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["reason"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_signalWorkflow_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -16387,6 +16638,20 @@ func (ec *executionContext) field_Query_assignmentHistory_args(ctx context.Conte
 		return nil, err
 	}
 	args["stageIndex"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_auditLegalHolds_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "includeReleased",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["includeReleased"] = arg0
 	return args, nil
 }
 
@@ -20043,6 +20308,167 @@ func (ec *executionContext) fieldContext_AuditCheckpoint_anchoredAt(_ context.Co
 	return graphql.NewScalarFieldContext("AuditCheckpoint", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _AuditLegalHold_holdUuid(ctx context.Context, field graphql.CollectedField, obj *AuditLegalHold) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AuditLegalHold_holdUuid(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HoldUUID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AuditLegalHold_holdUuid(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AuditLegalHold", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AuditLegalHold_subjectFilter(ctx context.Context, field graphql.CollectedField, obj *AuditLegalHold) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AuditLegalHold_subjectFilter(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubjectFilter, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AuditLegalHold_subjectFilter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AuditLegalHold", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AuditLegalHold_groupFilter(ctx context.Context, field graphql.CollectedField, obj *AuditLegalHold) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AuditLegalHold_groupFilter(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.GroupFilter, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AuditLegalHold_groupFilter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AuditLegalHold", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AuditLegalHold_reason(ctx context.Context, field graphql.CollectedField, obj *AuditLegalHold) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AuditLegalHold_reason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AuditLegalHold_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AuditLegalHold", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AuditLegalHold_heldBy(ctx context.Context, field graphql.CollectedField, obj *AuditLegalHold) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AuditLegalHold_heldBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HeldBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AuditLegalHold_heldBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AuditLegalHold", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AuditLegalHold_createdAt(ctx context.Context, field graphql.CollectedField, obj *AuditLegalHold) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AuditLegalHold_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AuditLegalHold_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AuditLegalHold", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AuditLegalHold_releasedAt(ctx context.Context, field graphql.CollectedField, obj *AuditLegalHold) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AuditLegalHold_releasedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReleasedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AuditLegalHold_releasedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AuditLegalHold", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _AuditQueryPage_records(ctx context.Context, field graphql.CollectedField, obj *AuditQueryPage) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -20482,6 +20908,52 @@ func (ec *executionContext) fieldContext_AuditSegment_checkpoints(_ context.Cont
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _AuditShredResult_recordsTombstoned(ctx context.Context, field graphql.CollectedField, obj *AuditShredResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AuditShredResult_recordsTombstoned(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RecordsTombstoned, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AuditShredResult_recordsTombstoned(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AuditShredResult", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _AuditShredResult_recordId(ctx context.Context, field graphql.CollectedField, obj *AuditShredResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AuditShredResult_recordId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RecordID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AuditShredResult_recordId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AuditShredResult", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _AuthoringAssistResult_suggestion(ctx context.Context, field graphql.CollectedField, obj *AuthoringAssistResult) (ret graphql.Marshaler) {
@@ -25216,6 +25688,138 @@ func (ec *executionContext) fieldContext_Mutation_setUserAiQueryLimit(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setUserAiQueryLimit_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_shredAuditSubject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_shredAuditSubject(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ShredAuditSubject(ctx, fc.Args["subjectKey"].(string), fc.Args["reason"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *AuditShredResult) graphql.Marshaler {
+			return ec.marshalNAuditShredResult2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditShredResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_shredAuditSubject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AuditShredResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_shredAuditSubject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createAuditLegalHold(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createAuditLegalHold(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateAuditLegalHold(ctx, fc.Args["subjectFilter"].(*string), fc.Args["groupFilter"].(*string), fc.Args["reason"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *AuditLegalHold) graphql.Marshaler {
+			return ec.marshalNAuditLegalHold2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditLegalHold(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createAuditLegalHold(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AuditLegalHold(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createAuditLegalHold_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_releaseAuditLegalHold(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_releaseAuditLegalHold(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ReleaseAuditLegalHold(ctx, fc.Args["holdUuid"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *AuditLegalHold) graphql.Marshaler {
+			return ec.marshalNAuditLegalHold2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditLegalHold(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_releaseAuditLegalHold(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AuditLegalHold(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_releaseAuditLegalHold_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -33570,6 +34174,50 @@ func (ec *executionContext) fieldContext_Query_verifyAuditChain(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_verifyAuditChain_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_auditLegalHolds(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_auditLegalHolds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().AuditLegalHolds(ctx, fc.Args["includeReleased"].(*bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*AuditLegalHold) graphql.Marshaler {
+			return ec.marshalNAuditLegalHold2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditLegalHoldᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_auditLegalHolds(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AuditLegalHold(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_auditLegalHolds_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -47241,6 +47889,74 @@ func (ec *executionContext) _AuditCheckpoint(ctx context.Context, sel ast.Select
 	return out
 }
 
+var auditLegalHoldImplementors = []string{"AuditLegalHold"}
+
+func (ec *executionContext) _AuditLegalHold(ctx context.Context, sel ast.SelectionSet, obj *AuditLegalHold) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, auditLegalHoldImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AuditLegalHold")
+		case "holdUuid":
+			out.Values[i] = ec._AuditLegalHold_holdUuid(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subjectFilter":
+			out.Values[i] = ec._AuditLegalHold_subjectFilter(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "groupFilter":
+			out.Values[i] = ec._AuditLegalHold_groupFilter(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._AuditLegalHold_reason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "heldBy":
+			out.Values[i] = ec._AuditLegalHold_heldBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._AuditLegalHold_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "releasedAt":
+			out.Values[i] = ec._AuditLegalHold_releasedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var auditQueryPageImplementors = []string{"AuditQueryPage"}
 
 func (ec *executionContext) _AuditQueryPage(ctx context.Context, sel ast.SelectionSet, obj *AuditQueryPage) graphql.Marshaler {
@@ -47406,6 +48122,49 @@ func (ec *executionContext) _AuditSegment(ctx context.Context, sel ast.Selection
 			}
 		case "checkpoints":
 			out.Values[i] = ec._AuditSegment_checkpoints(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var auditShredResultImplementors = []string{"AuditShredResult"}
+
+func (ec *executionContext) _AuditShredResult(ctx context.Context, sel ast.SelectionSet, obj *AuditShredResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, auditShredResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AuditShredResult")
+		case "recordsTombstoned":
+			out.Values[i] = ec._AuditShredResult_recordsTombstoned(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recordId":
+			out.Values[i] = ec._AuditShredResult_recordId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -49912,6 +50671,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "shredAuditSubject":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_shredAuditSubject(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createAuditLegalHold":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createAuditLegalHold(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "releaseAuditLegalHold":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_releaseAuditLegalHold(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "issueCollabToken":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_issueCollabToken(ctx, field)
@@ -52260,6 +53040,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_verifyAuditChain(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "auditLegalHolds":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_auditLegalHolds(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -57812,6 +58614,36 @@ func (ec *executionContext) marshalNAuditCheckpoint2ᚖgithubᚗcomᚋStewardᚑ
 	return ec._AuditCheckpoint(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNAuditLegalHold2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditLegalHold(ctx context.Context, sel ast.SelectionSet, v AuditLegalHold) graphql.Marshaler {
+	return ec._AuditLegalHold(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAuditLegalHold2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditLegalHoldᚄ(ctx context.Context, sel ast.SelectionSet, v []*AuditLegalHold) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAuditLegalHold2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditLegalHold(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAuditLegalHold2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditLegalHold(ctx context.Context, sel ast.SelectionSet, v *AuditLegalHold) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AuditLegalHold(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNAuditQueryPage2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditQueryPage(ctx context.Context, sel ast.SelectionSet, v AuditQueryPage) graphql.Marshaler {
 	return ec._AuditQueryPage(ctx, sel, &v)
 }
@@ -57864,6 +58696,20 @@ func (ec *executionContext) marshalNAuditSegment2ᚖgithubᚗcomᚋStewardᚑGRC
 		return graphql.Null
 	}
 	return ec._AuditSegment(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAuditShredResult2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditShredResult(ctx context.Context, sel ast.SelectionSet, v AuditShredResult) graphql.Marshaler {
+	return ec._AuditShredResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAuditShredResult2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditShredResult(ctx context.Context, sel ast.SelectionSet, v *AuditShredResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AuditShredResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNAuthoringAssistInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuthoringAssistInput(ctx context.Context, v any) (AuthoringAssistInput, error) {

@@ -23,5 +23,5 @@ func (r *queryResolver) AuditSegment(ctx context.Context, fromRecordID string, t
 
 // VerifyAuditChain is the resolver for the verifyAuditChain field.
 func (r *queryResolver) VerifyAuditChain(ctx context.Context, fromRecordID string, toRecordID string) (*AuditChainVerification, error) {
-	return VerifyAuditChainResolver(ctx, r.AuditClient, fromRecordID, toRecordID)
+	return VerifyAuditChainResolver(ctx, r.AuditClient, r.IdentityClient, fromRecordID, toRecordID)
 }

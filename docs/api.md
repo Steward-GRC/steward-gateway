@@ -37,6 +37,12 @@ reads their own grants. `managedGroupMembers`, `addUserToGroup` and `removeUserF
 to a site admin or to a manager of that group, and a manager cannot remove an IdP-synced
 membership.
 
+**Audit reads:** `auditLog` and `verifyAuditChain` are open to a caller with `audit.read`, who
+reads every group, and to a group manager: the gateway reads the caller's managed group ids from
+identity and sends them as `managed_groups`, and audit lets a manager query only a group it
+manages (named in `groupId`) and verify. Anyone else is refused with `PermissionDenied`.
+`auditSegment` (the raw export) needs `audit.read`, because record ids span every group.
+
 **Live updates:** `liveEvents` streams every audit event, so it needs `audit.read`; anyone else
 is refused with `PermissionDenied`.
 

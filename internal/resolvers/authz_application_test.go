@@ -206,7 +206,7 @@ func TestAuditSegmentRequiresSiteAdmin(t *testing.T) {
 }
 
 func TestVerifyAuditChainRequiresSiteAdmin(t *testing.T) {
-	_, err := resolvers.VerifyAuditChainResolver(ctxWithRoles(t, "u", []string{"author"}), nil, "1", "10")
+	_, err := resolvers.VerifyAuditChainResolver(ctxWithRoles(t, "u", []string{"author"}), nil, nil, "1", "10")
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("VerifyAuditChainResolver: want PermissionDenied, got %v", err)
 	}

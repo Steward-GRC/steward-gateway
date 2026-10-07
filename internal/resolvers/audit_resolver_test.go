@@ -182,7 +182,7 @@ func TestVerifyAuditChain(t *testing.T) {
 			Errors:         []string{"hash mismatch at id=37"},
 		},
 	}
-	out, err := resolvers.VerifyAuditChainResolver(ctxWithRoles(t, "auditor-1", []string{"site-admin"}), client, "1", "100")
+	out, err := resolvers.VerifyAuditChainResolver(ctxWithRoles(t, "auditor-1", []string{"site-admin"}), client, nil, "1", "100")
 	if err != nil {
 		t.Fatalf("VerifyAuditChain: %v", err)
 	}

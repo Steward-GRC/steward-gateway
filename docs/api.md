@@ -49,6 +49,14 @@ and the query `auditLegalHolds` need `compliance.manage` (`compliance-admin` and
 today). The gateway checks it and sends the caller as the requester; audit checks it again and
 records every call, including the list. The three mutations are refused during act-as.
 
+**OIDC client secrets:** `addOrganization`, `changeOrgProtocol` and `updateIdPConnection` take
+an OIDC connection's client secret as `clientSecret`, write-only: the gateway passes it to
+identity, which keeps it in a Kubernetes Secret, never in its database, and no field returns it.
+`secretRef` instead names a key an operator created in that Secret. Send one or the other, never
+both. `Organization.secretReentryRequired` says identity cleared a stored reference that wasn't a
+key and an admin must enter the secret again. The first-run `/setup/bootstrap` SSO block takes
+the same `clientSecret`.
+
 **Live updates:** `liveEvents` streams every audit event, so it needs `audit.read`; anyone else
 is refused with `PermissionDenied`.
 

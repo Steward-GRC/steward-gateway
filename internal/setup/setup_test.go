@@ -424,3 +424,27 @@ func TestBootstrapHandler_SSO_VerifyError_KeepsOrganization(t *testing.T) {
 	require.Equal(t, "example.org", body.SSO.Organization["domain"])
 	require.Nil(t, body.SSO.DomainVerification)
 }
+
+func TestBootstrapHandler_SSO_ClientSecretPassedThroughNeverEchoed(t *testing.T) {
+	const plain = "aaaa-bbbb-test-only" // #nosec G101 -- test value
+	fake := &fakeIdentity{bootstrapUser: &identityv1.User{Id: testRootID}}
+	sso := &fakeSSOAdmin{
+		addResp:    &identityv1.AddOrganizationResponse{Organization: &identityv1.Organization{Domain: "example.org", Protocol: "oidc"}},
+		verifyResp: &identityv1.StartDomainVerificationResponse{Token: "verif-tok"},
+	}
+	h := setup.New(fake, "tok").WithSSOAdmin(sso)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/setup/bootstrap", bootstrapWithSSOBody(t, "tok", map[string]any{
+		"orgName":      "Example Organisation",
+		"domain":       "example.org",
+		"protocol":     "oidc",
+		"config":       map[string]string{"issuer": "https://idp.example.net", "clientId": "steward"},
+		"clientSecret": plain,
+	}))
+	h.BootstrapHandler()(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, plain, sso.gotAdd.GetClientSecret())
+	require.Empty(t, sso.gotAdd.GetSecretRef())
+	require.NotContains(t, rec.Body.String(), plain)
+}

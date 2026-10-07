@@ -136,6 +136,9 @@ type ssoInput struct {
 	DisplayName string            `json:"displayName"`
 	Config      map[string]string `json:"config"`
 	SecretRef   string            `json:"secretRef"`
+	// ClientSecret is the OIDC client secret, write-only: passed to identity
+	// and never echoed or logged.
+	ClientSecret string `json:"clientSecret"`
 }
 
 // provisionSSO creates the organization SSO connection and starts DNS-TXT domain
@@ -157,12 +160,13 @@ func (h *Handlers) provisionSSO(ctx context.Context, rootID string, in *ssoInput
 	})
 
 	org, err := h.ssoAdmin.AddOrganization(authCtx, &identityv1.AddOrganizationRequest{
-		OrgName:     in.OrgName,
-		Domain:      in.Domain,
-		Protocol:    in.Protocol,
-		DisplayName: in.DisplayName,
-		Config:      in.Config,
-		SecretRef:   in.SecretRef,
+		OrgName:      in.OrgName,
+		Domain:       in.Domain,
+		Protocol:     in.Protocol,
+		DisplayName:  in.DisplayName,
+		Config:       in.Config,
+		SecretRef:    in.SecretRef,
+		ClientSecret: in.ClientSecret,
 	})
 	if err != nil {
 		l.Error(err, "setup: SSO AddOrganization failed", log.F("code", status.Code(err).String()))

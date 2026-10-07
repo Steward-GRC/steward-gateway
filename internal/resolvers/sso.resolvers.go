@@ -37,13 +37,13 @@ func (r *mutationResolver) DisableOrganization(ctx context.Context, domain strin
 }
 
 // UpdateIDPConnection is the resolver for the updateIdPConnection field.
-func (r *mutationResolver) UpdateIDPConnection(ctx context.Context, domain string, jitEnabled *bool, allowLocal *bool) (*Organization, error) {
-	return UpdateIdPConnectionResolver(ctx, r.SSOAdminClient, domain, jitEnabled, allowLocal)
+func (r *mutationResolver) UpdateIDPConnection(ctx context.Context, domain string, jitEnabled *bool, allowLocal *bool, secretRef *string, clientSecret *string) (*Organization, error) {
+	return UpdateIdPConnectionResolver(ctx, r.SSOAdminClient, domain, jitEnabled, allowLocal, secretRef, clientSecret)
 }
 
 // ChangeOrgProtocol is the resolver for the changeOrgProtocol field.
-func (r *mutationResolver) ChangeOrgProtocol(ctx context.Context, domain string, protocol string, config []*KeyValueInput, secretRef *string) (*Organization, error) {
-	return ChangeOrgProtocolResolver(ctx, r.SSOAdminClient, domain, protocol, config, secretRef)
+func (r *mutationResolver) ChangeOrgProtocol(ctx context.Context, domain string, protocol string, config []*KeyValueInput, secretRef *string, clientSecret *string) (*Organization, error) {
+	return ChangeOrgProtocolResolver(ctx, r.SSOAdminClient, domain, protocol, config, secretRef, clientSecret)
 }
 
 // DeleteOrganization is the resolver for the deleteOrganization field.

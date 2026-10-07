@@ -406,30 +406,58 @@ func ListPolicies(ctx context.Context, client corev1.PolicyServiceClient, catego
 
 // versionReadDecision is the read effect on the policy that owns a version.
 // It fails closed: no caller, no policy or any lookup error is deny, so a
-// version body is never served on an unresolved decision.
-func versionReadDecision(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyID string) authz.Effect {
+// version body is never served on an unresolved decision. breakGlass reports
+// that only the caller's active break-glass grant allows the read, so the read
+// must be recorded before the content is served.
+func versionReadDecision(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyID string) (effect authz.Effect, breakGlass bool) {
 	subj, err := subjectFromCtx(ctx)
 	if err != nil {
-		return authz.EffectDeny
+		return authz.EffectDeny, false
 	}
 	subj.BreakGlass = activeBreakGlassFor(ctx, adminClient, subj.SiteAdmin())
 	resp, err := client.GetPolicy(ctx, &corev1.GetPolicyRequest{Id: policyID})
 	if err != nil {
-		return authz.EffectDeny
+		return authz.EffectDeny, false
 	}
 	p := policyFromProto(resp.GetPolicy())
 	if p == nil {
-		return authz.EffectDeny
+		return authz.EffectDeny, false
 	}
+	effect, err = policyReadEffect(ctx, subj, p, categoryClient)
+	if err != nil {
+		return authz.EffectDeny, false
+	}
+	if effect != authz.EffectAllow || !subj.BreakGlass[p.Number] {
+		return effect, false
+	}
+	subj.BreakGlass = nil
+	without, err := policyReadEffect(ctx, subj, p, categoryClient)
+	if err != nil {
+		return authz.EffectDeny, false
+	}
+	return effect, without != authz.EffectAllow
+}
+
+// policyReadEffect is the read effect for subj on p: the category rules when
+// they resolve, the role-based decision otherwise.
+func policyReadEffect(ctx context.Context, subj authz.Subject, p *Policy, categoryClient corev1.CategoryServiceClient) (authz.Effect, error) {
 	raci, raciOK, err := computeRACIResult(ctx, subj, p, categoryClient)
 	if err != nil {
-		return authz.EffectDeny
+		return authz.EffectDeny, err
 	}
 	if raciOK {
-		return raci.effect
+		return raci.effect, nil
 	}
 	res, _ := policyResource(ctx, p, categoryClient)
-	return authz.Authorize(subj, authz.PolicyRead, &res).Effect
+	return authz.Authorize(subj, authz.PolicyRead, &res).Effect, nil
+}
+
+// recordBreakGlassRead has core audit a read that only a break-glass grant
+// allows, and tell the owner and the compliance admins. Its error is returned
+// as is, so the content is not served unrecorded.
+func recordBreakGlassRead(ctx context.Context, client corev1.PolicyServiceClient, policyID, versionID string) error {
+	_, err := client.RecordBreakGlassRead(ctx, &corev1.RecordBreakGlassReadRequest{PolicyId: policyID, PolicyVersionId: versionID})
+	return err
 }
 
 // applyVersionReadDecision enforces the read effect on a version body: deny is
@@ -463,16 +491,26 @@ func GetPolicyVersion(ctx context.Context, client corev1.PolicyServiceClient, ca
 			return nil, status.Error(codes.NotFound, "policy version not found")
 		}
 	}
-	readD := versionReadDecision(ctx, client, categoryClient, adminClient, v.PolicyID)
+	readD, breakGlass := versionReadDecision(ctx, client, categoryClient, adminClient, v.PolicyID)
+	if breakGlass {
+		if err := recordBreakGlassRead(ctx, client, v.PolicyID, v.ID); err != nil {
+			return nil, err
+		}
+	}
 	return applyVersionReadDecision(v, readD)
 }
 
 // ListPolicyVersions returns a policy's published versions, oldest first,
 // under its read decision.
 func ListPolicyVersions(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyID string) ([]*PolicyVersion, error) {
-	readD := versionReadDecision(ctx, client, categoryClient, adminClient, policyID)
+	readD, breakGlass := versionReadDecision(ctx, client, categoryClient, adminClient, policyID)
 	if readD == authz.EffectDeny {
 		return nil, status.Error(codes.NotFound, "policy not found")
+	}
+	if breakGlass {
+		if err := recordBreakGlassRead(ctx, client, policyID, ""); err != nil {
+			return nil, err
+		}
 	}
 	resp, err := client.ListPolicyVersions(ctx, &corev1.ListPolicyVersionsRequest{PolicyId: policyID})
 	if err != nil {

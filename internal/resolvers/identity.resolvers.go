@@ -246,6 +246,11 @@ func (r *queryResolver) PlatformGroups(ctx context.Context, parentID *string) ([
 	return PlatformGroupsResolver(ctx, r.IdentityClient, parentID)
 }
 
+// MyManagedGroups is the resolver for the myManagedGroups field.
+func (r *queryResolver) MyManagedGroups(ctx context.Context) ([]*PlatformGroup, error) {
+	return MyManagedGroupsResolver(ctx, r.IdentityClient)
+}
+
 // ListUserSessions is the resolver for the listUserSessions field.
 func (r *queryResolver) ListUserSessions(ctx context.Context, userID string) ([]*Session, error) {
 	return ListUserSessionsResolver(ctx, r.IdentityAdminClient, userID)

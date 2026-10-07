@@ -32,6 +32,9 @@ The image: `docker build --build-arg VERSION=<tag> --build-arg COMMIT=<sha> .`
 - [Runbook](docs/runbook.md)
 - [Error codes](docs/error-codes.md)
 
+- [Contributing](https://github.com/Steward-GRC/.github/blob/main/.github/CONTRIBUTING.md) and
+  [security](https://github.com/Steward-GRC/.github/blob/main/.github/SECURITY.md)
+
 ## 🛠 Develop
 
 ```bash

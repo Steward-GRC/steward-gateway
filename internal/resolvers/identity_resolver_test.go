@@ -105,9 +105,26 @@ type fakeAdminClient struct {
 	setPolicyErr     error
 	lastSetPolicyReq *identityv1.SetUserPolicyOverrideRequest
 
-	transferResp    *identityv1.TransferRootResponse
-	transferErr     error
-	lastTransferReq *identityv1.TransferRootRequest
+	grantRootResp    *identityv1.GrantRootResponse
+	grantRootErr     error
+	lastGrantRootReq *identityv1.GrantRootRequest
+
+	revokeRootResp    *identityv1.RevokeRootResponse
+	revokeRootErr     error
+	lastRevokeRootReq *identityv1.RevokeRootRequest
+
+	requestHardResetResp    *identityv1.RequestHardResetResponse
+	requestHardResetErr     error
+	lastRequestHardResetReq *identityv1.RequestHardResetRequest
+
+	approveHardResetResp *identityv1.ApproveHardResetResponse
+	approveHardResetErr  error
+
+	cancelHardResetResp *identityv1.CancelHardResetResponse
+	cancelHardResetErr  error
+
+	listHardResetResp *identityv1.ListHardResetRequestsResponse
+	listHardResetErr  error
 
 	completeOnboardingResp *identityv1.CompleteOnboardingResponse
 	completeOnboardingErr  error
@@ -132,12 +149,49 @@ type fakeAdminClient struct {
 	lastUpdateProfileReq *identityv1.UpdateUserProfileRequest
 }
 
-func (f *fakeAdminClient) TransferRoot(_ context.Context, in *identityv1.TransferRootRequest, _ ...grpc.CallOption) (*identityv1.TransferRootResponse, error) {
-	f.lastTransferReq = in
-	if f.transferErr != nil {
-		return nil, f.transferErr
+func (f *fakeAdminClient) GrantRoot(_ context.Context, in *identityv1.GrantRootRequest, _ ...grpc.CallOption) (*identityv1.GrantRootResponse, error) {
+	f.lastGrantRootReq = in
+	if f.grantRootErr != nil {
+		return nil, f.grantRootErr
 	}
-	return f.transferResp, nil
+	return f.grantRootResp, nil
+}
+
+func (f *fakeAdminClient) RevokeRoot(_ context.Context, in *identityv1.RevokeRootRequest, _ ...grpc.CallOption) (*identityv1.RevokeRootResponse, error) {
+	f.lastRevokeRootReq = in
+	if f.revokeRootErr != nil {
+		return nil, f.revokeRootErr
+	}
+	return f.revokeRootResp, nil
+}
+
+func (f *fakeAdminClient) RequestHardReset(_ context.Context, in *identityv1.RequestHardResetRequest, _ ...grpc.CallOption) (*identityv1.RequestHardResetResponse, error) {
+	f.lastRequestHardResetReq = in
+	if f.requestHardResetErr != nil {
+		return nil, f.requestHardResetErr
+	}
+	return f.requestHardResetResp, nil
+}
+
+func (f *fakeAdminClient) ApproveHardReset(_ context.Context, _ *identityv1.ApproveHardResetRequest, _ ...grpc.CallOption) (*identityv1.ApproveHardResetResponse, error) {
+	if f.approveHardResetErr != nil {
+		return nil, f.approveHardResetErr
+	}
+	return f.approveHardResetResp, nil
+}
+
+func (f *fakeAdminClient) CancelHardReset(_ context.Context, _ *identityv1.CancelHardResetRequest, _ ...grpc.CallOption) (*identityv1.CancelHardResetResponse, error) {
+	if f.cancelHardResetErr != nil {
+		return nil, f.cancelHardResetErr
+	}
+	return f.cancelHardResetResp, nil
+}
+
+func (f *fakeAdminClient) ListHardResetRequests(_ context.Context, _ *identityv1.ListHardResetRequestsRequest, _ ...grpc.CallOption) (*identityv1.ListHardResetRequestsResponse, error) {
+	if f.listHardResetErr != nil {
+		return nil, f.listHardResetErr
+	}
+	return f.listHardResetResp, nil
 }
 
 func (f *fakeAdminClient) RequestStepUpOtp(_ context.Context, in *identityv1.RequestStepUpOtpRequest, _ ...grpc.CallOption) (*identityv1.RequestStepUpOtpResponse, error) {
@@ -750,47 +804,94 @@ func TestAddUserToGroupRefetchesViaGetUser(t *testing.T) {
 	}
 }
 
-func TestTransferRootResolverRequiresRootCaller(t *testing.T) {
-	// Caller is not the root → PermissionDenied, and TransferRoot is never called.
-	read := &fakeReadClient{
-		getUserResp: &identityv1.GetUserResponse{
-			User: &identityv1.User{Id: "u-caller", IsRoot: false},
-		},
-	}
+func TestGrantRootResolverRequiresAuthentication(t *testing.T) {
 	admin := &fakeAdminClient{}
-	_, err := resolvers.TransferRootResolver(ctxWithUser(t, "u-caller"), admin, read, "u-target", "123456")
-	if status.Code(err) != codes.PermissionDenied {
-		t.Fatalf("want PermissionDenied, got %v", status.Code(err))
+	_, err := resolvers.GrantRootResolver(context.Background(), admin, "u-target", "123456")
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("want Unauthenticated, got %v", status.Code(err))
 	}
-	if admin.lastTransferReq != nil {
-		t.Errorf("TransferRoot should not be called by a non-root caller: %+v", admin.lastTransferReq)
+	if admin.lastGrantRootReq != nil {
+		t.Errorf("GrantRoot should not be called with no authenticated caller: %+v", admin.lastGrantRootReq)
 	}
 }
 
-func TestTransferRootResolverHappyPath(t *testing.T) {
-	// Caller IS the root → delegates to TransferRoot with the target id.
-	read := &fakeReadClient{
-		getUserResp: &identityv1.GetUserResponse{
-			User: &identityv1.User{Id: "u-root", IsRoot: true},
-		},
-	}
+func TestGrantRootResolverHappyPath(t *testing.T) {
 	admin := &fakeAdminClient{
-		transferResp: &identityv1.TransferRootResponse{
-			User: &identityv1.User{Id: "u-target", IsRoot: true, Roles: []string{"site-admin", "admin"}},
+		grantRootResp: &identityv1.GrantRootResponse{
+			User: &identityv1.User{Id: "u-target", IsRoot: true, Roles: []string{"site-admin"}},
 		},
 	}
-	out, err := resolvers.TransferRootResolver(ctxWithUser(t, "u-root"), admin, read, "u-target", "654321")
+	out, err := resolvers.GrantRootResolver(ctxWithUser(t, "u-root"), admin, "u-target", "654321")
 	if err != nil {
-		t.Fatalf("TransferRootResolver: %v", err)
+		t.Fatalf("GrantRootResolver: %v", err)
 	}
-	if admin.lastTransferReq == nil || admin.lastTransferReq.ToUserId != "u-target" {
-		t.Errorf("TransferRoot called with wrong target: %+v", admin.lastTransferReq)
+	if admin.lastGrantRootReq == nil || admin.lastGrantRootReq.UserId != "u-target" {
+		t.Errorf("GrantRoot called with wrong target: %+v", admin.lastGrantRootReq)
 	}
-	if admin.lastTransferReq.GetOtp() != "654321" {
-		t.Errorf("TransferRoot otp not forwarded: %q", admin.lastTransferReq.GetOtp())
+	if admin.lastGrantRootReq.GetOtp() != "654321" {
+		t.Errorf("GrantRoot otp not forwarded: %q", admin.lastGrantRootReq.GetOtp())
 	}
 	if out.UserID != "u-target" || !out.IsRoot {
-		t.Errorf("unexpected transferred user: %+v", out)
+		t.Errorf("unexpected granted user: %+v", out)
+	}
+}
+
+func TestGrantRootResolverPassesThroughIdentityRefusal(t *testing.T) {
+	// Identity itself enforces root-only and act-as refusal; the gateway
+	// passes its error straight through rather than re-deciding.
+	admin := &fakeAdminClient{grantRootErr: status.Error(codes.PermissionDenied, "root required")}
+	_, err := resolvers.GrantRootResolver(ctxWithUser(t, "u-caller"), admin, "u-target", "123456")
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("want PermissionDenied, got %v", status.Code(err))
+	}
+}
+
+func TestRevokeRootResolverHappyPath(t *testing.T) {
+	admin := &fakeAdminClient{
+		revokeRootResp: &identityv1.RevokeRootResponse{
+			User: &identityv1.User{Id: "u-target", IsRoot: false, Roles: []string{"site-admin"}},
+		},
+	}
+	out, err := resolvers.RevokeRootResolver(ctxWithUser(t, "u-root"), admin, "u-target", "654321")
+	if err != nil {
+		t.Fatalf("RevokeRootResolver: %v", err)
+	}
+	if admin.lastRevokeRootReq == nil || admin.lastRevokeRootReq.UserId != "u-target" {
+		t.Errorf("RevokeRoot called with wrong target: %+v", admin.lastRevokeRootReq)
+	}
+	if out.UserID != "u-target" || out.IsRoot {
+		t.Errorf("unexpected revoked user: %+v", out)
+	}
+}
+
+func TestRequestHardResetResolverHappyPath(t *testing.T) {
+	admin := &fakeAdminClient{
+		requestHardResetResp: &identityv1.RequestHardResetResponse{
+			Request: &identityv1.HardResetRequest{
+				Id: "hr-1", Module: "compliance", Reason: "quarterly reset",
+				State:       identityv1.HardResetState_HARD_RESET_STATE_PENDING,
+				RequestedBy: "u-root", RequestedAt: "2026-10-09T00:00:00Z",
+				ExpiresAt: "2026-10-10T00:00:00Z",
+			},
+		},
+	}
+	out, err := resolvers.RequestHardResetResolver(ctxWithUser(t, "u-root"), admin, "compliance", "quarterly reset")
+	if err != nil {
+		t.Fatalf("RequestHardResetResolver: %v", err)
+	}
+	if admin.lastRequestHardResetReq == nil || admin.lastRequestHardResetReq.Module != "compliance" {
+		t.Errorf("RequestHardReset called with wrong module: %+v", admin.lastRequestHardResetReq)
+	}
+	if out.ID != "hr-1" || out.State != "HARD_RESET_STATE_PENDING" || out.ApprovedBy != nil {
+		t.Errorf("unexpected hard reset request: %+v", out)
+	}
+}
+
+func TestRequestHardResetResolverPassesThroughIdentityRefusal(t *testing.T) {
+	admin := &fakeAdminClient{requestHardResetErr: status.Error(codes.PermissionDenied, "root required")}
+	_, err := resolvers.RequestHardResetResolver(ctxWithUser(t, "u-caller"), admin, "compliance", "reason")
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("want PermissionDenied, got %v", status.Code(err))
 	}
 }
 

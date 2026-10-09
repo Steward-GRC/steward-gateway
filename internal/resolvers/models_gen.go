@@ -608,6 +608,22 @@ type GroupUnitInput struct {
 	MemberUserIds  []string `json:"memberUserIds"`
 }
 
+type HardResetRequest struct {
+	ID                string  `json:"id"`
+	Module            string  `json:"module"`
+	Reason            string  `json:"reason"`
+	State             string  `json:"state"`
+	RequestedBy       string  `json:"requestedBy"`
+	RequestedAt       string  `json:"requestedAt"`
+	ExpiresAt         string  `json:"expiresAt"`
+	ApprovedBy        *string `json:"approvedBy,omitempty"`
+	ApprovedAt        *string `json:"approvedAt,omitempty"`
+	ApprovalExpiresAt *string `json:"approvalExpiresAt,omitempty"`
+	CancelledAt       *string `json:"cancelledAt,omitempty"`
+	ConsumedAt        *string `json:"consumedAt,omitempty"`
+	ConsumedBy        *string `json:"consumedBy,omitempty"`
+}
+
 type HealthStatus struct {
 	Status string `json:"status"`
 }

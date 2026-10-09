@@ -59,11 +59,11 @@ func TestDiffVersionsDeniedReaderGetsNotFoundAndCoreIsNotAsked(t *testing.T) {
 	}
 }
 
-func TestDiffVersionsUnknownVersionIsNotFound(t *testing.T) {
+func TestDiffVersionsUnknownVersionServesNothing(t *testing.T) {
 	pc, groups, ctx := diffSetup(t, false)
 
-	if _, err := resolvers.DiffVersions(ctx, pc, groups, noGrant(), "pol-1-v1", "missing"); status.Code(err) != codes.NotFound {
-		t.Fatalf("err = %v, want NotFound", err)
+	if diffs, err := resolvers.DiffVersions(ctx, pc, groups, noGrant(), "pol-1-v1", "missing"); err == nil || diffs != nil {
+		t.Fatalf("got %v, %v; want the lookup error and no diff", diffs, err)
 	}
 	if pc.diffCalls != 0 {
 		t.Fatalf("core DiffVersions called %d times, want 0", pc.diffCalls)

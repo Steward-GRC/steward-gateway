@@ -475,29 +475,77 @@ func applyVersionReadDecision(v *PolicyVersion, readD authz.Effect) (*PolicyVers
 	return v, nil
 }
 
-// GetPolicyVersion returns one version under its policy's read decision. A
-// draft version is for editors only; anyone else gets NotFound.
-func GetPolicyVersion(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, id string) (*PolicyVersion, error) {
+// versionRead is the read decision on one version's content.
+type versionRead struct {
+	version    *PolicyVersion
+	effect     authz.Effect
+	breakGlass bool
+}
+
+// resolveVersionRead loads a version and its policy's read decision. It fails
+// closed: an unknown version, a draft for anyone but an editor, or a denied
+// read is NotFound, so the caller serves nothing and asks no backend for it.
+func resolveVersionRead(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, id string) (versionRead, error) {
+	notFound := status.Error(codes.NotFound, "policy version not found")
 	resp, err := client.GetPolicyVersion(ctx, &corev1.GetPolicyVersionRequest{Id: id})
 	if err != nil {
-		return nil, err
+		return versionRead{}, err
 	}
 	v := policyVersionFromProto(resp.Version)
 	if v == nil {
-		return nil, status.Error(codes.NotFound, "policy version not found")
+		return versionRead{}, notFound
 	}
 	if v.Status == draftPolicyVersionStatus {
 		if _, aerr := authorizeEffectiveAuthor(ctx, client, categoryClient, v.PolicyID); aerr != nil {
-			return nil, status.Error(codes.NotFound, "policy version not found")
+			return versionRead{}, notFound
 		}
 	}
-	readD, breakGlass := versionReadDecision(ctx, client, categoryClient, adminClient, v.PolicyID)
-	if breakGlass {
-		if err := recordBreakGlassRead(ctx, client, v.PolicyID, v.ID); err != nil {
-			return nil, err
+	effect, breakGlass := versionReadDecision(ctx, client, categoryClient, adminClient, v.PolicyID)
+	if effect == authz.EffectDeny {
+		return versionRead{}, notFound
+	}
+	return versionRead{version: v, effect: effect, breakGlass: breakGlass}, nil
+}
+
+// authorizeVersionReads resolves the read decision on every version a response
+// draws content from and returns the most restrictive effect. When that effect
+// serves the real content, each grant-only read is recorded first; a failed
+// record is returned so nothing is served unrecorded.
+func authorizeVersionReads(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, ids ...string) ([]versionRead, authz.Effect, error) {
+	reads := make([]versionRead, 0, len(ids))
+	effect := authz.EffectAllow
+	for _, id := range ids {
+		r, err := resolveVersionRead(ctx, client, categoryClient, adminClient, id)
+		if err != nil {
+			return nil, authz.EffectDeny, err
+		}
+		if r.effect == authz.EffectObfuscate {
+			effect = authz.EffectObfuscate
+		}
+		reads = append(reads, r)
+	}
+	if effect != authz.EffectAllow {
+		return reads, effect, nil
+	}
+	for _, r := range reads {
+		if !r.breakGlass {
+			continue
+		}
+		if err := recordBreakGlassRead(ctx, client, r.version.PolicyID, r.version.ID); err != nil {
+			return nil, authz.EffectDeny, err
 		}
 	}
-	return applyVersionReadDecision(v, readD)
+	return reads, effect, nil
+}
+
+// GetPolicyVersion returns one version under its policy's read decision. A
+// draft version is for editors only; anyone else gets NotFound.
+func GetPolicyVersion(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, id string) (*PolicyVersion, error) {
+	reads, effect, err := authorizeVersionReads(ctx, client, categoryClient, adminClient, id)
+	if err != nil {
+		return nil, err
+	}
+	return applyVersionReadDecision(reads[0].version, effect)
 }
 
 // ListPolicyVersions returns a policy's published versions, oldest first,
@@ -527,8 +575,14 @@ func ListPolicyVersions(ctx context.Context, client corev1.PolicyServiceClient, 
 	return out, nil
 }
 
-// DiffVersions returns core's section diff between two versions.
-func DiffVersions(ctx context.Context, client corev1.PolicyServiceClient, fromID, toID string) ([]*SectionDiff, error) {
+// DiffVersions returns core's section diff between two versions under the read
+// decision on both. An obfuscated read keeps the section shape but drops the
+// word diff and scrambles the titles.
+func DiffVersions(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, fromID, toID string) ([]*SectionDiff, error) {
+	_, effect, err := authorizeVersionReads(ctx, client, categoryClient, adminClient, fromID, toID)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.DiffVersions(ctx, &corev1.DiffVersionsRequest{FromVersionId: fromID, ToVersionId: toID})
 	if err != nil {
 		return nil, err
@@ -543,7 +597,19 @@ func DiffVersions(ctx context.Context, client corev1.PolicyServiceClient, fromID
 			IsBoilerplate: d.IsBoilerplate,
 		})
 	}
-	return out, nil
+	return obfuscateSectionDiffs(out, effect), nil
+}
+
+// obfuscateSectionDiffs strips the content from diffs an obfuscated reader gets.
+func obfuscateSectionDiffs(diffs []*SectionDiff, effect authz.Effect) []*SectionDiff {
+	if effect != authz.EffectObfuscate {
+		return diffs
+	}
+	for _, d := range diffs {
+		d.WordDiffHTML = nil
+		d.SectionTitle = scrambleText(d.SectionTitle)
+	}
+	return diffs
 }
 
 // GetEffectiveTemplate returns the policy's pinned or inherited template.

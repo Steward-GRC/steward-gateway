@@ -527,6 +527,7 @@ func TestTopPolicyQuestionsUnauthenticated(t *testing.T) {
 }
 
 func TestPolicyVersionSummaryFound(t *testing.T) {
+	pc, groups, admin := openVersions(t)
 	client := &fakeAIClient{
 		policySummaryResp: &aiv1.GetPolicySummaryResponse{
 			Found:       true,
@@ -534,7 +535,7 @@ func TestPolicyVersionSummaryFound(t *testing.T) {
 			GeneratedAt: "2026-07-01T00:00:00Z",
 		},
 	}
-	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, "pv-1")
+	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1")
 	if err != nil {
 		t.Fatalf("PolicyVersionSummary: %v", err)
 	}
@@ -547,10 +548,11 @@ func TestPolicyVersionSummaryFound(t *testing.T) {
 }
 
 func TestPolicyVersionSummaryNotFoundReturnsNil(t *testing.T) {
+	pc, groups, admin := openVersions(t)
 	client := &fakeAIClient{
 		policySummaryResp: &aiv1.GetPolicySummaryResponse{Found: false},
 	}
-	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, "pv-1")
+	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1")
 	if err != nil {
 		t.Fatalf("PolicyVersionSummary: %v", err)
 	}
@@ -564,8 +566,9 @@ func TestPolicyVersionSummaryNotFoundReturnsNil(t *testing.T) {
 // GetPolicySummary) must resolve to nil, never a GraphQL error, so a summary
 // panel never breaks the page.
 func TestPolicyVersionSummaryDegradesToNilOnError(t *testing.T) {
+	pc, groups, admin := openVersions(t)
 	client := &fakeAIClient{policySummaryErr: status.Error(codes.Unimplemented, "method GetPolicySummary not implemented")}
-	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, "pv-1")
+	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1")
 	if err != nil {
 		t.Fatalf("expected graceful degradation, got error: %v", err)
 	}
@@ -575,8 +578,9 @@ func TestPolicyVersionSummaryDegradesToNilOnError(t *testing.T) {
 }
 
 func TestPolicyVersionSummaryUnauthenticated(t *testing.T) {
+	pc, groups, admin := openVersions(t)
 	client := &fakeAIClient{}
-	_, err := resolvers.PolicyVersionSummaryResolver(context.Background(), client, "pv-1")
+	_, err := resolvers.PolicyVersionSummaryResolver(context.Background(), client, pc, groups, admin, "pv-1")
 	if err == nil {
 		t.Fatal("expected unauthenticated error")
 	}

@@ -76,16 +76,16 @@ addresses or probe errors.
 
 Every field that returns a policy version's content applies the same read decision as
 `policyVersion`: `policyVersion`, `policyVersions`, `diffVersions`, `policyDiff`,
-`renderedContent`, `requestPDFExport` and `policyVersionSummary`. The decision is taken on each
-version the field draws from (both sides of a diff), and the most restrictive one wins. No backend
-is asked for content the caller may not read.
+`renderedContent`, `requestPDFExport`, `createMagicLink` and `policyVersionSummary`. The decision
+is taken on each version the field draws from (both sides of a diff), and the most restrictive one
+wins. No backend is asked for content the caller may not read.
 
 - **Deny:** an unknown version, a draft for anyone but an editor of the policy, or a denied read is
   `NotFound` (`policyVersionSummary` returns no summary).
 - **Obfuscate:** `policyVersion(s)` return scrambled content; `diffVersions` and `policyDiff` keep
-  the sections but drop the word diff (`diffVersions` also scrambles the titles); `renderedContent`
-  and `requestPDFExport` are `NotFound`, because delivery renders the real text; and
-  `policyVersionSummary` returns no summary.
+  the sections but drop the word diff (`diffVersions` also scrambles the titles); `renderedContent`,
+  `requestPDFExport` and `createMagicLink` are `NotFound`, because delivery serves the real
+  text; and `policyVersionSummary` returns no summary.
 - **Allow:** the real content. A read that only a break-glass grant allows is recorded first (see
   below), once per version.
 

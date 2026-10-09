@@ -40,11 +40,17 @@ func (c *countingDeliveryClient) RequestPDFExport(ctx context.Context, in *deliv
 	return c.fakeDeliveryClient.RequestPDFExport(ctx, in, opts...)
 }
 
+func (c *countingDeliveryClient) CreateMagicLink(ctx context.Context, in *deliveryv1.CreateMagicLinkRequest, opts ...grpc.CallOption) (*deliveryv1.CreateMagicLinkResponse, error) {
+	c.calls++
+	return c.fakeDeliveryClient.CreateMagicLink(ctx, in, opts...)
+}
+
 func contentDelivery() *countingDeliveryClient {
 	return &countingDeliveryClient{fakeDeliveryClient: &fakeDeliveryClient{
-		renderedResp:   &deliveryv1.GetRenderedContentResponse{Html: "<p>the secret clause</p>"},
-		diffResp:       &deliveryv1.GetDiffResponse{Sections: []*deliveryv1.SectionDiff{{SectionKey: "scope", ChangeType: "modified", DiffHtml: "<ins>the secret clause</ins>"}}},
-		requestPDFResp: &deliveryv1.RequestPDFExportResponse{JobId: "job-1"},
+		renderedResp:    &deliveryv1.GetRenderedContentResponse{Html: "<p>the secret clause</p>"},
+		diffResp:        &deliveryv1.GetDiffResponse{Sections: []*deliveryv1.SectionDiff{{SectionKey: "scope", ChangeType: "modified", DiffHtml: "<ins>the secret clause</ins>"}}},
+		requestPDFResp:  &deliveryv1.RequestPDFExportResponse{JobId: "job-1"},
+		createMagicResp: &deliveryv1.CreateMagicLinkResponse{Token: "tok-1"},
 	}}
 }
 
@@ -72,6 +78,10 @@ func contentReadCases() []readCase {
 		{"requestPDFExport", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, d *countingDeliveryClient, _ *fakeAIClient) (bool, error) {
 			job, err := resolvers.RequestPDFExport(ctx, d, pc, groups, admin, "pol-1-v1")
 			return job != nil, err
+		}},
+		{"createMagicLink", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, d *countingDeliveryClient, _ *fakeAIClient) (bool, error) {
+			link, err := resolvers.CreateMagicLinkResolver(ctx, d, pc, groups, admin, "pol-1-v1", false)
+			return link != nil, err
 		}},
 		{"policyVersionSummary", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, _ *countingDeliveryClient, ai *fakeAIClient) (bool, error) {
 			s, err := resolvers.PolicyVersionSummaryResolver(ctx, ai, pc, groups, admin, "pol-1-v1")

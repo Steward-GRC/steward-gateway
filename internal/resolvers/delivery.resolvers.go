@@ -18,7 +18,7 @@ func (r *mutationResolver) RequestPDFExport(ctx context.Context, policyVersionID
 
 // CreateMagicLink is the resolver for the createMagicLink field.
 func (r *mutationResolver) CreateMagicLink(ctx context.Context, policyVersionID string, sensitive bool) (*MagicLink, error) {
-	return CreateMagicLinkResolver(ctx, r.DeliveryClient, policyVersionID, sensitive)
+	return CreateMagicLinkResolver(ctx, r.DeliveryClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, policyVersionID, sensitive)
 }
 
 // RevokeMagicLink is the resolver for the revokeMagicLink field.

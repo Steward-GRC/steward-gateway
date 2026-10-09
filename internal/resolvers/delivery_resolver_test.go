@@ -241,6 +241,7 @@ func TestRequestPDFExportPropagatesError(t *testing.T) {
 // ---------- createMagicLink ----------
 
 func TestCreateMagicLinkHappyPath(t *testing.T) {
+	pc, groups, admin := openVersions(t)
 	expires := time.Date(2026, 6, 30, 0, 0, 0, 0, time.UTC)
 	client := &fakeDeliveryClient{
 		createMagicResp: &deliveryv1.CreateMagicLinkResponse{
@@ -248,7 +249,7 @@ func TestCreateMagicLinkHappyPath(t *testing.T) {
 			ExpiresAt: timestamppb.New(expires),
 		},
 	}
-	got, err := resolvers.CreateMagicLinkResolver(ctxWithUser(t, "u-9"), client, "pv-1", true)
+	got, err := resolvers.CreateMagicLinkResolver(ctxWithUser(t, "u-9"), client, pc, groups, admin, "pv-1", true)
 	if err != nil {
 		t.Fatalf("CreateMagicLinkResolver: %v", err)
 	}
@@ -267,8 +268,9 @@ func TestCreateMagicLinkHappyPath(t *testing.T) {
 }
 
 func TestCreateMagicLinkUnauthenticated(t *testing.T) {
+	pc, groups, admin := openVersions(t)
 	client := &fakeDeliveryClient{}
-	if _, err := resolvers.CreateMagicLinkResolver(context.Background(), client, "pv-1", false); err == nil {
+	if _, err := resolvers.CreateMagicLinkResolver(context.Background(), client, pc, groups, admin, "pv-1", false); err == nil {
 		t.Fatal("expected unauthenticated error when no claims on context")
 	}
 	if client.lastCreateMagicReq != nil {
@@ -277,9 +279,10 @@ func TestCreateMagicLinkUnauthenticated(t *testing.T) {
 }
 
 func TestCreateMagicLinkPropagatesError(t *testing.T) {
+	pc, groups, admin := openVersions(t)
 	rpcErr := errors.New("policy version is sensitive but caller did not opt in")
 	client := &fakeDeliveryClient{createMagicErr: rpcErr}
-	if _, err := resolvers.CreateMagicLinkResolver(ctxWithUser(t, "u-1"), client, "pv-1", false); err == nil || !errors.Is(err, rpcErr) {
+	if _, err := resolvers.CreateMagicLinkResolver(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1", false); err == nil || !errors.Is(err, rpcErr) {
 		t.Fatalf("expected wrapped rpcErr; got %v", err)
 	}
 }

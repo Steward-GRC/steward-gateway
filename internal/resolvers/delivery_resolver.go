@@ -99,11 +99,17 @@ func RequestPDFExport(ctx context.Context, client deliveryv1.DeliveryServiceClie
 	return &PDFExportJob{JobID: resp.GetJobId()}, nil
 }
 
-// CreateMagicLinkResolver mints a magic-link token for a published policy version.
-func CreateMagicLinkResolver(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyVersionID string, sensitive bool) (*MagicLink, error) {
+// CreateMagicLinkResolver mints a magic-link token for a published policy version under the
+// version's read decision. The link opens the real content, so an obfuscated reader gets nothing.
+func CreateMagicLinkResolver(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyVersionID string, sensitive bool) (*MagicLink, error) {
 	claims, ok := principal.FromContext(ctx)
 	if !ok || claims.UserID() == "" {
 		return nil, fmt.Errorf("unauthenticated")
+	}
+	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, policyVersionID); err != nil {
+		return nil, err
+	} else if effect != authz.EffectAllow {
+		return nil, errObfuscatedContent
 	}
 	resp, err := client.CreateMagicLink(ctx, &deliveryv1.CreateMagicLinkRequest{
 		PolicyVersionId: policyVersionID,

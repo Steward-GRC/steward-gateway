@@ -17,7 +17,7 @@ import (
 )
 
 // RequestStepUpOtpResolver arms the server-verified step-up confirmation for a high-risk action
-// (transferRoot).
+// (grantRoot or revokeRoot).
 func RequestStepUpOtpResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient) (bool, error) {
 	if admin == nil {
 		return false, status.Error(codes.Unavailable, "identity admin unavailable")
@@ -32,30 +32,146 @@ func RequestStepUpOtpResolver(ctx context.Context, admin identityv1.IdentityAdmi
 	return true, nil
 }
 
-// TransferRootResolver moves the protected root site-admin (#19) to another user.
-func TransferRootResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, read identityv1.IdentityReadServiceClient, toUserID, otp string) (*User, error) {
+// GrantRootResolver makes userID a root admin as well. Identity itself is
+// root-only, refuses act-as and verifies the step-up code; the gateway only
+// passes the call through.
+func GrantRootResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, userID, otp string) (*User, error) {
 	if admin == nil {
 		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
 	}
-	if read == nil {
-		return nil, status.Error(codes.Unavailable, "identity service unavailable")
-	}
-	claims, ok := principal.FromContext(ctx)
-	if !ok || claims.UserID() == "" {
+	if _, ok := principal.FromContext(ctx); !ok {
 		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
 	}
-	me, err := read.GetUser(ctx, &identityv1.GetUserRequest{UserId: claims.UserID()})
-	if err != nil {
-		return nil, err
-	}
-	if !me.GetUser().GetIsRoot() {
-		return nil, status.Error(codes.PermissionDenied, "only the current root may transfer root")
-	}
-	resp, err := admin.TransferRoot(ctx, &identityv1.TransferRootRequest{ToUserId: toUserID, Otp: otp})
+	resp, err := admin.GrantRoot(ctx, &identityv1.GrantRootRequest{UserId: userID, Otp: otp})
 	if err != nil {
 		return nil, err
 	}
 	return userToGraphQL(resp.GetUser()), nil
+}
+
+// RevokeRootResolver takes the root role from userID, who keeps site-admin.
+// Same checks as GrantRootResolver, all enforced by identity.
+func RevokeRootResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, userID, otp string) (*User, error) {
+	if admin == nil {
+		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
+	}
+	if _, ok := principal.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
+	}
+	resp, err := admin.RevokeRoot(ctx, &identityv1.RevokeRootRequest{UserId: userID, Otp: otp})
+	if err != nil {
+		return nil, err
+	}
+	return userToGraphQL(resp.GetUser()), nil
+}
+
+// RequestHardResetResolver starts a two-person hard reset of module. Root
+// only and refused during act-as, both enforced by identity.
+func RequestHardResetResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, module, reason string) (*HardResetRequest, error) {
+	if admin == nil {
+		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
+	}
+	if _, ok := principal.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
+	}
+	resp, err := admin.RequestHardReset(ctx, &identityv1.RequestHardResetRequest{Module: module, Reason: reason})
+	if err != nil {
+		return nil, err
+	}
+	return hardResetRequestToGraphQL(resp.GetRequest()), nil
+}
+
+// ApproveHardResetResolver approves a pending request by a different root
+// admin than its requester, both enforced by identity.
+func ApproveHardResetResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, requestID string) (*HardResetRequest, error) {
+	if admin == nil {
+		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
+	}
+	if _, ok := principal.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
+	}
+	resp, err := admin.ApproveHardReset(ctx, &identityv1.ApproveHardResetRequest{RequestId: requestID})
+	if err != nil {
+		return nil, err
+	}
+	return hardResetRequestToGraphQL(resp.GetRequest()), nil
+}
+
+// CancelHardResetResolver withdraws a pending or approved request; only its
+// requester may, enforced by identity.
+func CancelHardResetResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, requestID string) (*HardResetRequest, error) {
+	if admin == nil {
+		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
+	}
+	if _, ok := principal.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
+	}
+	resp, err := admin.CancelHardReset(ctx, &identityv1.CancelHardResetRequest{RequestId: requestID})
+	if err != nil {
+		return nil, err
+	}
+	return hardResetRequestToGraphQL(resp.GetRequest()), nil
+}
+
+// HardResetRequestsResolver lists the hard reset requests, newest first,
+// root only (enforced by identity).
+func HardResetRequestsResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, module *string) ([]*HardResetRequest, error) {
+	if admin == nil {
+		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
+	}
+	if _, ok := principal.FromContext(ctx); !ok {
+		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
+	}
+	mod := ""
+	if module != nil {
+		mod = *module
+	}
+	resp, err := admin.ListHardResetRequests(ctx, &identityv1.ListHardResetRequestsRequest{Module: mod})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*HardResetRequest, 0, len(resp.GetRequests()))
+	for _, req := range resp.GetRequests() {
+		out = append(out, hardResetRequestToGraphQL(req))
+	}
+	return out, nil
+}
+
+// hardResetRequestToGraphQL converts identity's HardResetRequest to the
+// GraphQL shape. A nil req (should not happen) converts to a zero-valued
+// request rather than panicking on the enum/string calls below.
+func hardResetRequestToGraphQL(req *identityv1.HardResetRequest) *HardResetRequest {
+	if req == nil {
+		return &HardResetRequest{}
+	}
+	out := &HardResetRequest{
+		ID:          req.GetId(),
+		Module:      req.GetModule(),
+		Reason:      req.GetReason(),
+		State:       req.GetState().String(),
+		RequestedBy: req.GetRequestedBy(),
+		RequestedAt: req.GetRequestedAt(),
+		ExpiresAt:   req.GetExpiresAt(),
+	}
+	if v := req.GetApprovedBy(); v != "" {
+		out.ApprovedBy = &v
+	}
+	if v := req.GetApprovedAt(); v != "" {
+		out.ApprovedAt = &v
+	}
+	if v := req.GetApprovalExpiresAt(); v != "" {
+		out.ApprovalExpiresAt = &v
+	}
+	if v := req.GetCancelledAt(); v != "" {
+		out.CancelledAt = &v
+	}
+	if v := req.GetConsumedAt(); v != "" {
+		out.ConsumedAt = &v
+	}
+	if v := req.GetConsumedBy(); v != "" {
+		out.ConsumedBy = &v
+	}
+	return out
 }
 
 // CompleteOnboardingResolver completes the CALLING user's first-run onboarding.

@@ -503,6 +503,22 @@ type ComplexityRoot struct {
 		MemberUserIds  func(childComplexity int) int
 	}
 
+	HardResetRequest struct {
+		ApprovalExpiresAt func(childComplexity int) int
+		ApprovedAt        func(childComplexity int) int
+		ApprovedBy        func(childComplexity int) int
+		CancelledAt       func(childComplexity int) int
+		ConsumedAt        func(childComplexity int) int
+		ConsumedBy        func(childComplexity int) int
+		ExpiresAt         func(childComplexity int) int
+		ID                func(childComplexity int) int
+		Module            func(childComplexity int) int
+		Reason            func(childComplexity int) int
+		RequestedAt       func(childComplexity int) int
+		RequestedBy       func(childComplexity int) int
+		State             func(childComplexity int) int
+	}
+
 	HealthStatus struct {
 		Status func(childComplexity int) int
 	}
@@ -590,10 +606,12 @@ type ComplexityRoot struct {
 		AddGroupMapping               func(childComplexity int, connectionID string, idpGroupClaimValue string, targetGroupID string) int
 		AddOrganization               func(childComplexity int, input AddOrganizationInput) int
 		AddUserToGroup                func(childComplexity int, userID string, groupID string) int
+		ApproveHardReset              func(childComplexity int, requestID string) int
 		ArchiveWorkflowDef            func(childComplexity int, id string) int
 		AssignCase                    func(childComplexity int, caseID string, assigneeUserID *string) int
 		BreakGlassReveal              func(childComplexity int, policyID string, reason string) int
 		BulkDecide                    func(childComplexity int, input BulkDecideInput) int
+		CancelHardReset               func(childComplexity int, requestID string) int
 		ChangeOrgProtocol             func(childComplexity int, domain string, protocol string, config []*KeyValueInput, secretRef *string, clientSecret *string) int
 		CheckReport                   func(childComplexity int, caseCode string, passphrase string) int
 		CloseCase                     func(childComplexity int, caseID string, outcome CaseOutcome, correctiveActions []*CorrectiveActionInput, closingMessage *string) int
@@ -630,6 +648,7 @@ type ComplexityRoot struct {
 		ForceRotateSpCertificate      func(childComplexity int) int
 		GrantGroupManager             func(childComplexity int, userID string, groupID string) int
 		GrantRole                     func(childComplexity int, userID string, role string, category *string) int
+		GrantRoot                     func(childComplexity int, userID string, otp string) int
 		IssueCollabToken              func(childComplexity int, input IssueCollabTokenInput) int
 		MergeAccounts                 func(childComplexity int, sourceUserID string, targetUserID string, confirmPrivileged *bool, idempotencyKey *string) int
 		MoveCategory                  func(childComplexity int, categoryID string, newParentID *string) int
@@ -656,6 +675,7 @@ type ComplexityRoot struct {
 		ReorderAppendices             func(childComplexity int, policyVersionID string, orderedIds []string) int
 		ReplyToMyReport               func(childComplexity int, caseID string, body string) int
 		ReplyToReport                 func(childComplexity int, caseCode string, passphrase string, body string) int
+		RequestHardReset              func(childComplexity int, module string, reason string) int
 		RequestPDFExport              func(childComplexity int, policyVersionID string) int
 		RequestStepUpOtp              func(childComplexity int) int
 		ResendWelcomeEmail            func(childComplexity int, userID string) int
@@ -666,6 +686,7 @@ type ComplexityRoot struct {
 		RevokeMagicLink               func(childComplexity int, token string) int
 		RevokeMySessions              func(childComplexity int) int
 		RevokeRole                    func(childComplexity int, userID string, role string, category *string) int
+		RevokeRoot                    func(childComplexity int, userID string, otp string) int
 		RevokeUserSessions            func(childComplexity int, userID string, reason *string) int
 		SaveDraft                     func(childComplexity int, policyID string, contentJSON string, templateVersionID *string) int
 		SendEnrollEmailOtp            func(childComplexity int) int
@@ -711,7 +732,6 @@ type ComplexityRoot struct {
 		SubmitWorkflow                func(childComplexity int, policyVersionID string, policyID string, categoryID string, ancestorCategoryIds []string) int
 		SwapAssignee                  func(childComplexity int, input SwapAssigneeInput) int
 		TestAIProvider                func(childComplexity int) int
-		TransferRoot                  func(childComplexity int, toUserID string, otp string) int
 		UpdateAppendix                func(childComplexity int, id string, title string, contentJSON string) int
 		UpdateCaseNotice              func(childComplexity int, caseID string, noticeID string, status NoticeStatus, sentOn *string) int
 		UpdateContactBlock            func(childComplexity int, id string, block ContactBlockInput) int
@@ -905,6 +925,7 @@ type ComplexityRoot struct {
 		ExportAcks                 func(childComplexity int, policyVersionID string, format string) int
 		GlobalSettings             func(childComplexity int) int
 		GroupMappings              func(childComplexity int, connectionID string) int
+		HardResetRequests          func(childComplexity int, module *string) int
 		Health                     func(childComplexity int) int
 		ImpersonationStatus        func(childComplexity int) int
 		LatestTemplateVersion      func(childComplexity int, templateID string) int
@@ -1461,7 +1482,11 @@ type MutationResolver interface {
 	RevokeGroupManager(ctx context.Context, userID string, groupID string) (*User, error)
 	SetUserPolicyOverride(ctx context.Context, userID string, policyNumber string, effect *OverrideEffect) (*User, error)
 	RequestStepUpOtp(ctx context.Context) (bool, error)
-	TransferRoot(ctx context.Context, toUserID string, otp string) (*User, error)
+	GrantRoot(ctx context.Context, userID string, otp string) (*User, error)
+	RevokeRoot(ctx context.Context, userID string, otp string) (*User, error)
+	RequestHardReset(ctx context.Context, module string, reason string) (*HardResetRequest, error)
+	ApproveHardReset(ctx context.Context, requestID string) (*HardResetRequest, error)
+	CancelHardReset(ctx context.Context, requestID string) (*HardResetRequest, error)
 	CompleteOnboarding(ctx context.Context, acceptTerms bool, username *string, firstName *string, lastName *string, email *string) (*User, error)
 	UpdateMyProfile(ctx context.Context, firstName *string, lastName *string, locale *string) (*User, error)
 	RevokeUserSessions(ctx context.Context, userID string, reason *string) (int, error)
@@ -1576,6 +1601,7 @@ type QueryResolver interface {
 	PolicyDiff(ctx context.Context, fromVersionID string, toVersionID string) (*PolicyDiff, error)
 	PDFDownloadLink(ctx context.Context, jobID string) (*PDFDownloadLink, error)
 	Diagnostics(ctx context.Context) (*Diagnostics, error)
+	HardResetRequests(ctx context.Context, module *string) ([]*HardResetRequest, error)
 	Me(ctx context.Context) (*User, error)
 	Users(ctx context.Context, search *string, pageSize *int, pageToken *string, includeDeleted *bool) (*UserPage, error)
 	ResolveUserLabels(ctx context.Context, ids []string) ([]*UserLabel, error)
@@ -3335,6 +3361,85 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.GroupUnit.MemberUserIds(childComplexity), true
 
+	case "HardResetRequest.approvalExpiresAt":
+		if e.ComplexityRoot.HardResetRequest.ApprovalExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.ApprovalExpiresAt(childComplexity), true
+	case "HardResetRequest.approvedAt":
+		if e.ComplexityRoot.HardResetRequest.ApprovedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.ApprovedAt(childComplexity), true
+	case "HardResetRequest.approvedBy":
+		if e.ComplexityRoot.HardResetRequest.ApprovedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.ApprovedBy(childComplexity), true
+	case "HardResetRequest.cancelledAt":
+		if e.ComplexityRoot.HardResetRequest.CancelledAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.CancelledAt(childComplexity), true
+	case "HardResetRequest.consumedAt":
+		if e.ComplexityRoot.HardResetRequest.ConsumedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.ConsumedAt(childComplexity), true
+	case "HardResetRequest.consumedBy":
+		if e.ComplexityRoot.HardResetRequest.ConsumedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.ConsumedBy(childComplexity), true
+	case "HardResetRequest.expiresAt":
+		if e.ComplexityRoot.HardResetRequest.ExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.ExpiresAt(childComplexity), true
+	case "HardResetRequest.id":
+		if e.ComplexityRoot.HardResetRequest.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.ID(childComplexity), true
+	case "HardResetRequest.module":
+		if e.ComplexityRoot.HardResetRequest.Module == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.Module(childComplexity), true
+	case "HardResetRequest.reason":
+		if e.ComplexityRoot.HardResetRequest.Reason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.Reason(childComplexity), true
+	case "HardResetRequest.requestedAt":
+		if e.ComplexityRoot.HardResetRequest.RequestedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.RequestedAt(childComplexity), true
+	case "HardResetRequest.requestedBy":
+		if e.ComplexityRoot.HardResetRequest.RequestedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.RequestedBy(childComplexity), true
+	case "HardResetRequest.state":
+		if e.ComplexityRoot.HardResetRequest.State == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetRequest.State(childComplexity), true
+
 	case "HealthStatus.status":
 		if e.ComplexityRoot.HealthStatus.Status == nil {
 			break
@@ -3687,6 +3792,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddUserToGroup(childComplexity, args["userId"].(string), args["groupId"].(string)), true
+	case "Mutation.approveHardReset":
+		if e.ComplexityRoot.Mutation.ApproveHardReset == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_approveHardReset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ApproveHardReset(childComplexity, args["requestId"].(string)), true
 	case "Mutation.archiveWorkflowDef":
 		if e.ComplexityRoot.Mutation.ArchiveWorkflowDef == nil {
 			break
@@ -3731,6 +3847,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.BulkDecide(childComplexity, args["input"].(BulkDecideInput)), true
+	case "Mutation.cancelHardReset":
+		if e.ComplexityRoot.Mutation.CancelHardReset == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_cancelHardReset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CancelHardReset(childComplexity, args["requestId"].(string)), true
 	case "Mutation.changeOrgProtocol":
 		if e.ComplexityRoot.Mutation.ChangeOrgProtocol == nil {
 			break
@@ -4117,6 +4244,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.GrantRole(childComplexity, args["userId"].(string), args["role"].(string), args["category"].(*string)), true
+	case "Mutation.grantRoot":
+		if e.ComplexityRoot.Mutation.GrantRoot == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_grantRoot_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.GrantRoot(childComplexity, args["userId"].(string), args["otp"].(string)), true
 	case "Mutation.issueCollabToken":
 		if e.ComplexityRoot.Mutation.IssueCollabToken == nil {
 			break
@@ -4403,6 +4541,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ReplyToReport(childComplexity, args["caseCode"].(string), args["passphrase"].(string), args["body"].(string)), true
+	case "Mutation.requestHardReset":
+		if e.ComplexityRoot.Mutation.RequestHardReset == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_requestHardReset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RequestHardReset(childComplexity, args["module"].(string), args["reason"].(string)), true
 	case "Mutation.requestPDFExport":
 		if e.ComplexityRoot.Mutation.RequestPDFExport == nil {
 			break
@@ -4503,6 +4652,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RevokeRole(childComplexity, args["userId"].(string), args["role"].(string), args["category"].(*string)), true
+	case "Mutation.revokeRoot":
+		if e.ComplexityRoot.Mutation.RevokeRoot == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_revokeRoot_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RevokeRoot(childComplexity, args["userId"].(string), args["otp"].(string)), true
 	case "Mutation.revokeUserSessions":
 		if e.ComplexityRoot.Mutation.RevokeUserSessions == nil {
 			break
@@ -4983,17 +5143,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.TestAIProvider(childComplexity), true
-	case "Mutation.transferRoot":
-		if e.ComplexityRoot.Mutation.TransferRoot == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_transferRoot_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.TransferRoot(childComplexity, args["toUserId"].(string), args["otp"].(string)), true
 	case "Mutation.updateAppendix":
 		if e.ComplexityRoot.Mutation.UpdateAppendix == nil {
 			break
@@ -6019,6 +6168,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GroupMappings(childComplexity, args["connectionId"].(string)), true
+	case "Query.hardResetRequests":
+		if e.ComplexityRoot.Query.HardResetRequests == nil {
+			break
+		}
+
+		args, err := ec.field_Query_hardResetRequests_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.HardResetRequests(childComplexity, args["module"].(*string)), true
 	case "Query.health":
 		if e.ComplexityRoot.Query.Health == nil {
 			break
@@ -9867,7 +10027,27 @@ type UserLabel {
   email: String
 }
 
+# A hard reset request/approval pair. requestedBy and approvedBy are user
+# ids; approvedBy and approvedAt are null until approveHardReset.
+type HardResetRequest {
+  id: ID!
+  module: String!
+  reason: String!
+  state: String!
+  requestedBy: ID!
+  requestedAt: String!
+  expiresAt: String!
+  approvedBy: ID
+  approvedAt: String
+  approvalExpiresAt: String
+  cancelledAt: String
+  consumedAt: String
+  consumedBy: String
+}
+
 extend type Query {
+  # hardResetRequests -> IdentityAdminService.ListHardResetRequests, newest first. Root only.
+  hardResetRequests(module: String): [HardResetRequest!]!
   # me -> IdentityReadService.ResolveClaims/GetUser for the caller (identity the signed-in user).
   # users -> IdentityReadService.ListUsersByEmail: search -> email_substring, pageSize -> limit, pageToken/nextPageToken -> the opaque cursor.
   #   includeDeleted -> include_deleted: also return soft-deleted (tombstoned) accounts, marked by
@@ -9978,14 +10158,28 @@ extend type Mutation {
   setUserPolicyOverride(userId: ID!, policyNumber: String!, effect: OverrideEffect): User!
   # Emails a one-time confirmation code to the CALLING admin's own address
   # (server-bound from the session, never from input). Arm this before
-  # transferRoot; the emailed code must then be passed as transferRoot(otp:).
+  # grantRoot or revokeRoot; the emailed code must then be passed as otp.
   # Always returns true (anti-enumeration).
   requestStepUpOtp: Boolean!
-  # Moves the protected root site-admin to another user. Only the current
-  # root may call this; the target is granted site-admin + admin. Requires the
-  # one-time code emailed by requestStepUpOtp, which the backend verifies
-  # server-side before transferring — an invalid/absent code transfers nothing.
-  transferRoot(toUserId: ID!, otp: String!): User!
+  # Makes userId a root admin as well; they also get site-admin. Root only,
+  # refused during act-as, and requires the one-time code emailed by
+  # requestStepUpOtp, verified server-side first — an invalid/absent code
+  # grants nothing.
+  grantRoot(userId: ID!, otp: String!): User!
+  # Takes the root role from userId, who keeps site-admin. The last root
+  # admin can't lose it. Same checks as grantRoot.
+  revokeRoot(userId: ID!, otp: String!): User!
+  # Starts a two-person hard reset of a module: one root admin asks, a
+  # different root admin approves within the request's 24h window. Root
+  # only, refused during act-as. One open request per module.
+  requestHardReset(module: String!, reason: String!): HardResetRequest!
+  # Approves a pending request. The requester can't approve their own. The
+  # approval can be used once, within its 1h window. Root only, refused
+  # during act-as.
+  approveHardReset(requestId: ID!): HardResetRequest!
+  # Withdraws a pending or approved request. Only its requester may cancel
+  # it.
+  cancelHardReset(requestId: ID!): HardResetRequest!
   # Completes the CALLING user's first-run onboarding (caller-scoped self-service,
   # bound from the session — never from input; available to any authenticated
   # user, not just admins). acceptTerms MUST be true (else the call is rejected).
@@ -12157,6 +12351,38 @@ func (ec *executionContext) childFields_GroupUnit(ctx context.Context, field gra
 	return nil, fmt.Errorf("no field named %q was found under type GroupUnit", field.Name)
 }
 
+func (ec *executionContext) childFields_HardResetRequest(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_HardResetRequest_id(ctx, field)
+	case "module":
+		return ec.fieldContext_HardResetRequest_module(ctx, field)
+	case "reason":
+		return ec.fieldContext_HardResetRequest_reason(ctx, field)
+	case "state":
+		return ec.fieldContext_HardResetRequest_state(ctx, field)
+	case "requestedBy":
+		return ec.fieldContext_HardResetRequest_requestedBy(ctx, field)
+	case "requestedAt":
+		return ec.fieldContext_HardResetRequest_requestedAt(ctx, field)
+	case "expiresAt":
+		return ec.fieldContext_HardResetRequest_expiresAt(ctx, field)
+	case "approvedBy":
+		return ec.fieldContext_HardResetRequest_approvedBy(ctx, field)
+	case "approvedAt":
+		return ec.fieldContext_HardResetRequest_approvedAt(ctx, field)
+	case "approvalExpiresAt":
+		return ec.fieldContext_HardResetRequest_approvalExpiresAt(ctx, field)
+	case "cancelledAt":
+		return ec.fieldContext_HardResetRequest_cancelledAt(ctx, field)
+	case "consumedAt":
+		return ec.fieldContext_HardResetRequest_consumedAt(ctx, field)
+	case "consumedBy":
+		return ec.fieldContext_HardResetRequest_consumedBy(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type HardResetRequest", field.Name)
+}
+
 func (ec *executionContext) childFields_HealthStatus(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "status":
@@ -13693,6 +13919,20 @@ func (ec *executionContext) field_Mutation_addUserToGroup_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_approveHardReset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "requestId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["requestId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_archiveWorkflowDef_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -13762,6 +14002,20 @@ func (ec *executionContext) field_Mutation_bulkDecide_args(ctx context.Context, 
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_cancelHardReset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "requestId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["requestId"] = arg0
 	return args, nil
 }
 
@@ -14497,6 +14751,28 @@ func (ec *executionContext) field_Mutation_grantRole_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_grantRoot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["userId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "otp",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["otp"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_issueCollabToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -15045,6 +15321,28 @@ func (ec *executionContext) field_Mutation_replyToReport_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_requestHardReset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "module",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["module"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "reason",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["reason"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_requestPDFExport_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -15186,6 +15484,28 @@ func (ec *executionContext) field_Mutation_revokeRole_args(ctx context.Context, 
 		return nil, err
 	}
 	args["category"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_revokeRoot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["userId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "otp",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["otp"] = arg1
 	return args, nil
 }
 
@@ -16161,28 +16481,6 @@ func (ec *executionContext) field_Mutation_swapAssignee_args(ctx context.Context
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_transferRoot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "toUserId",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNID2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["toUserId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "otp",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["otp"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_updateAppendix_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -17014,6 +17312,20 @@ func (ec *executionContext) field_Query_groupMappings_args(ctx context.Context, 
 		return nil, err
 	}
 	args["connectionId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_hardResetRequests_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "module",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["module"] = arg0
 	return args, nil
 }
 
@@ -24282,6 +24594,305 @@ func (ec *executionContext) fieldContext_GroupUnit_memberUserIds(_ context.Conte
 	return graphql.NewScalarFieldContext("GroupUnit", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
+func (ec *executionContext) _HardResetRequest_id(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_module(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_module(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Module, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_module(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_reason(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_reason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_state(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_state(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.State, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_requestedBy(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_requestedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RequestedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_requestedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_requestedAt(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_requestedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RequestedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_requestedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_expiresAt(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_expiresAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_approvedBy(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_approvedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ApprovedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_approvedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_approvedAt(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_approvedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ApprovedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_approvedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_approvalExpiresAt(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_approvalExpiresAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ApprovalExpiresAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_approvalExpiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_cancelledAt(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_cancelledAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CancelledAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_cancelledAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_consumedAt(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_consumedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ConsumedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_consumedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetRequest_consumedBy(ctx context.Context, field graphql.CollectedField, obj *HardResetRequest) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetRequest_consumedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ConsumedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetRequest_consumedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _HealthStatus_status(ctx context.Context, field graphql.CollectedField, obj *HealthStatus) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -28929,17 +29540,17 @@ func (ec *executionContext) fieldContext_Mutation_requestStepUpOtp(_ context.Con
 	return graphql.NewScalarFieldContext("Mutation", field, true, true, errors.New("field of type Boolean does not have child fields"))
 }
 
-func (ec *executionContext) _Mutation_transferRoot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_grantRoot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_transferRoot(ctx, field)
+			return ec.fieldContext_Mutation_grantRoot(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().TransferRoot(ctx, fc.Args["toUserId"].(string), fc.Args["otp"].(string))
+			return ec.Resolvers.Mutation().GrantRoot(ctx, fc.Args["userId"].(string), fc.Args["otp"].(string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *User) graphql.Marshaler {
@@ -28949,7 +29560,7 @@ func (ec *executionContext) _Mutation_transferRoot(ctx context.Context, field gr
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_transferRoot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_grantRoot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -28966,7 +29577,183 @@ func (ec *executionContext) fieldContext_Mutation_transferRoot(ctx context.Conte
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_transferRoot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_grantRoot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_revokeRoot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_revokeRoot(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RevokeRoot(ctx, fc.Args["userId"].(string), fc.Args["otp"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *User) graphql.Marshaler {
+			return ec.marshalNUser2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐUser(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_revokeRoot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_User(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_revokeRoot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_requestHardReset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_requestHardReset(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RequestHardReset(ctx, fc.Args["module"].(string), fc.Args["reason"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *HardResetRequest) graphql.Marshaler {
+			return ec.marshalNHardResetRequest2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetRequest(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_requestHardReset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_HardResetRequest(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_requestHardReset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_approveHardReset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_approveHardReset(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ApproveHardReset(ctx, fc.Args["requestId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *HardResetRequest) graphql.Marshaler {
+			return ec.marshalNHardResetRequest2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetRequest(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_approveHardReset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_HardResetRequest(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_approveHardReset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_cancelHardReset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_cancelHardReset(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CancelHardReset(ctx, fc.Args["requestId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *HardResetRequest) graphql.Marshaler {
+			return ec.marshalNHardResetRequest2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetRequest(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_cancelHardReset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_HardResetRequest(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_cancelHardReset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -35682,6 +36469,50 @@ func (ec *executionContext) fieldContext_Query_diagnostics(_ context.Context, fi
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Diagnostics(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_hardResetRequests(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_hardResetRequests(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().HardResetRequests(ctx, fc.Args["module"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*HardResetRequest) graphql.Marshaler {
+			return ec.marshalNHardResetRequest2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetRequestᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_hardResetRequests(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_HardResetRequest(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_hardResetRequests_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -50042,6 +50873,104 @@ func (ec *executionContext) _GroupUnit(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var hardResetRequestImplementors = []string{"HardResetRequest"}
+
+func (ec *executionContext) _HardResetRequest(ctx context.Context, sel ast.SelectionSet, obj *HardResetRequest) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hardResetRequestImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HardResetRequest")
+		case "id":
+			out.Values[i] = ec._HardResetRequest_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "module":
+			out.Values[i] = ec._HardResetRequest_module(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._HardResetRequest_reason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "state":
+			out.Values[i] = ec._HardResetRequest_state(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestedBy":
+			out.Values[i] = ec._HardResetRequest_requestedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestedAt":
+			out.Values[i] = ec._HardResetRequest_requestedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expiresAt":
+			out.Values[i] = ec._HardResetRequest_expiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "approvedBy":
+			out.Values[i] = ec._HardResetRequest_approvedBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "approvedAt":
+			out.Values[i] = ec._HardResetRequest_approvedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "approvalExpiresAt":
+			out.Values[i] = ec._HardResetRequest_approvalExpiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "cancelledAt":
+			out.Values[i] = ec._HardResetRequest_cancelledAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "consumedAt":
+			out.Values[i] = ec._HardResetRequest_consumedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "consumedBy":
+			out.Values[i] = ec._HardResetRequest_consumedBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var healthStatusImplementors = []string{"HealthStatus"}
 
 func (ec *executionContext) _HealthStatus(ctx context.Context, sel ast.SelectionSet, obj *HealthStatus) graphql.Marshaler {
@@ -51256,9 +52185,37 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "transferRoot":
+		case "grantRoot":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_transferRoot(ctx, field)
+				return ec._Mutation_grantRoot(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "revokeRoot":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_revokeRoot(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestHardReset":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_requestHardReset(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "approveHardReset":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_approveHardReset(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cancelHardReset":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_cancelHardReset(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -53867,6 +54824,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_diagnostics(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "hardResetRequests":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_hardResetRequests(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -59632,6 +60611,36 @@ func (ec *executionContext) marshalNGroupUnit2ᚖgithubᚗcomᚋStewardᚑGRCᚋ
 func (ec *executionContext) unmarshalNGroupUnitInput2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐGroupUnitInput(ctx context.Context, v any) (*GroupUnitInput, error) {
 	res, err := ec.unmarshalInputGroupUnitInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHardResetRequest2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetRequest(ctx context.Context, sel ast.SelectionSet, v HardResetRequest) graphql.Marshaler {
+	return ec._HardResetRequest(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHardResetRequest2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetRequestᚄ(ctx context.Context, sel ast.SelectionSet, v []*HardResetRequest) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNHardResetRequest2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetRequest(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNHardResetRequest2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetRequest(ctx context.Context, sel ast.SelectionSet, v *HardResetRequest) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._HardResetRequest(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNHealthStatus2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHealthStatus(ctx context.Context, sel ast.SelectionSet, v HealthStatus) graphql.Marshaler {

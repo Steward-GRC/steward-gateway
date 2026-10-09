@@ -80,7 +80,27 @@ type UserLabel {
   email: String
 }
 
+# A hard reset request/approval pair. requestedBy and approvedBy are user
+# ids; approvedBy and approvedAt are null until approveHardReset.
+type HardResetRequest {
+  id: ID!
+  module: String!
+  reason: String!
+  state: String!
+  requestedBy: ID!
+  requestedAt: String!
+  expiresAt: String!
+  approvedBy: ID
+  approvedAt: String
+  approvalExpiresAt: String
+  cancelledAt: String
+  consumedAt: String
+  consumedBy: String
+}
+
 extend type Query {
+  # hardResetRequests -> IdentityAdminService.ListHardResetRequests, newest first. Root only.
+  hardResetRequests(module: String): [HardResetRequest!]!
   # me -> IdentityReadService.ResolveClaims/GetUser for the caller (identity the signed-in user).
   # users -> IdentityReadService.ListUsersByEmail: search -> email_substring, pageSize -> limit, pageToken/nextPageToken -> the opaque cursor.
   #   includeDeleted -> include_deleted: also return soft-deleted (tombstoned) accounts, marked by
@@ -191,14 +211,28 @@ extend type Mutation {
   setUserPolicyOverride(userId: ID!, policyNumber: String!, effect: OverrideEffect): User!
   # Emails a one-time confirmation code to the CALLING admin's own address
   # (server-bound from the session, never from input). Arm this before
-  # transferRoot; the emailed code must then be passed as transferRoot(otp:).
+  # grantRoot or revokeRoot; the emailed code must then be passed as otp.
   # Always returns true (anti-enumeration).
   requestStepUpOtp: Boolean!
-  # Moves the protected root site-admin to another user. Only the current
-  # root may call this; the target is granted site-admin + admin. Requires the
-  # one-time code emailed by requestStepUpOtp, which the backend verifies
-  # server-side before transferring — an invalid/absent code transfers nothing.
-  transferRoot(toUserId: ID!, otp: String!): User!
+  # Makes userId a root admin as well; they also get site-admin. Root only,
+  # refused during act-as, and requires the one-time code emailed by
+  # requestStepUpOtp, verified server-side first — an invalid/absent code
+  # grants nothing.
+  grantRoot(userId: ID!, otp: String!): User!
+  # Takes the root role from userId, who keeps site-admin. The last root
+  # admin can't lose it. Same checks as grantRoot.
+  revokeRoot(userId: ID!, otp: String!): User!
+  # Starts a two-person hard reset of a module: one root admin asks, a
+  # different root admin approves within the request's 24h window. Root
+  # only, refused during act-as. One open request per module.
+  requestHardReset(module: String!, reason: String!): HardResetRequest!
+  # Approves a pending request. The requester can't approve their own. The
+  # approval can be used once, within its 1h window. Root only, refused
+  # during act-as.
+  approveHardReset(requestId: ID!): HardResetRequest!
+  # Withdraws a pending or approved request. Only its requester may cancel
+  # it.
+  cancelHardReset(requestId: ID!): HardResetRequest!
   # Completes the CALLING user's first-run onboarding (caller-scoped self-service,
   # bound from the session — never from input; available to any authenticated
   # user, not just admins). acceptTerms MUST be true (else the call is rejected).

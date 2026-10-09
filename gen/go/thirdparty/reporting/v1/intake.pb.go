@@ -24,6 +24,96 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type GetIntakeOptionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetIntakeOptionsRequest) Reset() {
+	*x = GetIntakeOptionsRequest{}
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetIntakeOptionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetIntakeOptionsRequest) ProtoMessage() {}
+
+func (x *GetIntakeOptionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetIntakeOptionsRequest.ProtoReflect.Descriptor instead.
+func (*GetIntakeOptionsRequest) Descriptor() ([]byte, []int) {
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{0}
+}
+
+type GetIntakeOptionsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// False while the public report link is switched off: new anonymous
+	// reports are refused.
+	AnonymousReportsOpen bool              `protobuf:"varint,1,opt,name=anonymous_reports_open,json=anonymousReportsOpen,proto3" json:"anonymous_reports_open,omitempty"`
+	Categories           []*IntakeCategory `protobuf:"bytes,2,rep,name=categories,proto3" json:"categories,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *GetIntakeOptionsResponse) Reset() {
+	*x = GetIntakeOptionsResponse{}
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetIntakeOptionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetIntakeOptionsResponse) ProtoMessage() {}
+
+func (x *GetIntakeOptionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetIntakeOptionsResponse.ProtoReflect.Descriptor instead.
+func (*GetIntakeOptionsResponse) Descriptor() ([]byte, []int) {
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GetIntakeOptionsResponse) GetAnonymousReportsOpen() bool {
+	if x != nil {
+		return x.AnonymousReportsOpen
+	}
+	return false
+}
+
+func (x *GetIntakeOptionsResponse) GetCategories() []*IntakeCategory {
+	if x != nil {
+		return x.Categories
+	}
+	return nil
+}
+
 type SubmitAnonymousReportRequest struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Details *ReportDetails         `protobuf:"bytes,1,opt,name=details,proto3" json:"details,omitempty"`
@@ -36,7 +126,7 @@ type SubmitAnonymousReportRequest struct {
 
 func (x *SubmitAnonymousReportRequest) Reset() {
 	*x = SubmitAnonymousReportRequest{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[0]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -48,7 +138,7 @@ func (x *SubmitAnonymousReportRequest) String() string {
 func (*SubmitAnonymousReportRequest) ProtoMessage() {}
 
 func (x *SubmitAnonymousReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[0]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -61,7 +151,7 @@ func (x *SubmitAnonymousReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitAnonymousReportRequest.ProtoReflect.Descriptor instead.
 func (*SubmitAnonymousReportRequest) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{0}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *SubmitAnonymousReportRequest) GetDetails() *ReportDetails {
@@ -95,7 +185,7 @@ type SubmitAnonymousReportResponse struct {
 
 func (x *SubmitAnonymousReportResponse) Reset() {
 	*x = SubmitAnonymousReportResponse{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[1]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -107,7 +197,7 @@ func (x *SubmitAnonymousReportResponse) String() string {
 func (*SubmitAnonymousReportResponse) ProtoMessage() {}
 
 func (x *SubmitAnonymousReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[1]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -120,7 +210,7 @@ func (x *SubmitAnonymousReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitAnonymousReportResponse.ProtoReflect.Descriptor instead.
 func (*SubmitAnonymousReportResponse) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{1}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SubmitAnonymousReportResponse) GetCaseCode() string {
@@ -140,7 +230,7 @@ type CheckReportRequest struct {
 
 func (x *CheckReportRequest) Reset() {
 	*x = CheckReportRequest{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[2]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -152,7 +242,7 @@ func (x *CheckReportRequest) String() string {
 func (*CheckReportRequest) ProtoMessage() {}
 
 func (x *CheckReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[2]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -165,7 +255,7 @@ func (x *CheckReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckReportRequest.ProtoReflect.Descriptor instead.
 func (*CheckReportRequest) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{2}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CheckReportRequest) GetCaseCode() string {
@@ -191,7 +281,7 @@ type CheckReportResponse struct {
 
 func (x *CheckReportResponse) Reset() {
 	*x = CheckReportResponse{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[3]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -203,7 +293,7 @@ func (x *CheckReportResponse) String() string {
 func (*CheckReportResponse) ProtoMessage() {}
 
 func (x *CheckReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[3]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -216,7 +306,7 @@ func (x *CheckReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckReportResponse.ProtoReflect.Descriptor instead.
 func (*CheckReportResponse) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{3}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CheckReportResponse) GetReport() *ReporterView {
@@ -237,7 +327,7 @@ type ReplyToReportRequest struct {
 
 func (x *ReplyToReportRequest) Reset() {
 	*x = ReplyToReportRequest{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[4]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -249,7 +339,7 @@ func (x *ReplyToReportRequest) String() string {
 func (*ReplyToReportRequest) ProtoMessage() {}
 
 func (x *ReplyToReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[4]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -262,7 +352,7 @@ func (x *ReplyToReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplyToReportRequest.ProtoReflect.Descriptor instead.
 func (*ReplyToReportRequest) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{4}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ReplyToReportRequest) GetCaseCode() string {
@@ -295,7 +385,7 @@ type ReplyToReportResponse struct {
 
 func (x *ReplyToReportResponse) Reset() {
 	*x = ReplyToReportResponse{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[5]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -307,7 +397,7 @@ func (x *ReplyToReportResponse) String() string {
 func (*ReplyToReportResponse) ProtoMessage() {}
 
 func (x *ReplyToReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[5]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -320,7 +410,7 @@ func (x *ReplyToReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplyToReportResponse.ProtoReflect.Descriptor instead.
 func (*ReplyToReportResponse) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{5}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ReplyToReportResponse) GetReport() *ReporterView {
@@ -340,7 +430,7 @@ type SubmitNamedReportRequest struct {
 
 func (x *SubmitNamedReportRequest) Reset() {
 	*x = SubmitNamedReportRequest{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[6]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -352,7 +442,7 @@ func (x *SubmitNamedReportRequest) String() string {
 func (*SubmitNamedReportRequest) ProtoMessage() {}
 
 func (x *SubmitNamedReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[6]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -365,7 +455,7 @@ func (x *SubmitNamedReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitNamedReportRequest.ProtoReflect.Descriptor instead.
 func (*SubmitNamedReportRequest) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{6}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SubmitNamedReportRequest) GetDetails() *ReportDetails {
@@ -392,7 +482,7 @@ type SubmitNamedReportResponse struct {
 
 func (x *SubmitNamedReportResponse) Reset() {
 	*x = SubmitNamedReportResponse{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[7]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -404,7 +494,7 @@ func (x *SubmitNamedReportResponse) String() string {
 func (*SubmitNamedReportResponse) ProtoMessage() {}
 
 func (x *SubmitNamedReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[7]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -417,7 +507,7 @@ func (x *SubmitNamedReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitNamedReportResponse.ProtoReflect.Descriptor instead.
 func (*SubmitNamedReportResponse) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{7}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SubmitNamedReportResponse) GetCaseId() string {
@@ -442,7 +532,7 @@ type ListMyReportsRequest struct {
 
 func (x *ListMyReportsRequest) Reset() {
 	*x = ListMyReportsRequest{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[8]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -454,7 +544,7 @@ func (x *ListMyReportsRequest) String() string {
 func (*ListMyReportsRequest) ProtoMessage() {}
 
 func (x *ListMyReportsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[8]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -467,7 +557,7 @@ func (x *ListMyReportsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyReportsRequest.ProtoReflect.Descriptor instead.
 func (*ListMyReportsRequest) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{8}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{10}
 }
 
 // MyReport is one row of the reporter's own list.
@@ -481,7 +571,7 @@ type MyReport struct {
 
 func (x *MyReport) Reset() {
 	*x = MyReport{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[9]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -493,7 +583,7 @@ func (x *MyReport) String() string {
 func (*MyReport) ProtoMessage() {}
 
 func (x *MyReport) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[9]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -506,7 +596,7 @@ func (x *MyReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MyReport.ProtoReflect.Descriptor instead.
 func (*MyReport) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{9}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *MyReport) GetCaseId() string {
@@ -532,7 +622,7 @@ type ListMyReportsResponse struct {
 
 func (x *ListMyReportsResponse) Reset() {
 	*x = ListMyReportsResponse{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[10]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -544,7 +634,7 @@ func (x *ListMyReportsResponse) String() string {
 func (*ListMyReportsResponse) ProtoMessage() {}
 
 func (x *ListMyReportsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[10]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -557,7 +647,7 @@ func (x *ListMyReportsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyReportsResponse.ProtoReflect.Descriptor instead.
 func (*ListMyReportsResponse) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{10}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListMyReportsResponse) GetReports() []*MyReport {
@@ -576,7 +666,7 @@ type GetMyReportRequest struct {
 
 func (x *GetMyReportRequest) Reset() {
 	*x = GetMyReportRequest{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[11]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -588,7 +678,7 @@ func (x *GetMyReportRequest) String() string {
 func (*GetMyReportRequest) ProtoMessage() {}
 
 func (x *GetMyReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[11]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -601,7 +691,7 @@ func (x *GetMyReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyReportRequest.ProtoReflect.Descriptor instead.
 func (*GetMyReportRequest) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{11}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetMyReportRequest) GetCaseId() string {
@@ -620,7 +710,7 @@ type GetMyReportResponse struct {
 
 func (x *GetMyReportResponse) Reset() {
 	*x = GetMyReportResponse{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[12]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -632,7 +722,7 @@ func (x *GetMyReportResponse) String() string {
 func (*GetMyReportResponse) ProtoMessage() {}
 
 func (x *GetMyReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[12]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -645,7 +735,7 @@ func (x *GetMyReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyReportResponse.ProtoReflect.Descriptor instead.
 func (*GetMyReportResponse) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{12}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetMyReportResponse) GetReport() *ReporterView {
@@ -665,7 +755,7 @@ type ReplyToMyReportRequest struct {
 
 func (x *ReplyToMyReportRequest) Reset() {
 	*x = ReplyToMyReportRequest{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[13]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -677,7 +767,7 @@ func (x *ReplyToMyReportRequest) String() string {
 func (*ReplyToMyReportRequest) ProtoMessage() {}
 
 func (x *ReplyToMyReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[13]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -690,7 +780,7 @@ func (x *ReplyToMyReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplyToMyReportRequest.ProtoReflect.Descriptor instead.
 func (*ReplyToMyReportRequest) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{13}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ReplyToMyReportRequest) GetCaseId() string {
@@ -716,7 +806,7 @@ type ReplyToMyReportResponse struct {
 
 func (x *ReplyToMyReportResponse) Reset() {
 	*x = ReplyToMyReportResponse{}
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[14]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -728,7 +818,7 @@ func (x *ReplyToMyReportResponse) String() string {
 func (*ReplyToMyReportResponse) ProtoMessage() {}
 
 func (x *ReplyToMyReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_steward_reporting_v1_intake_proto_msgTypes[14]
+	mi := &file_steward_reporting_v1_intake_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -741,7 +831,7 @@ func (x *ReplyToMyReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplyToMyReportResponse.ProtoReflect.Descriptor instead.
 func (*ReplyToMyReportResponse) Descriptor() ([]byte, []int) {
-	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{14}
+	return file_steward_reporting_v1_intake_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ReplyToMyReportResponse) GetReport() *ReporterView {
@@ -755,7 +845,13 @@ var File_steward_reporting_v1_intake_proto protoreflect.FileDescriptor
 
 const file_steward_reporting_v1_intake_proto_rawDesc = "" +
 	"\n" +
-	"!steward/reporting/v1/intake.proto\x12\x14steward.reporting.v1\x1a$steward/reporting/v1/reporting.proto\"\xc7\x01\n" +
+	"!steward/reporting/v1/intake.proto\x12\x14steward.reporting.v1\x1a$steward/reporting/v1/reporting.proto\x1a#steward/reporting/v1/settings.proto\"\x19\n" +
+	"\x17GetIntakeOptionsRequest\"\x96\x01\n" +
+	"\x18GetIntakeOptionsResponse\x124\n" +
+	"\x16anonymous_reports_open\x18\x01 \x01(\bR\x14anonymousReportsOpen\x12D\n" +
+	"\n" +
+	"categories\x18\x02 \x03(\v2$.steward.reporting.v1.IntakeCategoryR\n" +
+	"categories\"\xc7\x01\n" +
 	"\x1cSubmitAnonymousReportRequest\x12=\n" +
 	"\adetails\x18\x01 \x01(\v2#.steward.reporting.v1.ReportDetailsR\adetails\x12\x1e\n" +
 	"\n" +
@@ -799,8 +895,9 @@ const file_steward_reporting_v1_intake_proto_rawDesc = "" +
 	"\acase_id\x18\x01 \x01(\tR\x06caseId\x12\x12\n" +
 	"\x04body\x18\x02 \x01(\tR\x04body\"U\n" +
 	"\x17ReplyToMyReportResponse\x12:\n" +
-	"\x06report\x18\x01 \x01(\v2\".steward.reporting.v1.ReporterViewR\x06report2\x94\x06\n" +
-	"\rIntakeService\x12\x80\x01\n" +
+	"\x06report\x18\x01 \x01(\v2\".steward.reporting.v1.ReporterViewR\x06report2\x87\a\n" +
+	"\rIntakeService\x12q\n" +
+	"\x10GetIntakeOptions\x12-.steward.reporting.v1.GetIntakeOptionsRequest\x1a..steward.reporting.v1.GetIntakeOptionsResponse\x12\x80\x01\n" +
 	"\x15SubmitAnonymousReport\x122.steward.reporting.v1.SubmitAnonymousReportRequest\x1a3.steward.reporting.v1.SubmitAnonymousReportResponse\x12b\n" +
 	"\vCheckReport\x12(.steward.reporting.v1.CheckReportRequest\x1a).steward.reporting.v1.CheckReportResponse\x12h\n" +
 	"\rReplyToReport\x12*.steward.reporting.v1.ReplyToReportRequest\x1a+.steward.reporting.v1.ReplyToReportResponse\x12t\n" +
@@ -821,57 +918,63 @@ func file_steward_reporting_v1_intake_proto_rawDescGZIP() []byte {
 	return file_steward_reporting_v1_intake_proto_rawDescData
 }
 
-var file_steward_reporting_v1_intake_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_steward_reporting_v1_intake_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_steward_reporting_v1_intake_proto_goTypes = []any{
-	(*SubmitAnonymousReportRequest)(nil),  // 0: steward.reporting.v1.SubmitAnonymousReportRequest
-	(*SubmitAnonymousReportResponse)(nil), // 1: steward.reporting.v1.SubmitAnonymousReportResponse
-	(*CheckReportRequest)(nil),            // 2: steward.reporting.v1.CheckReportRequest
-	(*CheckReportResponse)(nil),           // 3: steward.reporting.v1.CheckReportResponse
-	(*ReplyToReportRequest)(nil),          // 4: steward.reporting.v1.ReplyToReportRequest
-	(*ReplyToReportResponse)(nil),         // 5: steward.reporting.v1.ReplyToReportResponse
-	(*SubmitNamedReportRequest)(nil),      // 6: steward.reporting.v1.SubmitNamedReportRequest
-	(*SubmitNamedReportResponse)(nil),     // 7: steward.reporting.v1.SubmitNamedReportResponse
-	(*ListMyReportsRequest)(nil),          // 8: steward.reporting.v1.ListMyReportsRequest
-	(*MyReport)(nil),                      // 9: steward.reporting.v1.MyReport
-	(*ListMyReportsResponse)(nil),         // 10: steward.reporting.v1.ListMyReportsResponse
-	(*GetMyReportRequest)(nil),            // 11: steward.reporting.v1.GetMyReportRequest
-	(*GetMyReportResponse)(nil),           // 12: steward.reporting.v1.GetMyReportResponse
-	(*ReplyToMyReportRequest)(nil),        // 13: steward.reporting.v1.ReplyToMyReportRequest
-	(*ReplyToMyReportResponse)(nil),       // 14: steward.reporting.v1.ReplyToMyReportResponse
-	(*ReportDetails)(nil),                 // 15: steward.reporting.v1.ReportDetails
-	(*AttachmentUpload)(nil),              // 16: steward.reporting.v1.AttachmentUpload
-	(*ReporterView)(nil),                  // 17: steward.reporting.v1.ReporterView
+	(*GetIntakeOptionsRequest)(nil),       // 0: steward.reporting.v1.GetIntakeOptionsRequest
+	(*GetIntakeOptionsResponse)(nil),      // 1: steward.reporting.v1.GetIntakeOptionsResponse
+	(*SubmitAnonymousReportRequest)(nil),  // 2: steward.reporting.v1.SubmitAnonymousReportRequest
+	(*SubmitAnonymousReportResponse)(nil), // 3: steward.reporting.v1.SubmitAnonymousReportResponse
+	(*CheckReportRequest)(nil),            // 4: steward.reporting.v1.CheckReportRequest
+	(*CheckReportResponse)(nil),           // 5: steward.reporting.v1.CheckReportResponse
+	(*ReplyToReportRequest)(nil),          // 6: steward.reporting.v1.ReplyToReportRequest
+	(*ReplyToReportResponse)(nil),         // 7: steward.reporting.v1.ReplyToReportResponse
+	(*SubmitNamedReportRequest)(nil),      // 8: steward.reporting.v1.SubmitNamedReportRequest
+	(*SubmitNamedReportResponse)(nil),     // 9: steward.reporting.v1.SubmitNamedReportResponse
+	(*ListMyReportsRequest)(nil),          // 10: steward.reporting.v1.ListMyReportsRequest
+	(*MyReport)(nil),                      // 11: steward.reporting.v1.MyReport
+	(*ListMyReportsResponse)(nil),         // 12: steward.reporting.v1.ListMyReportsResponse
+	(*GetMyReportRequest)(nil),            // 13: steward.reporting.v1.GetMyReportRequest
+	(*GetMyReportResponse)(nil),           // 14: steward.reporting.v1.GetMyReportResponse
+	(*ReplyToMyReportRequest)(nil),        // 15: steward.reporting.v1.ReplyToMyReportRequest
+	(*ReplyToMyReportResponse)(nil),       // 16: steward.reporting.v1.ReplyToMyReportResponse
+	(*IntakeCategory)(nil),                // 17: steward.reporting.v1.IntakeCategory
+	(*ReportDetails)(nil),                 // 18: steward.reporting.v1.ReportDetails
+	(*AttachmentUpload)(nil),              // 19: steward.reporting.v1.AttachmentUpload
+	(*ReporterView)(nil),                  // 20: steward.reporting.v1.ReporterView
 }
 var file_steward_reporting_v1_intake_proto_depIdxs = []int32{
-	15, // 0: steward.reporting.v1.SubmitAnonymousReportRequest.details:type_name -> steward.reporting.v1.ReportDetails
-	16, // 1: steward.reporting.v1.SubmitAnonymousReportRequest.attachments:type_name -> steward.reporting.v1.AttachmentUpload
-	17, // 2: steward.reporting.v1.CheckReportResponse.report:type_name -> steward.reporting.v1.ReporterView
-	17, // 3: steward.reporting.v1.ReplyToReportResponse.report:type_name -> steward.reporting.v1.ReporterView
-	15, // 4: steward.reporting.v1.SubmitNamedReportRequest.details:type_name -> steward.reporting.v1.ReportDetails
-	16, // 5: steward.reporting.v1.SubmitNamedReportRequest.attachments:type_name -> steward.reporting.v1.AttachmentUpload
-	17, // 6: steward.reporting.v1.MyReport.report:type_name -> steward.reporting.v1.ReporterView
-	9,  // 7: steward.reporting.v1.ListMyReportsResponse.reports:type_name -> steward.reporting.v1.MyReport
-	17, // 8: steward.reporting.v1.GetMyReportResponse.report:type_name -> steward.reporting.v1.ReporterView
-	17, // 9: steward.reporting.v1.ReplyToMyReportResponse.report:type_name -> steward.reporting.v1.ReporterView
-	0,  // 10: steward.reporting.v1.IntakeService.SubmitAnonymousReport:input_type -> steward.reporting.v1.SubmitAnonymousReportRequest
-	2,  // 11: steward.reporting.v1.IntakeService.CheckReport:input_type -> steward.reporting.v1.CheckReportRequest
-	4,  // 12: steward.reporting.v1.IntakeService.ReplyToReport:input_type -> steward.reporting.v1.ReplyToReportRequest
-	6,  // 13: steward.reporting.v1.IntakeService.SubmitNamedReport:input_type -> steward.reporting.v1.SubmitNamedReportRequest
-	8,  // 14: steward.reporting.v1.IntakeService.ListMyReports:input_type -> steward.reporting.v1.ListMyReportsRequest
-	11, // 15: steward.reporting.v1.IntakeService.GetMyReport:input_type -> steward.reporting.v1.GetMyReportRequest
-	13, // 16: steward.reporting.v1.IntakeService.ReplyToMyReport:input_type -> steward.reporting.v1.ReplyToMyReportRequest
-	1,  // 17: steward.reporting.v1.IntakeService.SubmitAnonymousReport:output_type -> steward.reporting.v1.SubmitAnonymousReportResponse
-	3,  // 18: steward.reporting.v1.IntakeService.CheckReport:output_type -> steward.reporting.v1.CheckReportResponse
-	5,  // 19: steward.reporting.v1.IntakeService.ReplyToReport:output_type -> steward.reporting.v1.ReplyToReportResponse
-	7,  // 20: steward.reporting.v1.IntakeService.SubmitNamedReport:output_type -> steward.reporting.v1.SubmitNamedReportResponse
-	10, // 21: steward.reporting.v1.IntakeService.ListMyReports:output_type -> steward.reporting.v1.ListMyReportsResponse
-	12, // 22: steward.reporting.v1.IntakeService.GetMyReport:output_type -> steward.reporting.v1.GetMyReportResponse
-	14, // 23: steward.reporting.v1.IntakeService.ReplyToMyReport:output_type -> steward.reporting.v1.ReplyToMyReportResponse
-	17, // [17:24] is the sub-list for method output_type
-	10, // [10:17] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	17, // 0: steward.reporting.v1.GetIntakeOptionsResponse.categories:type_name -> steward.reporting.v1.IntakeCategory
+	18, // 1: steward.reporting.v1.SubmitAnonymousReportRequest.details:type_name -> steward.reporting.v1.ReportDetails
+	19, // 2: steward.reporting.v1.SubmitAnonymousReportRequest.attachments:type_name -> steward.reporting.v1.AttachmentUpload
+	20, // 3: steward.reporting.v1.CheckReportResponse.report:type_name -> steward.reporting.v1.ReporterView
+	20, // 4: steward.reporting.v1.ReplyToReportResponse.report:type_name -> steward.reporting.v1.ReporterView
+	18, // 5: steward.reporting.v1.SubmitNamedReportRequest.details:type_name -> steward.reporting.v1.ReportDetails
+	19, // 6: steward.reporting.v1.SubmitNamedReportRequest.attachments:type_name -> steward.reporting.v1.AttachmentUpload
+	20, // 7: steward.reporting.v1.MyReport.report:type_name -> steward.reporting.v1.ReporterView
+	11, // 8: steward.reporting.v1.ListMyReportsResponse.reports:type_name -> steward.reporting.v1.MyReport
+	20, // 9: steward.reporting.v1.GetMyReportResponse.report:type_name -> steward.reporting.v1.ReporterView
+	20, // 10: steward.reporting.v1.ReplyToMyReportResponse.report:type_name -> steward.reporting.v1.ReporterView
+	0,  // 11: steward.reporting.v1.IntakeService.GetIntakeOptions:input_type -> steward.reporting.v1.GetIntakeOptionsRequest
+	2,  // 12: steward.reporting.v1.IntakeService.SubmitAnonymousReport:input_type -> steward.reporting.v1.SubmitAnonymousReportRequest
+	4,  // 13: steward.reporting.v1.IntakeService.CheckReport:input_type -> steward.reporting.v1.CheckReportRequest
+	6,  // 14: steward.reporting.v1.IntakeService.ReplyToReport:input_type -> steward.reporting.v1.ReplyToReportRequest
+	8,  // 15: steward.reporting.v1.IntakeService.SubmitNamedReport:input_type -> steward.reporting.v1.SubmitNamedReportRequest
+	10, // 16: steward.reporting.v1.IntakeService.ListMyReports:input_type -> steward.reporting.v1.ListMyReportsRequest
+	13, // 17: steward.reporting.v1.IntakeService.GetMyReport:input_type -> steward.reporting.v1.GetMyReportRequest
+	15, // 18: steward.reporting.v1.IntakeService.ReplyToMyReport:input_type -> steward.reporting.v1.ReplyToMyReportRequest
+	1,  // 19: steward.reporting.v1.IntakeService.GetIntakeOptions:output_type -> steward.reporting.v1.GetIntakeOptionsResponse
+	3,  // 20: steward.reporting.v1.IntakeService.SubmitAnonymousReport:output_type -> steward.reporting.v1.SubmitAnonymousReportResponse
+	5,  // 21: steward.reporting.v1.IntakeService.CheckReport:output_type -> steward.reporting.v1.CheckReportResponse
+	7,  // 22: steward.reporting.v1.IntakeService.ReplyToReport:output_type -> steward.reporting.v1.ReplyToReportResponse
+	9,  // 23: steward.reporting.v1.IntakeService.SubmitNamedReport:output_type -> steward.reporting.v1.SubmitNamedReportResponse
+	12, // 24: steward.reporting.v1.IntakeService.ListMyReports:output_type -> steward.reporting.v1.ListMyReportsResponse
+	14, // 25: steward.reporting.v1.IntakeService.GetMyReport:output_type -> steward.reporting.v1.GetMyReportResponse
+	16, // 26: steward.reporting.v1.IntakeService.ReplyToMyReport:output_type -> steward.reporting.v1.ReplyToMyReportResponse
+	19, // [19:27] is the sub-list for method output_type
+	11, // [11:19] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_steward_reporting_v1_intake_proto_init() }
@@ -880,13 +983,14 @@ func file_steward_reporting_v1_intake_proto_init() {
 		return
 	}
 	file_steward_reporting_v1_reporting_proto_init()
+	file_steward_reporting_v1_settings_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_steward_reporting_v1_intake_proto_rawDesc), len(file_steward_reporting_v1_intake_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

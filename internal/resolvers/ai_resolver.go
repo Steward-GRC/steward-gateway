@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	authz "github.com/Steward-GRC/steward-authz"
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 )
 
@@ -481,11 +483,16 @@ func TopPolicyQuestionsResolver(ctx context.Context, client aiv1.AiServiceClient
 }
 
 // PolicyVersionSummaryResolver reads a previously-stored, publish-time policy summary for a
-// version, so a viewer's summary panel can read it instead of regenerating on every view.
-func PolicyVersionSummaryResolver(ctx context.Context, client aiv1.AiServiceClient, versionID string) (*PolicySummaryResult, error) {
+// version, so a viewer's summary panel can read it instead of regenerating on every view. The
+// summary carries the real content, so it is served only when the version's read decision allows
+// the real content; otherwise the panel gets no summary.
+func PolicyVersionSummaryResolver(ctx context.Context, client aiv1.AiServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, versionID string) (*PolicySummaryResult, error) {
 	claims, ok := principal.FromContext(ctx)
 	if !ok || claims == nil || claims.UserID() == "" {
 		return nil, fmt.Errorf("unauthenticated")
+	}
+	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, versionID); err != nil || effect != authz.EffectAllow {
+		return nil, nil
 	}
 	resp, err := client.GetPolicySummary(ctx, &aiv1.GetPolicySummaryRequest{VersionId: versionID})
 	if err != nil {

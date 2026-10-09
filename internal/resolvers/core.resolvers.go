@@ -345,7 +345,7 @@ func (r *queryResolver) PolicyVersions(ctx context.Context, policyID string) ([]
 
 // DiffVersions is the resolver for the diffVersions field.
 func (r *queryResolver) DiffVersions(ctx context.Context, fromVersionID string, toVersionID string) ([]*SectionDiff, error) {
-	return DiffVersions(ctx, r.PolicyClient, fromVersionID, toVersionID)
+	return DiffVersions(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, fromVersionID, toVersionID)
 }
 
 // EffectiveTemplate is the resolver for the effectiveTemplate field.

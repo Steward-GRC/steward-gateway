@@ -88,7 +88,7 @@ func (r *queryResolver) TopPolicyQuestions(ctx context.Context, limit *int) ([]s
 
 // PolicyVersionSummary is the resolver for the policyVersionSummary field.
 func (r *queryResolver) PolicyVersionSummary(ctx context.Context, versionID string) (*PolicySummaryResult, error) {
-	return PolicyVersionSummaryResolver(ctx, r.AIClient, versionID)
+	return PolicyVersionSummaryResolver(ctx, r.AIClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, versionID)
 }
 
 // RelatedPolicySuggestions is the resolver for the relatedPolicySuggestions field.

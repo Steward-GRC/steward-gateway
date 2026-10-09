@@ -72,12 +72,29 @@ failed). An unreadable entry is `unavailable` (`unknown` for a service without t
 never fails the read. It never returns tokens, cookies, request headers, secrets, policy content,
 addresses or probe errors.
 
+## Reading version content
+
+Every field that returns a policy version's content applies the same read decision as
+`policyVersion`: `policyVersion`, `policyVersions`, `diffVersions`, `policyDiff`,
+`renderedContent`, `requestPDFExport` and `policyVersionSummary`. The decision is taken on each
+version the field draws from (both sides of a diff), and the most restrictive one wins. No backend
+is asked for content the caller may not read.
+
+- **Deny:** an unknown version, a draft for anyone but an editor of the policy, or a denied read is
+  `NotFound` (`policyVersionSummary` returns no summary).
+- **Obfuscate:** `policyVersion(s)` return scrambled content; `diffVersions` and `policyDiff` keep
+  the sections but drop the word diff (`diffVersions` also scrambles the titles); `renderedContent`
+  and `requestPDFExport` are `NotFound`, because delivery renders the real text; and
+  `policyVersionSummary` returns no summary.
+- **Allow:** the real content. A read that only a break-glass grant allows is recorded first (see
+  below), once per version.
+
 ## Break-glass reads
 
 A site admin who sees a document obfuscated can ask for a time-boxed reveal of that one document
 (`breakGlassReveal`, with a reason). Identity grants it and sets the expiry. While the grant is
-active, `policyVersion` and `policyVersions` serve that document's real content to that admin and
-no other document's.
+active, the content fields above serve that document's real content to that admin and no other
+document's.
 
 Each such read is recorded first: when only the grant allows it, the gateway calls core's
 `RecordBreakGlassRead` (the policy and, for one version, the version) before returning anything.

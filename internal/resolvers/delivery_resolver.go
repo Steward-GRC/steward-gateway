@@ -8,14 +8,28 @@ import (
 	"fmt"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	authz "github.com/Steward-GRC/steward-authz"
+	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	deliveryv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/delivery/v1"
+	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 )
 
-// GetRenderedContent fetches server-rendered HTML for a published policy version via the Delivery
-// service.
-func GetRenderedContent(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyVersionID string) (*RenderedContent, error) {
+// errObfuscatedContent refuses rendered output to a reader who may only see the
+// obfuscated text: delivery renders the real content.
+var errObfuscatedContent = status.Error(codes.NotFound, "policy version not found")
+
+// GetRenderedContent fetches server-rendered HTML for a policy version via the Delivery service,
+// under the version's read decision. An obfuscated reader gets nothing.
+func GetRenderedContent(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyVersionID string) (*RenderedContent, error) {
+	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, policyVersionID); err != nil {
+		return nil, err
+	} else if effect != authz.EffectAllow {
+		return nil, errObfuscatedContent
+	}
 	resp, err := client.GetRenderedContent(ctx, &deliveryv1.GetRenderedContentRequest{PolicyVersionId: policyVersionID})
 	if err != nil {
 		return nil, fmt.Errorf("delivery get rendered content: %w", err)
@@ -24,8 +38,12 @@ func GetRenderedContent(ctx context.Context, client deliveryv1.DeliveryServiceCl
 }
 
 // GetPolicyDiff returns the section-aware diff between two policy versions as surfaced by the
-// Delivery service.
-func GetPolicyDiff(ctx context.Context, client deliveryv1.DeliveryServiceClient, fromVersionID, toVersionID string) (*PolicyDiff, error) {
+// Delivery service, under the read decision on both. An obfuscated read drops the word diffs.
+func GetPolicyDiff(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, fromVersionID, toVersionID string) (*PolicyDiff, error) {
+	_, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, fromVersionID, toVersionID)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.GetDiff(ctx, &deliveryv1.GetDiffRequest{
 		PolicyVersionIdFrom: fromVersionID,
 		PolicyVersionIdTo:   toVersionID,
@@ -42,7 +60,7 @@ func GetPolicyDiff(ctx context.Context, client deliveryv1.DeliveryServiceClient,
 			IsBoilerplate: s.GetBoilerplate(),
 		})
 	}
-	return &PolicyDiff{Sections: sections}, nil
+	return &PolicyDiff{Sections: obfuscateSectionDiffs(sections, effect)}, nil
 }
 
 // GetPDFDownloadLink resolves the pdfDownloadLink query by asking the Delivery service for the
@@ -59,11 +77,17 @@ func GetPDFDownloadLink(ctx context.Context, client deliveryv1.DeliveryServiceCl
 	return &PDFDownloadLink{SignedURL: resp.GetSignedUrl(), ExpiresAt: expires}, nil
 }
 
-// RequestPDFExport enqueues an async PDF rendering job.
-func RequestPDFExport(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyVersionID string) (*PDFExportJob, error) {
+// RequestPDFExport enqueues an async PDF rendering job under the version's read decision. The PDF
+// holds the real content, so an obfuscated reader gets nothing.
+func RequestPDFExport(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyVersionID string) (*PDFExportJob, error) {
 	claims, ok := principal.FromContext(ctx)
 	if !ok || claims.UserID() == "" {
 		return nil, fmt.Errorf("unauthenticated")
+	}
+	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, policyVersionID); err != nil {
+		return nil, err
+	} else if effect != authz.EffectAllow {
+		return nil, errObfuscatedContent
 	}
 	resp, err := client.RequestPDFExport(ctx, &deliveryv1.RequestPDFExportRequest{
 		PolicyVersionId: policyVersionID,

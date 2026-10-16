@@ -89,6 +89,10 @@ wins. No backend is asked for content the caller may not read.
 - **Allow:** the real content. A read that only a break-glass grant allows is recorded first (see
   below), once per version.
 
+`pdfDownloadLink` takes only a job id. Delivery serves the link only to the user who requested the
+job, read from the signed-in user the gateway passes on every call; anyone else gets `NotFound`, the
+same as for an unknown job.
+
 ## Break-glass reads
 
 A site admin who sees a document obfuscated can ask for a time-boxed reveal of that one document

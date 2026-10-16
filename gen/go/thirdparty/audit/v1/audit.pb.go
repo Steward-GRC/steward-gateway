@@ -211,8 +211,12 @@ type RequesterIdentity struct {
 	// The ids of the groups the caller manages. Without audit.read, a group
 	// manager may query, verify and tail the records of these groups only.
 	ManagedGroups []string `protobuf:"bytes,4,rep,name=managed_groups,json=managedGroups,proto3" json:"managed_groups,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The ids of the core categories the caller's managed groups own. Core and
+	// workflow records carry a category id as their group id, so without
+	// audit.read a group manager also reads the records of these categories.
+	ManagedCategories []string `protobuf:"bytes,5,rep,name=managed_categories,json=managedCategories,proto3" json:"managed_categories,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *RequesterIdentity) Reset() {
@@ -269,6 +273,13 @@ func (x *RequesterIdentity) GetGroups() []string {
 func (x *RequesterIdentity) GetManagedGroups() []string {
 	if x != nil {
 		return x.ManagedGroups
+	}
+	return nil
+}
+
+func (x *RequesterIdentity) GetManagedCategories() []string {
+	if x != nil {
+		return x.ManagedCategories
 	}
 	return nil
 }
@@ -1576,12 +1587,13 @@ const file_steward_audit_v1_audit_proto_rawDesc = "" +
 	"\x12legal_basis_exempt\x18\b \x01(\bR\x10legalBasisExempt\x1a=\n" +
 	"\x0fAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x81\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb0\x01\n" +
 	"\x11RequesterIdentity\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05roles\x18\x02 \x03(\tR\x05roles\x12\x16\n" +
 	"\x06groups\x18\x03 \x03(\tR\x06groups\x12%\n" +
-	"\x0emanaged_groups\x18\x04 \x03(\tR\rmanagedGroups\"\x84\x03\n" +
+	"\x0emanaged_groups\x18\x04 \x03(\tR\rmanagedGroups\x12-\n" +
+	"\x12managed_categories\x18\x05 \x03(\tR\x11managedCategories\"\x84\x03\n" +
 	"\vAuditRecord\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1f\n" +
 	"\vrecord_uuid\x18\x02 \x01(\tR\n" +

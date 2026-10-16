@@ -84,9 +84,29 @@ func (r *mutationResolver) RequestStepUpOtp(ctx context.Context) (bool, error) {
 	return RequestStepUpOtpResolver(ctx, r.IdentityAdminClient)
 }
 
-// TransferRoot is the resolver for the transferRoot field.
-func (r *mutationResolver) TransferRoot(ctx context.Context, toUserID string, otp string) (*User, error) {
-	return TransferRootResolver(ctx, r.IdentityAdminClient, r.IdentityClient, toUserID, otp)
+// GrantRoot is the resolver for the grantRoot field.
+func (r *mutationResolver) GrantRoot(ctx context.Context, userID string, otp string) (*User, error) {
+	return GrantRootResolver(ctx, r.IdentityAdminClient, userID, otp)
+}
+
+// RevokeRoot is the resolver for the revokeRoot field.
+func (r *mutationResolver) RevokeRoot(ctx context.Context, userID string, otp string) (*User, error) {
+	return RevokeRootResolver(ctx, r.IdentityAdminClient, userID, otp)
+}
+
+// RequestHardReset is the resolver for the requestHardReset field.
+func (r *mutationResolver) RequestHardReset(ctx context.Context, module string, reason string) (*HardResetRequest, error) {
+	return RequestHardResetResolver(ctx, r.IdentityAdminClient, module, reason)
+}
+
+// ApproveHardReset is the resolver for the approveHardReset field.
+func (r *mutationResolver) ApproveHardReset(ctx context.Context, requestID string) (*HardResetRequest, error) {
+	return ApproveHardResetResolver(ctx, r.IdentityAdminClient, requestID)
+}
+
+// CancelHardReset is the resolver for the cancelHardReset field.
+func (r *mutationResolver) CancelHardReset(ctx context.Context, requestID string) (*HardResetRequest, error) {
+	return CancelHardResetResolver(ctx, r.IdentityAdminClient, requestID)
 }
 
 // CompleteOnboarding is the resolver for the completeOnboarding field.
@@ -194,6 +214,11 @@ func (r *mutationResolver) StartImpersonation(ctx context.Context, userID string
 func (r *mutationResolver) StopImpersonation(ctx context.Context) (bool, error) {
 	sid, _ := bff.SessionIDFromContext(ctx)
 	return StopImpersonationResolver(ctx, r.SessionStore, sid, r.AuditEmitter)
+}
+
+// HardResetRequests is the resolver for the hardResetRequests field.
+func (r *queryResolver) HardResetRequests(ctx context.Context, module *string) ([]*HardResetRequest, error) {
+	return HardResetRequestsResolver(ctx, r.IdentityAdminClient, module)
 }
 
 // Me is the resolver for the me field.

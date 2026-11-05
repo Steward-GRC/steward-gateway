@@ -1337,7 +1337,7 @@ func TestMyDrafts_Unauthenticated(t *testing.T) {
 
 // TestPolicyFromProto_MapsUpdatedAtAndCurrentVersion verifies the read model
 // maps Policy.updated_at and current_version_no/current_version_status
-// straight from the proto, with no extra per-row read (steward-web#27 gap 3/4).
+// straight from the proto, with no extra per-row read (Steward-GRC/steward-web-archive#27 gap 3/4).
 func TestPolicyFromProto_MapsUpdatedAtAndCurrentVersion(t *testing.T) {
 	groups := newRaciReadClient(
 		map[string]*corev1.Category{"g-it": {Id: "g-it", Name: "IT", ParentId: ""}},
@@ -1387,7 +1387,7 @@ func TestPolicyFromProto_MapsUpdatedAtAndCurrentVersion(t *testing.T) {
 }
 
 // TestGetPolicyVersion_MapsCreatedAtAndPublishedAt verifies PolicyVersion
-// carries both timestamps from the proto (steward-web#27 gap 3).
+// carries both timestamps from the proto (Steward-GRC/steward-web-archive#27 gap 3).
 func TestGetPolicyVersion_MapsCreatedAtAndPublishedAt(t *testing.T) {
 	groups := newRaciReadClient(
 		map[string]*corev1.Category{"g-it": {Id: "g-it", Name: "IT", ParentId: ""}},

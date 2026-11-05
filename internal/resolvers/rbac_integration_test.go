@@ -149,7 +149,7 @@ func TestRBACEnforcement(t *testing.T) {
 		})
 
 		// viewerCan projection: still visible, but obfuscated.
-		p, err := resolvers.GetPolicy(ctx, pc, groups, admin, nil, "pol-1")
+		p, err := resolvers.GetPolicy(ctx, pc, groups, admin, nil, nil, "pol-1")
 		if err != nil {
 			t.Fatalf("GetPolicy: %v", err)
 		}
@@ -164,7 +164,7 @@ func TestRBACEnforcement(t *testing.T) {
 		}
 
 		// Served content is gibberish: the real text never leaks.
-		v, err := resolvers.GetPolicyVersion(ctx, pc, groups, admin, "v1")
+		v, err := resolvers.GetPolicyVersion(ctx, pc, groups, admin, nil, "v1")
 		if err != nil {
 			t.Fatalf("GetPolicyVersion: %v", err)
 		}
@@ -218,14 +218,14 @@ func TestRBACEnforcement(t *testing.T) {
 		}
 
 		// 2. Within the window → real content, contentObfuscated=false.
-		p, err := resolvers.GetPolicy(ctx, pc, groups, admin, nil, "pol-1")
+		p, err := resolvers.GetPolicy(ctx, pc, groups, admin, nil, nil, "pol-1")
 		if err != nil {
 			t.Fatalf("GetPolicy (within window): %v", err)
 		}
 		if p.ViewerCan == nil || p.ViewerCan.ContentObfuscated {
 			t.Fatalf("active break-glass must flip contentObfuscated to false: %+v", p.ViewerCan)
 		}
-		v, err := resolvers.GetPolicyVersion(ctx, pc, groups, admin, "v1")
+		v, err := resolvers.GetPolicyVersion(ctx, pc, groups, admin, nil, "v1")
 		if err != nil {
 			t.Fatalf("GetPolicyVersion (within window): %v", err)
 		}
@@ -235,14 +235,14 @@ func TestRBACEnforcement(t *testing.T) {
 
 		// 3. After expiry → obfuscate again.
 		fakeClock = fakeClock.Add(16 * time.Minute)
-		p2, err := resolvers.GetPolicy(ctx, pc, groups, admin, nil, "pol-1")
+		p2, err := resolvers.GetPolicy(ctx, pc, groups, admin, nil, nil, "pol-1")
 		if err != nil {
 			t.Fatalf("GetPolicy (after expiry): %v", err)
 		}
 		if p2.ViewerCan == nil || !p2.ViewerCan.ContentObfuscated {
 			t.Fatalf("after expiry the site-admin must be obfuscated again: %+v", p2.ViewerCan)
 		}
-		v2, err := resolvers.GetPolicyVersion(ctx, pc, groups, admin, "v1")
+		v2, err := resolvers.GetPolicyVersion(ctx, pc, groups, admin, nil, "v1")
 		if err != nil {
 			t.Fatalf("GetPolicyVersion (after expiry): %v", err)
 		}
@@ -277,7 +277,7 @@ func TestRBACEnforcement(t *testing.T) {
 		})
 
 		// List omits the RACI-denied policy, keeps the visible one.
-		out, err := resolvers.ListPolicies(ctx, pc, groups, nil, nil, "g-it", boolPtr(true), nil)
+		out, err := resolvers.ListPolicies(ctx, pc, groups, nil, nil, nil, "g-it", boolPtr(true), nil)
 		if err != nil {
 			t.Fatalf("ListPolicies: %v", err)
 		}
@@ -297,7 +297,7 @@ func TestRBACEnforcement(t *testing.T) {
 		}
 
 		// GetPolicy on the hidden policy → NotFound (existence not leaked).
-		if _, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-it"); status.Code(err) != codes.NotFound {
+		if _, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-it"); status.Code(err) != codes.NotFound {
 			t.Fatalf("RACI-denied GetPolicy must be NotFound; got %v", err)
 		}
 	})
@@ -323,14 +323,14 @@ func TestRBACEnforcement(t *testing.T) {
 			ScopedRolesValue: []principal.ScopedRole{{Role: "author", Category: "IT"}},
 		})
 
-		itp, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-it")
+		itp, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-it")
 		if err != nil {
 			t.Fatalf("GetPolicy IT: %v", err)
 		}
 		if itp.ViewerCan == nil || !itp.ViewerCan.Edit {
 			t.Fatalf("scoped author in-category must have edit=true: %+v", itp.ViewerCan)
 		}
-		hrp, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-hr")
+		hrp, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-hr")
 		if err != nil {
 			t.Fatalf("GetPolicy HR: %v", err)
 		}
@@ -360,14 +360,14 @@ func TestRBACEnforcement(t *testing.T) {
 			UserIDValue: "r",
 			RolesValue:  []string{"reader"},
 		})
-		out, err := resolvers.ListPolicies(readerCtx, pc, groups, nil, nil, "g-it", boolPtr(true), nil)
+		out, err := resolvers.ListPolicies(readerCtx, pc, groups, nil, nil, nil, "g-it", boolPtr(true), nil)
 		if err != nil {
 			t.Fatalf("ListPolicies (reader): %v", err)
 		}
 		if len(out) != 0 {
 			t.Fatalf("sensitive policy must be hidden from a reader without clearance; got %d", len(out))
 		}
-		if _, err := resolvers.GetPolicy(readerCtx, pc, groups, nil, nil, "pol-sens"); status.Code(err) != codes.NotFound {
+		if _, err := resolvers.GetPolicy(readerCtx, pc, groups, nil, nil, nil, "pol-sens"); status.Code(err) != codes.NotFound {
 			t.Fatalf("sensitive GetPolicy without clearance must be NotFound; got %v", err)
 		}
 
@@ -376,14 +376,14 @@ func TestRBACEnforcement(t *testing.T) {
 			UserIDValue: "ca",
 			RolesValue:  []string{"compliance-admin"},
 		})
-		visible, err := resolvers.ListPolicies(clearedCtx, pc, groups, nil, nil, "g-it", boolPtr(true), nil)
+		visible, err := resolvers.ListPolicies(clearedCtx, pc, groups, nil, nil, nil, "g-it", boolPtr(true), nil)
 		if err != nil {
 			t.Fatalf("ListPolicies (compliance-admin): %v", err)
 		}
 		if len(visible) != 1 || visible[0].ID != "pol-sens" {
 			t.Fatalf("read_sensitive holder must see the sensitive policy; got %+v", visible)
 		}
-		p, err := resolvers.GetPolicy(clearedCtx, pc, groups, nil, nil, "pol-sens")
+		p, err := resolvers.GetPolicy(clearedCtx, pc, groups, nil, nil, nil, "pol-sens")
 		if err != nil {
 			t.Fatalf("GetPolicy (compliance-admin): %v", err)
 		}

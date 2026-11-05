@@ -279,7 +279,7 @@ func RelatedPolicyCandidatesResolver(ctx context.Context, r *Resolver, policyID 
 	if err != nil {
 		return nil, err
 	}
-	visible, err := resolvePolicyReadModel(ctx, all, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient)
+	visible, err := resolvePolicyReadModel(ctx, all, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, nil)
 	if err != nil {
 		return nil, err
 	}

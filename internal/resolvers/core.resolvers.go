@@ -320,22 +320,22 @@ func (r *queryResolver) TemplateVersions(ctx context.Context, templateID string)
 
 // Policy is the resolver for the policy field.
 func (r *queryResolver) Policy(ctx context.Context, id string) (*Policy, error) {
-	return GetPolicy(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, id)
+	return GetPolicy(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, id)
 }
 
 // PolicyByNumber is the resolver for the policyByNumber field.
 func (r *queryResolver) PolicyByNumber(ctx context.Context, number string) (*Policy, error) {
-	return PolicyByNumber(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, number)
+	return PolicyByNumber(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, number)
 }
 
 // Policies is the resolver for the policies field.
 func (r *queryResolver) Policies(ctx context.Context, categoryID string, includeDescendants *bool, documentType *DocumentType) ([]*Policy, error) {
-	return ListPolicies(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, categoryID, includeDescendants, documentType)
+	return ListPolicies(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, categoryID, includeDescendants, documentType)
 }
 
 // PolicyVersion is the resolver for the policyVersion field.
 func (r *queryResolver) PolicyVersion(ctx context.Context, id string) (*PolicyVersion, error) {
-	return GetPolicyVersion(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, id)
+	return GetPolicyVersion(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.WorkflowClient, id)
 }
 
 // PolicyVersions is the resolver for the policyVersions field.
@@ -345,7 +345,7 @@ func (r *queryResolver) PolicyVersions(ctx context.Context, policyID string) ([]
 
 // DiffVersions is the resolver for the diffVersions field.
 func (r *queryResolver) DiffVersions(ctx context.Context, fromVersionID string, toVersionID string) ([]*SectionDiff, error) {
-	return DiffVersions(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, fromVersionID, toVersionID)
+	return DiffVersions(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.WorkflowClient, fromVersionID, toVersionID)
 }
 
 // EffectiveTemplate is the resolver for the effectiveTemplate field.

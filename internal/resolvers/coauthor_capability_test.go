@@ -86,7 +86,7 @@ func TestCoAuthorDraftVisible_HappyPath(t *testing.T) {
 	pc, gc := draftOnlyCoAuthorEnv([]*corev1.CategoryRule{authorRule(bobID, corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: bobID}) // no roles
 
-	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol")
+	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol")
 	if err != nil {
 		t.Fatalf("co-author must see their draft policy; got err %v", err)
 	}
@@ -105,7 +105,7 @@ func TestCoAuthorDraftHidden_NonAuthor(t *testing.T) {
 	pc, gc := draftOnlyCoAuthorEnv(nil)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "stranger-u", RolesValue: []string{"reader"}})
 
-	_, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol")
+	_, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol")
 	if status.Code(err) != codes.NotFound {
 		t.Fatalf("non-author must NOT see a never-published draft (want NotFound); got %v", err)
 	}
@@ -121,7 +121,7 @@ func TestCoAuthorDraft_ChainErrorFailsLoud(t *testing.T) {
 	egc := &erroringCategoryClient{raciCategoryClient: gc}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: bobID})
 
-	_, err := resolvers.GetPolicy(ctx, pc, egc, nil, nil, "pol")
+	_, err := resolvers.GetPolicy(ctx, pc, egc, nil, nil, nil, "pol")
 	if err == nil {
 		t.Fatal("a genuine chain-build failure must fail loud, not silently hide the draft")
 	}
@@ -299,7 +299,7 @@ func TestPrimaryAuthorViewerCanEdit(t *testing.T) {
 	)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: bobID}) // no roles
 
-	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol")
+	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol")
 	if err != nil {
 		t.Fatalf("primary author must see their policy; got %v", err)
 	}

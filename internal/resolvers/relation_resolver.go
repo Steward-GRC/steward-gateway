@@ -47,7 +47,7 @@ func RelatedPoliciesResolver(ctx context.Context, client corev1.RelationServiceC
 		loaded = append(loaded, p)
 	}
 
-	visible, err := resolvePolicyReadModel(ctx, loaded, policyClient, categoryClient, adminClient, identity)
+	visible, err := resolvePolicyReadModel(ctx, loaded, policyClient, categoryClient, adminClient, identity, nil)
 	if err != nil {
 		return nil, err
 	}

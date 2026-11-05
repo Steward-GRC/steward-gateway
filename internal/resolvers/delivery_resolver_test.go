@@ -95,7 +95,7 @@ func TestGetRenderedContentHappyPath(t *testing.T) {
 	client := &fakeDeliveryClient{
 		renderedResp: &deliveryv1.GetRenderedContentResponse{Html: "<article>policy body</article>"},
 	}
-	got, err := resolvers.GetRenderedContent(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1")
+	got, err := resolvers.GetRenderedContent(ctxWithUser(t, "u-1"), client, pc, groups, admin, nil, "pv-1")
 	if err != nil {
 		t.Fatalf("GetRenderedContent: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestGetRenderedContentPropagatesError(t *testing.T) {
 	pc, groups, admin := openVersions(t)
 	rpcErr := errors.New("not found")
 	client := &fakeDeliveryClient{renderedErr: rpcErr}
-	got, err := resolvers.GetRenderedContent(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1")
+	got, err := resolvers.GetRenderedContent(ctxWithUser(t, "u-1"), client, pc, groups, admin, nil, "pv-1")
 	if err == nil {
 		t.Fatal("expected error to propagate")
 	}
@@ -130,7 +130,7 @@ func TestGetPolicyDiffHappyPath(t *testing.T) {
 			{SectionKey: "scope", ChangeType: "unchanged", DiffHtml: "", Boilerplate: true},
 		}},
 	}
-	got, err := resolvers.GetPolicyDiff(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1", "pv-2")
+	got, err := resolvers.GetPolicyDiff(ctxWithUser(t, "u-1"), client, pc, groups, admin, nil, "pv-1", "pv-2")
 	if err != nil {
 		t.Fatalf("GetPolicyDiff: %v", err)
 	}
@@ -160,7 +160,7 @@ func TestGetPolicyDiffPropagatesError(t *testing.T) {
 	pc, groups, admin := openVersions(t)
 	rpcErr := errors.New("boom")
 	client := &fakeDeliveryClient{diffErr: rpcErr}
-	if _, err := resolvers.GetPolicyDiff(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1", "pv-2"); err == nil || !errors.Is(err, rpcErr) {
+	if _, err := resolvers.GetPolicyDiff(ctxWithUser(t, "u-1"), client, pc, groups, admin, nil, "pv-1", "pv-2"); err == nil || !errors.Is(err, rpcErr) {
 		t.Fatalf("expected wrapped rpcErr; got %v", err)
 	}
 }
@@ -203,7 +203,7 @@ func TestRequestPDFExportHappyPath(t *testing.T) {
 		requestPDFResp: &deliveryv1.RequestPDFExportResponse{JobId: "job-42"},
 	}
 	ctx := ctxWithUser(t, "u-7")
-	got, err := resolvers.RequestPDFExport(ctx, client, pc, groups, admin, "pv-1")
+	got, err := resolvers.RequestPDFExport(ctx, client, pc, groups, admin, nil, "pv-1")
 	if err != nil {
 		t.Fatalf("RequestPDFExport: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestRequestPDFExportHappyPath(t *testing.T) {
 func TestRequestPDFExportUnauthenticated(t *testing.T) {
 	pc, groups, admin := openVersions(t)
 	client := &fakeDeliveryClient{}
-	if _, err := resolvers.RequestPDFExport(context.Background(), client, pc, groups, admin, "pv-1"); err == nil {
+	if _, err := resolvers.RequestPDFExport(context.Background(), client, pc, groups, admin, nil, "pv-1"); err == nil {
 		t.Fatal("expected unauthenticated error when no claims on context")
 	}
 	if client.lastRequestPDFReq != nil {
@@ -233,7 +233,7 @@ func TestRequestPDFExportPropagatesError(t *testing.T) {
 	pc, groups, admin := openVersions(t)
 	rpcErr := errors.New("queue full")
 	client := &fakeDeliveryClient{requestPDFErr: rpcErr}
-	if _, err := resolvers.RequestPDFExport(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1"); err == nil || !errors.Is(err, rpcErr) {
+	if _, err := resolvers.RequestPDFExport(ctxWithUser(t, "u-1"), client, pc, groups, admin, nil, "pv-1"); err == nil || !errors.Is(err, rpcErr) {
 		t.Fatalf("expected wrapped rpcErr; got %v", err)
 	}
 }

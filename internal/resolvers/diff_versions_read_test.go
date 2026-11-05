@@ -50,7 +50,7 @@ func TestDiffVersionsDeniedReaderGetsNotFoundAndCoreIsNotAsked(t *testing.T) {
 	pc, groups, _ := diffSetup(t, true)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-1", IdpGroupsValue: []string{"Admins"}})
 
-	diffs, err := resolvers.DiffVersions(ctx, pc, groups, noGrant(), "pol-1-v1", "pol-1-v2")
+	diffs, err := resolvers.DiffVersions(ctx, pc, groups, noGrant(), nil, "pol-1-v1", "pol-1-v2")
 	if status.Code(err) != codes.NotFound || diffs != nil {
 		t.Fatalf("got %v, %v; want NotFound and no diff", diffs, err)
 	}
@@ -62,7 +62,7 @@ func TestDiffVersionsDeniedReaderGetsNotFoundAndCoreIsNotAsked(t *testing.T) {
 func TestDiffVersionsUnknownVersionServesNothing(t *testing.T) {
 	pc, groups, ctx := diffSetup(t, false)
 
-	if diffs, err := resolvers.DiffVersions(ctx, pc, groups, noGrant(), "pol-1-v1", "missing"); err == nil || diffs != nil {
+	if diffs, err := resolvers.DiffVersions(ctx, pc, groups, noGrant(), nil, "pol-1-v1", "missing"); err == nil || diffs != nil {
 		t.Fatalf("got %v, %v; want the lookup error and no diff", diffs, err)
 	}
 	if pc.diffCalls != 0 {
@@ -75,7 +75,7 @@ func TestDiffVersionsDraftIsForEditorsOnly(t *testing.T) {
 	pc.versions["pol-1-v2"].Status = corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_DRAFT
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-1"})
 
-	if _, err := resolvers.DiffVersions(ctx, pc, groups, noGrant(), "pol-1-v1", "pol-1-v2"); status.Code(err) != codes.NotFound {
+	if _, err := resolvers.DiffVersions(ctx, pc, groups, noGrant(), nil, "pol-1-v1", "pol-1-v2"); status.Code(err) != codes.NotFound {
 		t.Fatalf("err = %v, want NotFound for a reader diffing a draft", err)
 	}
 	if pc.diffCalls != 0 {
@@ -86,7 +86,7 @@ func TestDiffVersionsDraftIsForEditorsOnly(t *testing.T) {
 func TestDiffVersionsAllowedReaderGetsTheDiffUnrecorded(t *testing.T) {
 	pc, groups, ctx := diffSetup(t, false)
 
-	diffs, err := resolvers.DiffVersions(ctx, pc, groups, grant(), "pol-1-v1", "pol-1-v2")
+	diffs, err := resolvers.DiffVersions(ctx, pc, groups, grant(), nil, "pol-1-v1", "pol-1-v2")
 	if err != nil {
 		t.Fatalf("DiffVersions: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestDiffVersionsAllowedReaderGetsTheDiffUnrecorded(t *testing.T) {
 func TestDiffVersionsObfuscatedReaderGetsNoContent(t *testing.T) {
 	pc, groups, ctx := diffSetup(t, true)
 
-	diffs, err := resolvers.DiffVersions(ctx, pc, groups, noGrant(), "pol-1-v1", "pol-1-v2")
+	diffs, err := resolvers.DiffVersions(ctx, pc, groups, noGrant(), nil, "pol-1-v1", "pol-1-v2")
 	if err != nil {
 		t.Fatalf("DiffVersions: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestDiffVersionsObfuscatedReaderGetsNoContent(t *testing.T) {
 func TestDiffVersionsGrantOnlyReadRecordsBothVersions(t *testing.T) {
 	pc, groups, ctx := diffSetup(t, true)
 
-	diffs, err := resolvers.DiffVersions(ctx, pc, groups, grant(), "pol-1-v1", "pol-1-v2")
+	diffs, err := resolvers.DiffVersions(ctx, pc, groups, grant(), nil, "pol-1-v1", "pol-1-v2")
 	if err != nil {
 		t.Fatalf("DiffVersions: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestDiffVersionsServesNothingWhenTheReadIsNotRecorded(t *testing.T) {
 	pc, groups, ctx := diffSetup(t, true)
 	pc.recordErr = status.Error(codes.Unavailable, "audit down")
 
-	diffs, err := resolvers.DiffVersions(ctx, pc, groups, grant(), "pol-1-v1", "pol-1-v2")
+	diffs, err := resolvers.DiffVersions(ctx, pc, groups, grant(), nil, "pol-1-v1", "pol-1-v2")
 	if status.Code(err) != codes.Unavailable || diffs != nil {
 		t.Fatalf("got %v, %v; want Unavailable and no diff", diffs, err)
 	}

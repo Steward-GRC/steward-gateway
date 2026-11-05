@@ -144,7 +144,7 @@ func TestActiveBreakGlass_ThreadsIntoReadDecision(t *testing.T) {
 		RolesValue:     []string{"site-admin"},
 		IdpGroupsValue: []string{"Admins"}, // AD group name that matches the deny rule
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, groups, admin, nil, "pol-1")
+	p, err := resolvers.GetPolicy(ctx, pc, groups, admin, nil, nil, "pol-1")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestActiveBreakGlass_SkippedForNonSiteAdmin(t *testing.T) {
 		UserIDValue: "r",
 		RolesValue:  []string{"reader"},
 	})
-	if _, err := resolvers.GetPolicy(ctx, pc, groups, admin, nil, "pol-1"); err != nil {
+	if _, err := resolvers.GetPolicy(ctx, pc, groups, admin, nil, nil, "pol-1"); err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
 	if admin.activeCnt != 0 {

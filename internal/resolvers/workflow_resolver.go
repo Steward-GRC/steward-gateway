@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -322,14 +323,32 @@ func StageEligibleAssigneesResolver(
 	return out, nil
 }
 
-// WorkflowStatusResolver returns the current approval status + active stage for a policy version.
+// WorkflowStatusResolver returns the current approval status + active stage for a policy version,
+// under the same read decision as policyVersion (#42): workflow checks only that the gateway is
+// calling, so the caller is checked here before workflow is asked. An unknown version, a draft for
+// anyone but an editor, or a denied read is NotFound. An obfuscated reader gets the run without
+// its decision comments, which are free text about the content; names, states and times stay, as
+// a policy's metadata does for that reader. A read only a break-glass grant allows is recorded
+// first.
 func WorkflowStatusResolver(
 	ctx context.Context,
+	logger log.Logger,
 	client workflowv1.WorkflowServiceClient,
 	identity identityv1.IdentityReadServiceClient,
+	policyClient corev1.PolicyServiceClient,
 	categoryClient corev1.CategoryServiceClient,
+	adminClient identityv1.IdentityAdminServiceClient,
 	policyVersionID string,
 ) (*WorkflowStatus, error) {
+	_, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, policyVersionID)
+	if err != nil {
+		logger.Debug("workflow status refused by the version read decision",
+			log.F("policy_version_id", policyVersionID), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	hideComments := effect == authz.EffectObfuscate
+	logger.Debug("workflow status read decision",
+		log.F("policy_version_id", policyVersionID), log.F("effect", string(effect)), log.F("comments_hidden", hideComments))
 	resp, err := client.GetStatus(ctx, &workflowv1.GetStatusRequest{PolicyVersionId: policyVersionID})
 	if err != nil {
 		if st, ok := status.FromError(err); (ok && st.Code() == codes.NotFound) ||
@@ -354,7 +373,7 @@ func WorkflowStatusResolver(
 				Name:    nilIfEmpty(labels.userName(ctx, a.GetUserId())),
 				GroupID: nilIfEmpty(a.GetGroupId()),
 			}
-			if c := a.GetComment(); c != "" {
+			if c := a.GetComment(); c != "" && !hideComments {
 				s := c
 				entry.Comment = &s
 			}

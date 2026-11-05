@@ -11144,6 +11144,11 @@ extend type Query {
   Status of the approval saga for a policy version. Returns
   APPROVAL_STATUS_UNSPECIFIED when the workflow service has no record (the
   policy was published without going through an approval flow).
+
+  Read under the same decision as policyVersion: an unknown version, a draft
+  for anyone but an editor of the policy, or a denied read is NotFound, and
+  workflow is not asked. A reader who sees the policy obfuscated gets the run
+  without the decision comments (stageAssignees.comment is null).
   """
   workflowStatus(policyVersionId: ID!): WorkflowStatus!
 

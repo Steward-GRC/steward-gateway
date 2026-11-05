@@ -5,14 +5,22 @@ package resolvers_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"reflect"
 	"testing"
+	"time"
 
+	log "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
+	"github.com/Steward-GRC/steward-gateway/internal/principal"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TestResolveEffectiveWorkflow_WalksLineageAndDelegates verifies the gateway
@@ -429,4 +437,227 @@ func TestSignalWorkflowResolver_Unauthenticated(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected unauthenticated")
 	}
+}
+
+// --- WorkflowStatusResolver: the run is read under the version's read decision (#42) ---
+
+const statusComment = "clause 4 exposes the payroll data"
+
+// coreLikeVersions answers a version core doesn't hold the way core does:
+// NotFound "policy version not found".
+type coreLikeVersions struct {
+	*recordingPolicyClient
+}
+
+func (c coreLikeVersions) GetPolicyVersion(ctx context.Context, in *corev1.GetPolicyVersionRequest, opts ...grpc.CallOption) (*corev1.GetPolicyVersionResponse, error) {
+	if _, ok := c.versions[in.GetId()]; !ok {
+		return nil, status.Error(codes.NotFound, "policy version not found")
+	}
+	return c.recordingPolicyClient.GetPolicyVersion(ctx, in, opts...)
+}
+
+// statusRun is a run on pol-1-v1 where carol approved with a comment and dave
+// has not decided yet.
+func statusRun() *fakeWorkflowClient {
+	return &fakeWorkflowClient{statusResp: &workflowv1.GetStatusResponse{
+		RunId:           "run-1",
+		Status:          workflowv1.ApprovalStatus_APPROVAL_STATUS_IN_REVIEW,
+		CurrentStageIdx: 0,
+		StageNames:      []string{"Legal"},
+		StageAssignees: []*workflowv1.StageAssignees{{Assignees: []*workflowv1.StageAssignee{
+			{UserId: "carol", State: "approved", Comment: statusComment, DecidedAt: timestamppb.New(time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC))},
+			{UserId: "dave", State: "pending"},
+		}}},
+	}}
+}
+
+func statusIdentity() *labelIdentityFake {
+	return &labelIdentityFake{users: map[string]*identityv1.User{
+		"carol": {Id: "carol", Name: "Carol Approver"},
+		"dave":  {Id: "dave", Name: "Dave Approver"},
+	}}
+}
+
+// statusReadSetup is breakGlassReadSetup with core's NotFound for an unknown
+// version: one published standard policy pol-1 (version pol-1-v1) in IT.
+// denySiteAdmin denies the Admins group, so the site admin "sa" sees the
+// policy obfuscated and a non-admin in Admins is denied.
+func statusReadSetup(t *testing.T, denySiteAdmin bool) (coreLikeVersions, corev1.CategoryServiceClient, context.Context) {
+	t.Helper()
+	pc, groups, ctx := breakGlassReadSetup(t, denySiteAdmin)
+	return coreLikeVersions{recordingPolicyClient: pc}, groups, ctx
+}
+
+func readerCtx(t *testing.T) context.Context {
+	t.Helper()
+	return ctxWithStubClaims(t, principal.Static{UserIDValue: "u-1", RolesValue: []string{"reader"}})
+}
+
+func workflowStatus(ctx context.Context, wf *fakeWorkflowClient, pc corev1.PolicyServiceClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, versionID string) (*resolvers.WorkflowStatus, error) {
+	return resolvers.WorkflowStatusResolver(ctx, log.Nop(), wf, statusIdentity(), pc, groups, admin, versionID)
+}
+
+// assertSameRefusal checks err is the refusal the caller gets reading the
+// version directly (policyVersion), and that workflow was never asked.
+func assertSameRefusal(t *testing.T, ctx context.Context, err error, wf *fakeWorkflowClient, pc corev1.PolicyServiceClient, groups corev1.CategoryServiceClient, versionID string) {
+	t.Helper()
+	_, direct := resolvers.GetPolicyVersion(ctx, pc, groups, noGrant(), versionID)
+	if status.Code(direct) != codes.NotFound {
+		t.Fatalf("fixture: reading %s directly = %v, want NotFound", versionID, direct)
+	}
+	if status.Code(err) != status.Code(direct) || status.Convert(err).Message() != status.Convert(direct).Message() {
+		t.Fatalf("err = %v, want the direct read's refusal %v", err, direct)
+	}
+	if wf.lastStatus != nil {
+		t.Fatalf("workflow GetStatus called for %q, want no call for a refused read", wf.lastStatus.GetPolicyVersionId())
+	}
+}
+
+func TestWorkflowStatusResolver_ReaderRefusedOnSensitivePolicy(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	pc.policies["pol-1"].Sensitivity = corev1.Sensitivity_SENSITIVITY_SENSITIVE
+	ctx := readerCtx(t)
+	if _, err := resolvers.GetPolicy(ctx, pc, groups, noGrant(), nil, "pol-1"); status.Code(err) != codes.NotFound {
+		t.Fatalf("fixture: reading the sensitive policy = %v, want NotFound", err)
+	}
+	wf := statusRun()
+
+	out, err := workflowStatus(ctx, wf, pc, groups, noGrant(), "pol-1-v1")
+	if out != nil {
+		t.Fatalf("served the run of a sensitive policy to a reader without clearance: %+v", out)
+	}
+	assertSameRefusal(t, ctx, err, wf, pc, groups, "pol-1-v1")
+}
+
+func TestWorkflowStatusResolver_ReaderAllowedOnStandardPolicyUnchanged(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	wf := statusRun()
+
+	out, err := workflowStatus(readerCtx(t), wf, pc, groups, noGrant(), "pol-1-v1")
+	if err != nil {
+		t.Fatalf("WorkflowStatusResolver: %v", err)
+	}
+	comment, decided := statusComment, "2026-10-01T09:00:00Z"
+	carol, dave := "Carol Approver", "Dave Approver"
+	want := &resolvers.WorkflowStatus{
+		Status:          resolvers.ApprovalStatusApprovalStatusInReview,
+		RunID:           "run-1",
+		CurrentStageIdx: 0,
+		StageNames:      []string{"Legal"},
+		StageAssignees: [][]*resolvers.StageAssignee{{
+			{UserID: "carol", State: "approved", Name: &carol, Comment: &comment, DecidedAt: &decided},
+			{UserID: "dave", State: "pending", Name: &dave},
+		}},
+		StageUnitProgress: [][]*resolvers.StageUnitProgress{},
+	}
+	if !reflect.DeepEqual(out, want) {
+		t.Fatalf("status = %s, want %s", statusJSON(out), statusJSON(want))
+	}
+	if wf.lastStatus.GetPolicyVersionId() != "pol-1-v1" {
+		t.Fatalf("workflow asked for %q, want pol-1-v1", wf.lastStatus.GetPolicyVersionId())
+	}
+	if len(pc.recorded) != 0 {
+		t.Fatalf("recorded = %v, want none: the rules already allow this read", pc.recorded)
+	}
+}
+
+func TestWorkflowStatusResolver_DraftRunIsForEditorsOnly(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	pc.policies["pol-1"].OwnerUserId = "author-u"
+	pc.policies["pol-1"].CurrentDraftVersionId = "pol-1-v2"
+	pc.versions["pol-1-v2"] = &corev1.PolicyVersion{Id: "pol-1-v2", PolicyId: "pol-1", VersionNo: 2, Status: corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_DRAFT}
+
+	t.Run("non-editor refused", func(t *testing.T) {
+		ctx, wf := readerCtx(t), statusRun()
+		out, err := workflowStatus(ctx, wf, pc, groups, noGrant(), "pol-1-v2")
+		if out != nil {
+			t.Fatalf("served a draft's run to a non-editor: %+v", out)
+		}
+		assertSameRefusal(t, ctx, err, wf, pc, groups, "pol-1-v2")
+	})
+	t.Run("editor served", func(t *testing.T) {
+		ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "author-u", RolesValue: []string{"reader"}})
+		wf := statusRun()
+		out, err := workflowStatus(ctx, wf, pc, groups, noGrant(), "pol-1-v2")
+		if err != nil {
+			t.Fatalf("WorkflowStatusResolver: %v", err)
+		}
+		if out.RunID != "run-1" || out.StageAssignees[0][0].Comment == nil {
+			t.Fatalf("status = %s, want the run with its comments for the draft's editor", statusJSON(out))
+		}
+	})
+}
+
+func TestWorkflowStatusResolver_ObfuscatedViewerGetsNoComments(t *testing.T) {
+	pc, groups, ctx := statusReadSetup(t, true)
+	if p, err := resolvers.GetPolicy(ctx, pc, groups, noGrant(), nil, "pol-1"); err != nil || !p.ViewerCan.ContentObfuscated {
+		t.Fatalf("fixture: the site admin must see pol-1 obfuscated, got %+v, %v", p, err)
+	}
+
+	out, err := workflowStatus(ctx, statusRun(), pc, groups, noGrant(), "pol-1-v1")
+	if err != nil {
+		t.Fatalf("WorkflowStatusResolver: %v", err)
+	}
+	if out.RunID != "run-1" || out.Status != resolvers.ApprovalStatusApprovalStatusInReview || len(out.StageNames) != 1 {
+		t.Fatalf("status = %s, want the run's shape kept", statusJSON(out))
+	}
+	carol, dave := out.StageAssignees[0][0], out.StageAssignees[0][1]
+	if carol.Comment != nil || dave.Comment != nil {
+		t.Fatalf("comment served to an obfuscated viewer: %q", *carol.Comment)
+	}
+	if carol.Name == nil || *carol.Name != "Carol Approver" || carol.State != "approved" || carol.DecidedAt == nil {
+		t.Fatalf("assignee = %+v, want the name, state and decision time kept (metadata, as the policy's owner name is)", carol)
+	}
+	if len(pc.recorded) != 0 {
+		t.Fatalf("recorded = %v, want none without a grant", pc.recorded)
+	}
+}
+
+func TestWorkflowStatusResolver_BreakGlassReadIsRecordedAndServesComments(t *testing.T) {
+	pc, groups, ctx := statusReadSetup(t, true)
+
+	out, err := workflowStatus(ctx, statusRun(), pc, groups, grant(), "pol-1-v1")
+	if err != nil {
+		t.Fatalf("WorkflowStatusResolver: %v", err)
+	}
+	if c := out.StageAssignees[0][0].Comment; c == nil || *c != statusComment {
+		t.Fatalf("comment = %v, want the real comment under the grant", c)
+	}
+	if len(pc.recorded) != 1 || pc.recorded[0].GetPolicyVersionId() != "pol-1-v1" {
+		t.Fatalf("recorded = %v, want the grant-only read recorded once", pc.recorded)
+	}
+}
+
+// Workflow holds no run for a version core doesn't know, which used to come
+// back as APPROVAL_STATUS_UNSPECIFIED; it is now the read path's NotFound, the
+// same answer a refused caller gets, so the two can't be told apart.
+func TestWorkflowStatusResolver_UnknownVersionIsTheReadPathsNotFound(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	ctx := readerCtx(t)
+	wf := &fakeWorkflowClient{statusErr: status.Error(codes.NotFound, "no approval run for policy version")}
+
+	out, err := workflowStatus(ctx, wf, pc, groups, noGrant(), "missing")
+	if out != nil {
+		t.Fatalf("status = %+v, want none for an unknown version", out)
+	}
+	assertSameRefusal(t, ctx, err, wf, pc, groups, "missing")
+}
+
+func TestWorkflowStatusResolver_ReadableVersionWithoutARunIsUnspecified(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	wf := &fakeWorkflowClient{statusErr: status.Error(codes.NotFound, "no approval run for policy version")}
+
+	out, err := workflowStatus(readerCtx(t), wf, pc, groups, noGrant(), "pol-1-v1")
+	if err != nil {
+		t.Fatalf("WorkflowStatusResolver: %v", err)
+	}
+	if out.Status != resolvers.ApprovalStatusApprovalStatusUnspecified || out.RunID != "" || len(out.StageAssignees) != 0 {
+		t.Fatalf("status = %s, want APPROVAL_STATUS_UNSPECIFIED with no run", statusJSON(out))
+	}
+}
+
+// statusJSON renders a status with its pointers followed, for failure messages.
+func statusJSON(v any) string {
+	b, _ := json.Marshal(v)
+	return string(b)
 }

@@ -53,7 +53,7 @@ func MyDrafts(ctx context.Context, client corev1.PolicyServiceClient, categoryCl
 		}
 		drafts = append(drafts, gql)
 	}
-	return resolvePolicyReadModel(ctx, drafts, client, categoryClient, adminClient, identity)
+	return resolvePolicyReadModel(ctx, drafts, client, categoryClient, adminClient, identity, nil)
 }
 
 // ReassignUserPolicies bulk-transfers a user's owned policies and category RACI author grants to

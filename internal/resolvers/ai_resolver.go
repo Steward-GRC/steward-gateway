@@ -491,7 +491,7 @@ func PolicyVersionSummaryResolver(ctx context.Context, client aiv1.AiServiceClie
 	if !ok || claims == nil || claims.UserID() == "" {
 		return nil, fmt.Errorf("unauthenticated")
 	}
-	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, versionID); err != nil || effect != authz.EffectAllow {
+	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, nil, versionID); err != nil || effect != authz.EffectAllow {
 		return nil, nil
 	}
 	resp, err := client.GetPolicySummary(ctx, &aiv1.GetPolicySummaryRequest{VersionId: versionID})

@@ -76,7 +76,7 @@ func grant() *fakeBreakGlassAdmin {
 func TestGetPolicyVersionRecordsABreakGlassRead(t *testing.T) {
 	pc, groups, ctx := breakGlassReadSetup(t, true)
 
-	v, err := resolvers.GetPolicyVersion(ctx, pc, groups, grant(), "pol-1-v1")
+	v, err := resolvers.GetPolicyVersion(ctx, pc, groups, grant(), nil, "pol-1-v1")
 	if err != nil {
 		t.Fatalf("GetPolicyVersion: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestGetPolicyVersionRecordsABreakGlassRead(t *testing.T) {
 func TestGetPolicyVersionWithoutAGrantStaysObfuscatedAndUnrecorded(t *testing.T) {
 	pc, groups, ctx := breakGlassReadSetup(t, true)
 
-	v, err := resolvers.GetPolicyVersion(ctx, pc, groups, &fakeBreakGlassAdmin{activeResp: &identityv1.ActiveBreakGlassResponse{}}, "pol-1-v1")
+	v, err := resolvers.GetPolicyVersion(ctx, pc, groups, &fakeBreakGlassAdmin{activeResp: &identityv1.ActiveBreakGlassResponse{}}, nil, "pol-1-v1")
 	if err != nil {
 		t.Fatalf("GetPolicyVersion: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestGetPolicyVersionWithoutAGrantStaysObfuscatedAndUnrecorded(t *testing.T)
 func TestGetPolicyVersionReadableWithoutTheGrantIsNotABreakGlassRead(t *testing.T) {
 	pc, groups, ctx := breakGlassReadSetup(t, false)
 
-	if _, err := resolvers.GetPolicyVersion(ctx, pc, groups, grant(), "pol-1-v1"); err != nil {
+	if _, err := resolvers.GetPolicyVersion(ctx, pc, groups, grant(), nil, "pol-1-v1"); err != nil {
 		t.Fatalf("GetPolicyVersion: %v", err)
 	}
 	if len(pc.recorded) != 0 {
@@ -118,7 +118,7 @@ func TestGetPolicyVersionServesNothingWhenTheReadIsNotRecorded(t *testing.T) {
 	pc, groups, ctx := breakGlassReadSetup(t, true)
 	pc.recordErr = status.Error(codes.Unavailable, "audit down")
 
-	v, err := resolvers.GetPolicyVersion(ctx, pc, groups, grant(), "pol-1-v1")
+	v, err := resolvers.GetPolicyVersion(ctx, pc, groups, grant(), nil, "pol-1-v1")
 	if status.Code(err) != codes.Unavailable || v != nil {
 		t.Fatalf("got %v, %v; want Unavailable and no version", v, err)
 	}

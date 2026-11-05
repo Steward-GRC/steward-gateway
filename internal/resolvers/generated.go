@@ -9436,6 +9436,8 @@ type Policy {
   createdAt: String       # RFC-3339 timestamp of first-version creation; null when unavailable
   updatedAt: String       # RFC-3339 timestamp of the last write to the policy row; null when unavailable
   currentPublishedVersionId: ID
+  # Null for a viewer who can't edit, unless they hold a pending approval
+  # seat on the draft; then they see it until they decide.
   currentDraftVersionId: ID
   # The version number/status of whichever version is current (published if
   # set, else the draft). Null when the policy has neither. versionNo is 0
@@ -11146,8 +11148,9 @@ extend type Query {
   policy was published without going through an approval flow).
 
   Read under the same decision as policyVersion: an unknown version, a draft
-  for anyone but an editor of the policy, or a denied read is NotFound, and
-  workflow is not asked. A reader who sees the policy obfuscated gets the run
+  for anyone but an editor of the policy or the holder of a pending approval
+  seat on that draft, or a denied read is NotFound, and workflow is not asked
+  for the run. A reader who sees the policy obfuscated gets the run
   without the decision comments (stageAssignees.comment is null).
   """
   workflowStatus(policyVersionId: ID!): WorkflowStatus!

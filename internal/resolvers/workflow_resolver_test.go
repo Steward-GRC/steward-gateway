@@ -501,7 +501,7 @@ func workflowStatus(ctx context.Context, wf *fakeWorkflowClient, pc corev1.Polic
 // version directly (policyVersion), and that workflow was never asked.
 func assertSameRefusal(t *testing.T, ctx context.Context, err error, wf *fakeWorkflowClient, pc corev1.PolicyServiceClient, groups corev1.CategoryServiceClient, versionID string) {
 	t.Helper()
-	_, direct := resolvers.GetPolicyVersion(ctx, pc, groups, noGrant(), versionID)
+	_, direct := resolvers.GetPolicyVersion(ctx, pc, groups, noGrant(), nil, versionID)
 	if status.Code(direct) != codes.NotFound {
 		t.Fatalf("fixture: reading %s directly = %v, want NotFound", versionID, direct)
 	}
@@ -517,7 +517,7 @@ func TestWorkflowStatusResolver_ReaderRefusedOnSensitivePolicy(t *testing.T) {
 	pc, groups, _ := statusReadSetup(t, false)
 	pc.policies["pol-1"].Sensitivity = corev1.Sensitivity_SENSITIVITY_SENSITIVE
 	ctx := readerCtx(t)
-	if _, err := resolvers.GetPolicy(ctx, pc, groups, noGrant(), nil, "pol-1"); status.Code(err) != codes.NotFound {
+	if _, err := resolvers.GetPolicy(ctx, pc, groups, noGrant(), nil, nil, "pol-1"); status.Code(err) != codes.NotFound {
 		t.Fatalf("fixture: reading the sensitive policy = %v, want NotFound", err)
 	}
 	wf := statusRun()
@@ -590,7 +590,7 @@ func TestWorkflowStatusResolver_DraftRunIsForEditorsOnly(t *testing.T) {
 
 func TestWorkflowStatusResolver_ObfuscatedViewerGetsNoComments(t *testing.T) {
 	pc, groups, ctx := statusReadSetup(t, true)
-	if p, err := resolvers.GetPolicy(ctx, pc, groups, noGrant(), nil, "pol-1"); err != nil || !p.ViewerCan.ContentObfuscated {
+	if p, err := resolvers.GetPolicy(ctx, pc, groups, noGrant(), nil, nil, "pol-1"); err != nil || !p.ViewerCan.ContentObfuscated {
 		t.Fatalf("fixture: the site admin must see pol-1 obfuscated, got %+v, %v", p, err)
 	}
 

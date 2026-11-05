@@ -357,7 +357,7 @@ func TestGetPolicy_ViewerCan_ExcludedSiteAdminObfuscated(t *testing.T) {
 		RolesValue:     []string{"site-admin"},
 		IdpGroupsValue: []string{"Admins"}, // AD group name that matches the deny rule
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-1")
+	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-1")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -398,7 +398,7 @@ func TestGetPolicy_ViewerCan_ScopedAuthor(t *testing.T) {
 		ScopedRolesValue: []principal.ScopedRole{{Role: "author", Category: "IT"}},
 	})
 	// In-category: edit allowed.
-	itp, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-it")
+	itp, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy it: %v", err)
 	}
@@ -406,7 +406,7 @@ func TestGetPolicy_ViewerCan_ScopedAuthor(t *testing.T) {
 		t.Fatalf("scoped author in-category must have edit=true; got %+v", itp.ViewerCan)
 	}
 	// Out-of-category: edit denied.
-	hrp, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-hr")
+	hrp, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-hr")
 	if err != nil {
 		t.Fatalf("GetPolicy hr: %v", err)
 	}
@@ -436,7 +436,7 @@ func TestGetPolicy_ViewerCan_GroupOwnerInheritsApprover(t *testing.T) {
 	ctx := ctxWithStubClaims(t, principal.Static{
 		UserIDValue: "owner-u",
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-it")
+	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -464,7 +464,7 @@ func TestGetPolicy_ViewerCan_OwnerOfAncestorInheritsApprover(t *testing.T) {
 		"pol-c": {Id: "pol-c", HomeCategoryId: "g-child", Number: "POL-NET-1", Title: "child pol"},
 	}}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "owner-u"})
-	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-c")
+	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-c")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -491,7 +491,7 @@ func TestGetPolicy_ViewerCan_NonOwnerNonApproverDenied(t *testing.T) {
 		UserIDValue: "reader-u",
 		RolesValue:  []string{"reader"},
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-it")
+	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -523,7 +523,7 @@ func TestGetPolicy_ViewerCan_SiteAdminNotBlanketApprover(t *testing.T) {
 		UserIDValue: "sa",
 		RolesValue:  []string{"site-admin"},
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-it")
+	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -560,7 +560,7 @@ func TestGetPolicy_ViewerCan_SiteAdminApprovesOwnedGroup(t *testing.T) {
 		UserIDValue: "sa",
 		RolesValue:  []string{"site-admin"},
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-it")
+	p, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -597,7 +597,7 @@ func TestListPolicies_FiltersHiddenRows(t *testing.T) {
 		RolesValue:     []string{"reader"},
 		IdpGroupsValue: []string{"Contractors"}, // AD group name that matches the RACI deny rule
 	})
-	out, err := resolvers.ListPolicies(ctx, pc, groups, nil, nil, "g-it", new(true), nil)
+	out, err := resolvers.ListPolicies(ctx, pc, groups, nil, nil, nil, "g-it", new(true), nil)
 	if err != nil {
 		t.Fatalf("ListPolicies: %v", err)
 	}
@@ -637,7 +637,7 @@ func TestGetPolicy_Hidden_NotFound(t *testing.T) {
 		RolesValue:     []string{"reader"},
 		IdpGroupsValue: []string{"Contractors"},
 	})
-	if _, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-it"); status.Code(err) != codes.NotFound {
+	if _, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-it"); status.Code(err) != codes.NotFound {
 		t.Fatalf("RACI-denied policy must yield NotFound; got %v", err)
 	}
 }
@@ -1020,7 +1020,7 @@ func TestGetPolicy_DraftPointer_HiddenFromNonEditor(t *testing.T) {
 	pc, gc := draftPointerEnv(nil)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "reader-u", RolesValue: []string{"reader"}})
 
-	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol")
+	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -1039,7 +1039,7 @@ func TestGetPolicy_DraftPointer_VisibleToEditor(t *testing.T) {
 	pc, gc := draftPointerEnv([]*corev1.CategoryRule{authorRule("editor-u", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "editor-u", RolesValue: []string{"reader"}})
 
-	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol")
+	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -1058,7 +1058,7 @@ func TestListPolicies_DraftPointer_HiddenFromNonEditor(t *testing.T) {
 	pc.listResult = []string{"pol"}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "reader-u", RolesValue: []string{"reader"}})
 
-	out, err := resolvers.ListPolicies(ctx, pc, gc, nil, nil, "g-cat", new(true), nil)
+	out, err := resolvers.ListPolicies(ctx, pc, gc, nil, nil, nil, "g-cat", new(true), nil)
 	if err != nil {
 		t.Fatalf("ListPolicies: %v", err)
 	}
@@ -1077,7 +1077,7 @@ func TestGetPolicyVersion_DraftDeniedToNonEditor(t *testing.T) {
 	pc, gc := draftPointerEnv(nil)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "reader-u", RolesValue: []string{"reader"}})
 
-	if _, err := resolvers.GetPolicyVersion(ctx, pc, gc, nil, "draft-1"); status.Code(err) != codes.NotFound {
+	if _, err := resolvers.GetPolicyVersion(ctx, pc, gc, nil, nil, "draft-1"); status.Code(err) != codes.NotFound {
 		t.Fatalf("non-editor must not read a DRAFT version; want NotFound, got %v", err)
 	}
 }
@@ -1088,7 +1088,7 @@ func TestGetPolicyVersion_DraftReadableByEditor(t *testing.T) {
 	pc, gc := draftPointerEnv([]*corev1.CategoryRule{authorRule("editor-u", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "editor-u", RolesValue: []string{"reader"}})
 
-	v, err := resolvers.GetPolicyVersion(ctx, pc, gc, nil, "draft-1")
+	v, err := resolvers.GetPolicyVersion(ctx, pc, gc, nil, nil, "draft-1")
 	if err != nil {
 		t.Fatalf("editor GetPolicyVersion(draft): %v", err)
 	}
@@ -1103,7 +1103,7 @@ func TestGetPolicyVersion_PublishedReadableByReader(t *testing.T) {
 	pc, gc := draftPointerEnv(nil)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "reader-u", RolesValue: []string{"reader"}})
 
-	v, err := resolvers.GetPolicyVersion(ctx, pc, gc, nil, "pub-1")
+	v, err := resolvers.GetPolicyVersion(ctx, pc, gc, nil, nil, "pub-1")
 	if err != nil {
 		t.Fatalf("reader GetPolicyVersion(published): %v", err)
 	}
@@ -1177,7 +1177,7 @@ func TestListPolicies_ForwardsDocumentTypeFilter(t *testing.T) {
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "r", RolesValue: []string{"reader"}})
 
 	// Explicit PROCEDURE filter → proto DOCUMENT_TYPE_PROCEDURE.
-	if _, err := resolvers.ListPolicies(ctx, pc, groups, nil, nil, "g-it", new(true), new(resolvers.DocumentTypeProcedure)); err != nil {
+	if _, err := resolvers.ListPolicies(ctx, pc, groups, nil, nil, nil, "g-it", new(true), new(resolvers.DocumentTypeProcedure)); err != nil {
 		t.Fatalf("ListPolicies(PROCEDURE): %v", err)
 	}
 	if pc.lastList == nil {
@@ -1188,7 +1188,7 @@ func TestListPolicies_ForwardsDocumentTypeFilter(t *testing.T) {
 	}
 
 	// nil filter → proto UNSPECIFIED (policies-only back-compat).
-	if _, err := resolvers.ListPolicies(ctx, pc, groups, nil, nil, "g-it", new(true), nil); err != nil {
+	if _, err := resolvers.ListPolicies(ctx, pc, groups, nil, nil, nil, "g-it", new(true), nil); err != nil {
 		t.Fatalf("ListPolicies(nil): %v", err)
 	}
 	if pc.lastList.GetDocumentType() != corev1.DocumentType_DOCUMENT_TYPE_UNSPECIFIED {
@@ -1211,7 +1211,7 @@ func TestPolicyFromProto_MapsDocumentType(t *testing.T) {
 	}}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "r", RolesValue: []string{"reader"}})
 
-	proc, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-proc")
+	proc, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-proc")
 	if err != nil {
 		t.Fatalf("GetPolicy(proc): %v", err)
 	}
@@ -1219,7 +1219,7 @@ func TestPolicyFromProto_MapsDocumentType(t *testing.T) {
 		t.Fatalf("proto PROCEDURE must map to GQL PROCEDURE; got %v", proc.DocumentType)
 	}
 
-	uns, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-uns")
+	uns, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-uns")
 	if err != nil {
 		t.Fatalf("GetPolicy(unspecified): %v", err)
 	}
@@ -1287,7 +1287,7 @@ func TestPolicyByNumber_HappyPath(t *testing.T) {
 		"pol-1": {Id: "pol-1", HomeCategoryId: "g-it", Number: "POL-IT-000001", Title: "Sec", CurrentPublishedVersionId: "v1"},
 	}}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u", RolesValue: []string{"reader"}})
-	p, err := resolvers.PolicyByNumber(ctx, pc, groups, nil, nil, "POL-IT-000001")
+	p, err := resolvers.PolicyByNumber(ctx, pc, groups, nil, nil, nil, "POL-IT-000001")
 	if err != nil {
 		t.Fatalf("PolicyByNumber: %v", err)
 	}
@@ -1299,7 +1299,7 @@ func TestPolicyByNumber_HappyPath(t *testing.T) {
 func TestPolicyByNumber_NotFoundPropagates(t *testing.T) {
 	pc := &fakePolicyClient{policies: map[string]*corev1.Policy{}}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u", RolesValue: []string{"reader"}})
-	if _, err := resolvers.PolicyByNumber(ctx, pc, nil, nil, nil, "POL-NOPE-000001"); err == nil {
+	if _, err := resolvers.PolicyByNumber(ctx, pc, nil, nil, nil, nil, "POL-NOPE-000001"); err == nil {
 		t.Fatal("expected error for unknown number")
 	}
 }
@@ -1360,7 +1360,7 @@ func TestPolicyFromProto_MapsUpdatedAtAndCurrentVersion(t *testing.T) {
 		ScopedRolesValue: []principal.ScopedRole{{Role: "author", Category: "IT"}},
 	})
 
-	cur, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-cur")
+	cur, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-cur")
 	if err != nil {
 		t.Fatalf("GetPolicy(cur): %v", err)
 	}
@@ -1374,7 +1374,7 @@ func TestPolicyFromProto_MapsUpdatedAtAndCurrentVersion(t *testing.T) {
 		t.Fatalf("unexpected CurrentVersionStatus: %v", cur.CurrentVersionStatus)
 	}
 
-	none, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, "pol-none")
+	none, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-none")
 	if err != nil {
 		t.Fatalf("GetPolicy(none): %v", err)
 	}
@@ -1406,7 +1406,7 @@ func TestGetPolicyVersion_MapsCreatedAtAndPublishedAt(t *testing.T) {
 	}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "r", RolesValue: []string{"reader"}})
 	_ = groups
-	v, err := resolvers.GetPolicyVersion(ctx, pc, groups, nil, "v1")
+	v, err := resolvers.GetPolicyVersion(ctx, pc, groups, nil, nil, "v1")
 	if err != nil {
 		t.Fatalf("GetPolicyVersion: %v", err)
 	}

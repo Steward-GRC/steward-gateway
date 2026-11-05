@@ -266,6 +266,8 @@ type Policy {
   createdAt: String       # RFC-3339 timestamp of first-version creation; null when unavailable
   updatedAt: String       # RFC-3339 timestamp of the last write to the policy row; null when unavailable
   currentPublishedVersionId: ID
+  # Null for a viewer who can't edit, unless they hold a pending approval
+  # seat on the draft; then they see it until they decide.
   currentDraftVersionId: ID
   # The version number/status of whichever version is current (published if
   # set, else the draft). Null when the policy has neither. versionNo is 0

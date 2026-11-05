@@ -326,10 +326,10 @@ func StageEligibleAssigneesResolver(
 // WorkflowStatusResolver returns the current approval status + active stage for a policy version,
 // under the same read decision as policyVersion (#42): workflow checks only that the gateway is
 // calling, so the caller is checked here before workflow is asked. An unknown version, a draft for
-// anyone but an editor, or a denied read is NotFound. An obfuscated reader gets the run without
-// its decision comments, which are free text about the content; names, states and times stay, as
-// a policy's metadata does for that reader. A read only a break-glass grant allows is recorded
-// first.
+// anyone but an editor or the holder of a pending approval seat on it (#44), or a denied read is
+// NotFound. An obfuscated reader gets the run without its decision comments, which are free text
+// about the content; names, states and times stay, as a policy's metadata does for that reader. A
+// read only a break-glass grant allows is recorded first.
 func WorkflowStatusResolver(
 	ctx context.Context,
 	logger log.Logger,
@@ -340,7 +340,7 @@ func WorkflowStatusResolver(
 	adminClient identityv1.IdentityAdminServiceClient,
 	policyVersionID string,
 ) (*WorkflowStatus, error) {
-	_, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, policyVersionID)
+	_, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, client, policyVersionID)
 	if err != nil {
 		logger.Debug("workflow status refused by the version read decision",
 			log.F("policy_version_id", policyVersionID), log.F("code", status.Code(err).String()))

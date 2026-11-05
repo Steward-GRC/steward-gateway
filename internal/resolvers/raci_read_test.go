@@ -56,7 +56,7 @@ func TestMeritRACIRead_OwnerReads(t *testing.T) {
 	ctx := ctxWithStubClaims(t, principal.Static{
 		UserIDValue: "owner-u",
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol-it")
+	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestMeritRACIRead_EveryoneAllowReads(t *testing.T) {
 		UserIDValue: "plain-user",
 		RolesValue:  []string{"reader"},
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol-it")
+	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -123,12 +123,12 @@ func TestMeritRACIRead_GroupDenyHidesNonAdmin(t *testing.T) {
 	})
 
 	// GetPolicy → NotFound (existence hidden).
-	if _, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol-it"); status.Code(err) != codes.NotFound {
+	if _, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol-it"); status.Code(err) != codes.NotFound {
 		t.Fatalf("RACI-denied non-admin must get NotFound; got %v", err)
 	}
 
 	// ListPolicies → filtered out.
-	out, err := resolvers.ListPolicies(ctx, pc, gc, nil, nil, "g-it", new(true), nil)
+	out, err := resolvers.ListPolicies(ctx, pc, gc, nil, nil, nil, "g-it", new(true), nil)
 	if err != nil {
 		t.Fatalf("ListPolicies: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestMeritRACIRead_GroupDenyObfuscatesSiteAdmin(t *testing.T) {
 		RolesValue:     []string{"site-admin"},
 		IdpGroupsValue: []string{"Contractors"},
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol-it")
+	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestMeritRACIRead_OverrideAllowBeatsMeritDeny(t *testing.T) {
 			{PolicyNumber: "POL-IT-1", Effect: "allow"},
 		},
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol-it")
+	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestMeritRACIRead_OverrideDenyHidesNonAdmin(t *testing.T) {
 			{PolicyNumber: "POL-IT-1", Effect: "deny"},
 		},
 	})
-	if _, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol-it"); status.Code(err) != codes.NotFound {
+	if _, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol-it"); status.Code(err) != codes.NotFound {
 		t.Fatalf("override deny on non-admin must yield NotFound; got %v", err)
 	}
 }
@@ -257,7 +257,7 @@ func TestMeritRACIRead_OverrideDenyObfuscatesSiteAdmin(t *testing.T) {
 			{PolicyNumber: "POL-IT-1", Effect: "deny"},
 		},
 	})
-	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol-it")
+	p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy: %v", err)
 	}
@@ -351,7 +351,7 @@ func TestGetPolicy_ViewerCan_Ack(t *testing.T) {
 				"pol-it": {Id: "pol-it", HomeCategoryId: "g-it", Number: "POL-IT-1", Title: "IT pol", CurrentPublishedVersionId: "pol-it-v1"},
 			}}
 			ctx := ctxWithStubClaims(t, tc.claims)
-			p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol-it")
+			p, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol-it")
 			if err != nil {
 				t.Fatalf("GetPolicy: %v", err)
 			}
@@ -405,7 +405,7 @@ func TestMeritRACIRead_BreakGlassFlipsObfuscate(t *testing.T) {
 	})
 
 	// Before break-glass → obfuscated (denied by group RACI rule, obfuscated for site-admin).
-	p1, err := resolvers.GetPolicy(ctx, pc, gc, admin, nil, "pol-it")
+	p1, err := resolvers.GetPolicy(ctx, pc, gc, admin, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy (no break-glass): %v", err)
 	}
@@ -417,7 +417,7 @@ func TestMeritRACIRead_BreakGlassFlipsObfuscate(t *testing.T) {
 	admin.active = append(admin.active, "POL-IT-1")
 
 	// After break-glass → real content.
-	p2, err := resolvers.GetPolicy(ctx, pc, gc, admin, nil, "pol-it")
+	p2, err := resolvers.GetPolicy(ctx, pc, gc, admin, nil, nil, "pol-it")
 	if err != nil {
 		t.Fatalf("GetPolicy (with break-glass): %v", err)
 	}
@@ -458,12 +458,12 @@ func TestMeritRACIRead_GroupDenyMatchesADGroups(t *testing.T) {
 	})
 
 	// GetPolicy must return NotFound (hidden by group deny).
-	if _, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, "pol-it"); status.Code(err) != codes.NotFound {
+	if _, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol-it"); status.Code(err) != codes.NotFound {
 		t.Fatalf("RACI group-deny must match AD group names (IdpGroupsValue), not platform IDs; got %v", err)
 	}
 
 	// ListPolicies must filter the policy out.
-	out, err := resolvers.ListPolicies(ctx, pc, gc, nil, nil, "g-it", new(true), nil)
+	out, err := resolvers.ListPolicies(ctx, pc, gc, nil, nil, nil, "g-it", new(true), nil)
 	if err != nil {
 		t.Fatalf("ListPolicies: %v", err)
 	}
@@ -505,10 +505,10 @@ func TestMeritRACIRead_SensitiveGateHidesWithoutClearance(t *testing.T) {
 		UserIDValue: "reader-u",
 		RolesValue:  []string{"reader"},
 	})
-	if _, err := resolvers.GetPolicy(readerCtx, pc, gc, nil, nil, "pol-sens"); status.Code(err) != codes.NotFound {
+	if _, err := resolvers.GetPolicy(readerCtx, pc, gc, nil, nil, nil, "pol-sens"); status.Code(err) != codes.NotFound {
 		t.Fatalf("sensitive without clearance must yield NotFound; got %v", err)
 	}
-	out, err := resolvers.ListPolicies(readerCtx, pc, gc, nil, nil, "g-it", new(true), nil)
+	out, err := resolvers.ListPolicies(readerCtx, pc, gc, nil, nil, nil, "g-it", new(true), nil)
 	if err != nil {
 		t.Fatalf("ListPolicies: %v", err)
 	}
@@ -522,7 +522,7 @@ func TestMeritRACIRead_SensitiveGateHidesWithoutClearance(t *testing.T) {
 		RolesValue:         []string{"compliance-admin"},
 		ReadSensitiveValue: true,
 	})
-	visible, err := resolvers.ListPolicies(clearedCtx, pc, gc, nil, nil, "g-it", new(true), nil)
+	visible, err := resolvers.ListPolicies(clearedCtx, pc, gc, nil, nil, nil, "g-it", new(true), nil)
 	if err != nil {
 		t.Fatalf("ListPolicies (read-sensitive grant): %v", err)
 	}

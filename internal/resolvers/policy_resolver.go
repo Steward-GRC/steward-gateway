@@ -204,7 +204,7 @@ func SetPolicyAck(
 }
 
 // draftPolicyVersionStatus is PolicyVersion.status for a draft: only an editor
-// may see a draft version.
+// (or the holder of a pending approval seat on it, #44) may see a draft version.
 var draftPolicyVersionStatus = corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_DRAFT.String()
 
 func policyVersionFromProto(v *corev1.PolicyVersion) *PolicyVersion {
@@ -234,8 +234,11 @@ func policyVersionFromProto(v *corev1.PolicyVersion) *PolicyVersion {
 // viewerCan, ownerName and createdAt filled. Hidden (denied) policies are
 // dropped. A viewer who can't edit never learns a draft exists: the draft
 // pointer is cleared, and a never-published policy is dropped entirely. The
-// owner-name and createdAt lookups are best effort.
-func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient) ([]*Policy, error) {
+// exception is a draft the viewer holds a pending approval seat on (#44),
+// which they see until they decide; workflow is asked for the seats only when
+// a draft would otherwise be hidden, once per call. The owner-name and
+// createdAt lookups are best effort.
+func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient) ([]*Policy, error) {
 	if len(policies) == 0 {
 		return policies, nil
 	}
@@ -244,6 +247,7 @@ func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClien
 		return []*Policy{}, nil
 	}
 	subj.BreakGlass = activeBreakGlassFor(ctx, adminClient, subj.SiteAdmin())
+	seats := newPendingSeats(workflow)
 	visible := make([]*Policy, 0, len(policies))
 	for _, p := range policies {
 		raci, raciOK, rerr := computeRACIResult(ctx, subj, p, categoryClient)
@@ -260,7 +264,7 @@ func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClien
 		}
 		psubj := grantOwnerApprover(ctx, subj, res, lineage, categoryClient)
 		p.ViewerCan = viewerCanFor(psubj, res, readD, raci, p.OwnerUserID == subj.UserID)
-		if !p.ViewerCan.Edit {
+		if !p.ViewerCan.Edit && !seats.holds(ctx, derefOrEmpty(p.CurrentDraftVersionID)) {
 			p.CurrentDraftVersionID = nil
 			if derefOrEmpty(p.CurrentPublishedVersionID) == "" {
 				continue
@@ -340,7 +344,7 @@ func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClien
 // GetPolicy returns one policy. A policy the caller may not see is NotFound,
 // so its existence doesn't leak; an obfuscated one is returned with
 // viewerCan.contentObfuscated set.
-func GetPolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, id string) (*Policy, error) {
+func GetPolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, id string) (*Policy, error) {
 	if _, err := subjectFromCtx(ctx); err != nil {
 		return nil, err
 	}
@@ -352,7 +356,7 @@ func GetPolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryC
 	if p == nil {
 		return nil, status.Error(codes.NotFound, "policy not found")
 	}
-	visible, err := resolvePolicyReadModel(ctx, []*Policy{p}, client, categoryClient, adminClient, identity)
+	visible, err := resolvePolicyReadModel(ctx, []*Policy{p}, client, categoryClient, adminClient, identity, workflow)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +368,7 @@ func GetPolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryC
 
 // PolicyByNumber returns one policy by its rendered number, the same read
 // model and NotFound behavior as GetPolicy.
-func PolicyByNumber(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, number string) (*Policy, error) {
+func PolicyByNumber(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, number string) (*Policy, error) {
 	if _, err := subjectFromCtx(ctx); err != nil {
 		return nil, err
 	}
@@ -376,7 +380,7 @@ func PolicyByNumber(ctx context.Context, client corev1.PolicyServiceClient, cate
 	if p == nil {
 		return nil, status.Error(codes.NotFound, "policy not found")
 	}
-	visible, err := resolvePolicyReadModel(ctx, []*Policy{p}, client, categoryClient, adminClient, identity)
+	visible, err := resolvePolicyReadModel(ctx, []*Policy{p}, client, categoryClient, adminClient, identity, workflow)
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +392,7 @@ func PolicyByNumber(ctx context.Context, client corev1.PolicyServiceClient, cate
 
 // ListPolicies returns the visible policies in categoryID, and its subtree
 // when includeDescendants is set.
-func ListPolicies(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, categoryID string, includeDescendants *bool, documentType *DocumentType) ([]*Policy, error) {
+func ListPolicies(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, categoryID string, includeDescendants *bool, documentType *DocumentType) ([]*Policy, error) {
 	inc := false
 	if includeDescendants != nil {
 		inc = *includeDescendants
@@ -401,7 +405,7 @@ func ListPolicies(ctx context.Context, client corev1.PolicyServiceClient, catego
 	for _, p := range resp.Policies {
 		out = append(out, policyFromProto(p))
 	}
-	return resolvePolicyReadModel(ctx, out, client, categoryClient, adminClient, identity)
+	return resolvePolicyReadModel(ctx, out, client, categoryClient, adminClient, identity, workflow)
 }
 
 // versionReadDecision is the read effect on the policy that owns a version.
@@ -483,9 +487,10 @@ type versionRead struct {
 }
 
 // resolveVersionRead loads a version and its policy's read decision. It fails
-// closed: an unknown version, a draft for anyone but an editor, or a denied
-// read is NotFound, so the caller serves nothing and asks no backend for it.
-func resolveVersionRead(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, id string) (versionRead, error) {
+// closed: an unknown version, a draft for anyone but an editor or a holder of
+// a pending approval seat on it (#44), or a denied read is NotFound, so the
+// caller serves nothing and asks no backend for it.
+func resolveVersionRead(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, seats *pendingSeats, id string) (versionRead, error) {
 	notFound := status.Error(codes.NotFound, "policy version not found")
 	resp, err := client.GetPolicyVersion(ctx, &corev1.GetPolicyVersionRequest{Id: id})
 	if err != nil {
@@ -496,7 +501,7 @@ func resolveVersionRead(ctx context.Context, client corev1.PolicyServiceClient, 
 		return versionRead{}, notFound
 	}
 	if v.Status == draftPolicyVersionStatus {
-		if _, aerr := authorizeEffectiveAuthor(ctx, client, categoryClient, v.PolicyID); aerr != nil {
+		if _, aerr := authorizeEffectiveAuthor(ctx, client, categoryClient, v.PolicyID); aerr != nil && !seats.holds(ctx, v.ID) {
 			return versionRead{}, notFound
 		}
 	}
@@ -510,12 +515,15 @@ func resolveVersionRead(ctx context.Context, client corev1.PolicyServiceClient, 
 // authorizeVersionReads resolves the read decision on every version a response
 // draws content from and returns the most restrictive effect. When that effect
 // serves the real content, each grant-only read is recorded first; a failed
-// record is returned so nothing is served unrecorded.
-func authorizeVersionReads(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, ids ...string) ([]versionRead, authz.Effect, error) {
+// record is returned so nothing is served unrecorded. With a workflow client,
+// a draft is also read by the holder of a pending approval seat on it (#44);
+// with nil, drafts stay editors-only.
+func authorizeVersionReads(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, ids ...string) ([]versionRead, authz.Effect, error) {
 	reads := make([]versionRead, 0, len(ids))
 	effect := authz.EffectAllow
+	seats := newPendingSeats(workflow)
 	for _, id := range ids {
-		r, err := resolveVersionRead(ctx, client, categoryClient, adminClient, id)
+		r, err := resolveVersionRead(ctx, client, categoryClient, adminClient, seats, id)
 		if err != nil {
 			return nil, authz.EffectDeny, err
 		}
@@ -539,9 +547,10 @@ func authorizeVersionReads(ctx context.Context, client corev1.PolicyServiceClien
 }
 
 // GetPolicyVersion returns one version under its policy's read decision. A
-// draft version is for editors only; anyone else gets NotFound.
-func GetPolicyVersion(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, id string) (*PolicyVersion, error) {
-	reads, effect, err := authorizeVersionReads(ctx, client, categoryClient, adminClient, id)
+// draft version is for editors and its pending approvers (#44) only; anyone
+// else gets NotFound.
+func GetPolicyVersion(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, id string) (*PolicyVersion, error) {
+	reads, effect, err := authorizeVersionReads(ctx, client, categoryClient, adminClient, workflow, id)
 	if err != nil {
 		return nil, err
 	}
@@ -579,7 +588,7 @@ func ListPolicyVersions(ctx context.Context, client corev1.PolicyServiceClient, 
 // decision on both. An obfuscated read keeps the section shape but drops the
 // word diff and scrambles the titles.
 func DiffVersions(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, fromID, toID string) ([]*SectionDiff, error) {
-	_, effect, err := authorizeVersionReads(ctx, client, categoryClient, adminClient, fromID, toID)
+	_, effect, err := authorizeVersionReads(ctx, client, categoryClient, adminClient, nil, fromID, toID)
 	if err != nil {
 		return nil, err
 	}

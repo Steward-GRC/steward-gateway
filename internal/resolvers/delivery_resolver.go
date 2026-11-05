@@ -25,7 +25,7 @@ var errObfuscatedContent = status.Error(codes.NotFound, "policy version not foun
 // GetRenderedContent fetches server-rendered HTML for a policy version via the Delivery service,
 // under the version's read decision. An obfuscated reader gets nothing.
 func GetRenderedContent(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyVersionID string) (*RenderedContent, error) {
-	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, policyVersionID); err != nil {
+	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, nil, policyVersionID); err != nil {
 		return nil, err
 	} else if effect != authz.EffectAllow {
 		return nil, errObfuscatedContent
@@ -40,7 +40,7 @@ func GetRenderedContent(ctx context.Context, client deliveryv1.DeliveryServiceCl
 // GetPolicyDiff returns the section-aware diff between two policy versions as surfaced by the
 // Delivery service, under the read decision on both. An obfuscated read drops the word diffs.
 func GetPolicyDiff(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, fromVersionID, toVersionID string) (*PolicyDiff, error) {
-	_, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, fromVersionID, toVersionID)
+	_, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, nil, fromVersionID, toVersionID)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func RequestPDFExport(ctx context.Context, client deliveryv1.DeliveryServiceClie
 	if !ok || claims.UserID() == "" {
 		return nil, fmt.Errorf("unauthenticated")
 	}
-	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, policyVersionID); err != nil {
+	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, nil, policyVersionID); err != nil {
 		return nil, err
 	} else if effect != authz.EffectAllow {
 		return nil, errObfuscatedContent
@@ -106,7 +106,7 @@ func CreateMagicLinkResolver(ctx context.Context, client deliveryv1.DeliveryServ
 	if !ok || claims.UserID() == "" {
 		return nil, fmt.Errorf("unauthenticated")
 	}
-	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, policyVersionID); err != nil {
+	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, nil, policyVersionID); err != nil {
 		return nil, err
 	} else if effect != authz.EffectAllow {
 		return nil, errObfuscatedContent

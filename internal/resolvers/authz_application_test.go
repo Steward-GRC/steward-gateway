@@ -115,7 +115,7 @@ func TestGetPolicyRequiresAuthentication(t *testing.T) {
 	// GetPolicy fails closed for an unauthenticated caller before any backend
 	// call, so the nil clients never panic. Authenticated callers then get a
 	// resource-aware read decision (hidden→NotFound).
-	_, err := resolvers.GetPolicy(context.Background(), nil, nil, nil, nil, "p1")
+	_, err := resolvers.GetPolicy(context.Background(), nil, nil, nil, nil, nil, "p1")
 	if status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("GetPolicy unauthenticated: want Unauthenticated, got %v", err)
 	}

@@ -586,9 +586,10 @@ func ListPolicyVersions(ctx context.Context, client corev1.PolicyServiceClient, 
 
 // DiffVersions returns core's section diff between two versions under the read
 // decision on both. An obfuscated read keeps the section shape but drops the
-// word diff and scrambles the titles.
-func DiffVersions(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, fromID, toID string) ([]*SectionDiff, error) {
-	_, effect, err := authorizeVersionReads(ctx, client, categoryClient, adminClient, nil, fromID, toID)
+// word diff and scrambles the titles. A pending approver may diff the draft
+// they hold a seat on, so they can review it against the published version.
+func DiffVersions(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, fromID, toID string) ([]*SectionDiff, error) {
+	_, effect, err := authorizeVersionReads(ctx, client, categoryClient, adminClient, workflow, fromID, toID)
 	if err != nil {
 		return nil, err
 	}

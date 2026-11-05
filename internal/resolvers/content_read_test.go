@@ -68,15 +68,15 @@ type readCase struct {
 func contentReadCases() []readCase {
 	return []readCase{
 		{"renderedContent", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, d *countingDeliveryClient, _ *fakeAIClient) (bool, error) {
-			rc, err := resolvers.GetRenderedContent(ctx, d, pc, groups, admin, "pol-1-v1")
+			rc, err := resolvers.GetRenderedContent(ctx, d, pc, groups, admin, nil, "pol-1-v1")
 			return rc != nil && rc.HTML != "", err
 		}},
 		{"policyDiff", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, d *countingDeliveryClient, _ *fakeAIClient) (bool, error) {
-			pd, err := resolvers.GetPolicyDiff(ctx, d, pc, groups, admin, "pol-1-v1", "pol-1-v2")
+			pd, err := resolvers.GetPolicyDiff(ctx, d, pc, groups, admin, nil, "pol-1-v1", "pol-1-v2")
 			return pd != nil && len(pd.Sections) == 1 && pd.Sections[0].WordDiffHTML != nil, err
 		}},
 		{"requestPDFExport", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, d *countingDeliveryClient, _ *fakeAIClient) (bool, error) {
-			job, err := resolvers.RequestPDFExport(ctx, d, pc, groups, admin, "pol-1-v1")
+			job, err := resolvers.RequestPDFExport(ctx, d, pc, groups, admin, nil, "pol-1-v1")
 			return job != nil, err
 		}},
 		{"createMagicLink", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, d *countingDeliveryClient, _ *fakeAIClient) (bool, error) {
@@ -84,7 +84,7 @@ func contentReadCases() []readCase {
 			return link != nil, err
 		}},
 		{"policyVersionSummary", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, _ *countingDeliveryClient, ai *fakeAIClient) (bool, error) {
-			s, err := resolvers.PolicyVersionSummaryResolver(ctx, ai, pc, groups, admin, "pol-1-v1")
+			s, err := resolvers.PolicyVersionSummaryResolver(ctx, ai, pc, groups, admin, nil, "pol-1-v1")
 			return s != nil && s.SummaryText != "", err
 		}},
 	}

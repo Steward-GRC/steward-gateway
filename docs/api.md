@@ -82,11 +82,13 @@ is taken on each version the field draws from (both sides of a diff), and the mo
 wins. No backend is asked for content the caller may not read.
 
 - **Deny:** an unknown version, a draft for anyone but an editor of the policy, or a denied read is
-  `NotFound` (`policyVersionSummary` returns no summary). `policyVersion` and `workflowStatus` also
-  serve a draft to the holder of a pending approval seat on it, until they decide; the policy's
-  read decision still applies to them, so a seat is not clearance for a sensitive policy. For the
-  same seat holder, `policy`, `policyByNumber` and `policies` keep `currentDraftVersionId` (and
-  list a policy that has nothing published yet). The other fields keep drafts for editors.
+  `NotFound` (`policyVersionSummary` returns no summary). The holder of a pending approval seat on
+  a draft gets the full review of that draft until they decide: `policyVersion`, `workflowStatus`,
+  `diffVersions` and `policyDiff` (against the published version), `renderedContent`,
+  `requestPDFExport` and `policyVersionSummary`. The seat covers only the version it sits on, and
+  the policy's read decision still applies, so a seat is not clearance for a sensitive policy. For
+  the same seat holder, `policy`, `policyByNumber` and `policies` keep `currentDraftVersionId` (and
+  list a policy that has nothing published yet). `createMagicLink` keeps drafts for editors.
 - **Obfuscate:** `policyVersion(s)` return scrambled content; `diffVersions` and `policyDiff` keep
   the sections but drop the word diff (`diffVersions` also scrambles the titles); `renderedContent`,
   `requestPDFExport` and `createMagicLink` are `NotFound`, because delivery serves the real

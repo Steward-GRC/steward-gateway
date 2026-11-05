@@ -535,7 +535,7 @@ func TestPolicyVersionSummaryFound(t *testing.T) {
 			GeneratedAt: "2026-07-01T00:00:00Z",
 		},
 	}
-	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1")
+	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, pc, groups, admin, nil, "pv-1")
 	if err != nil {
 		t.Fatalf("PolicyVersionSummary: %v", err)
 	}
@@ -552,7 +552,7 @@ func TestPolicyVersionSummaryNotFoundReturnsNil(t *testing.T) {
 	client := &fakeAIClient{
 		policySummaryResp: &aiv1.GetPolicySummaryResponse{Found: false},
 	}
-	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1")
+	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, pc, groups, admin, nil, "pv-1")
 	if err != nil {
 		t.Fatalf("PolicyVersionSummary: %v", err)
 	}
@@ -568,7 +568,7 @@ func TestPolicyVersionSummaryNotFoundReturnsNil(t *testing.T) {
 func TestPolicyVersionSummaryDegradesToNilOnError(t *testing.T) {
 	pc, groups, admin := openVersions(t)
 	client := &fakeAIClient{policySummaryErr: status.Error(codes.Unimplemented, "method GetPolicySummary not implemented")}
-	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, pc, groups, admin, "pv-1")
+	out, err := resolvers.PolicyVersionSummaryResolver(ctxWithUser(t, "u-1"), client, pc, groups, admin, nil, "pv-1")
 	if err != nil {
 		t.Fatalf("expected graceful degradation, got error: %v", err)
 	}
@@ -580,7 +580,7 @@ func TestPolicyVersionSummaryDegradesToNilOnError(t *testing.T) {
 func TestPolicyVersionSummaryUnauthenticated(t *testing.T) {
 	pc, groups, admin := openVersions(t)
 	client := &fakeAIClient{}
-	_, err := resolvers.PolicyVersionSummaryResolver(context.Background(), client, pc, groups, admin, "pv-1")
+	_, err := resolvers.PolicyVersionSummaryResolver(context.Background(), client, pc, groups, admin, nil, "pv-1")
 	if err == nil {
 		t.Fatal("expected unauthenticated error")
 	}

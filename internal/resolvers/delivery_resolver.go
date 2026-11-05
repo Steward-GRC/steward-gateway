@@ -15,6 +15,7 @@ import (
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	deliveryv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/delivery/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 )
 
@@ -23,9 +24,10 @@ import (
 var errObfuscatedContent = status.Error(codes.NotFound, "policy version not found")
 
 // GetRenderedContent fetches server-rendered HTML for a policy version via the Delivery service,
-// under the version's read decision. An obfuscated reader gets nothing.
-func GetRenderedContent(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyVersionID string) (*RenderedContent, error) {
-	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, nil, policyVersionID); err != nil {
+// under the version's read decision. An obfuscated reader gets nothing. A pending approver's draft
+// is part of their review, so the seat counts here.
+func GetRenderedContent(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, policyVersionID string) (*RenderedContent, error) {
+	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, workflow, policyVersionID); err != nil {
 		return nil, err
 	} else if effect != authz.EffectAllow {
 		return nil, errObfuscatedContent
@@ -38,9 +40,10 @@ func GetRenderedContent(ctx context.Context, client deliveryv1.DeliveryServiceCl
 }
 
 // GetPolicyDiff returns the section-aware diff between two policy versions as surfaced by the
-// Delivery service, under the read decision on both. An obfuscated read drops the word diffs.
-func GetPolicyDiff(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, fromVersionID, toVersionID string) (*PolicyDiff, error) {
-	_, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, nil, fromVersionID, toVersionID)
+// Delivery service, under the read decision on both. An obfuscated read drops the word diffs. A
+// pending approver may diff the draft they hold a seat on, as part of their review.
+func GetPolicyDiff(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, fromVersionID, toVersionID string) (*PolicyDiff, error) {
+	_, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, workflow, fromVersionID, toVersionID)
 	if err != nil {
 		return nil, err
 	}
@@ -78,13 +81,14 @@ func GetPDFDownloadLink(ctx context.Context, client deliveryv1.DeliveryServiceCl
 }
 
 // RequestPDFExport enqueues an async PDF rendering job under the version's read decision. The PDF
-// holds the real content, so an obfuscated reader gets nothing.
-func RequestPDFExport(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyVersionID string) (*PDFExportJob, error) {
+// holds the real content, so an obfuscated reader gets nothing. A pending approver may export the
+// draft they review.
+func RequestPDFExport(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, policyVersionID string) (*PDFExportJob, error) {
 	claims, ok := principal.FromContext(ctx)
 	if !ok || claims.UserID() == "" {
 		return nil, fmt.Errorf("unauthenticated")
 	}
-	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, nil, policyVersionID); err != nil {
+	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, workflow, policyVersionID); err != nil {
 		return nil, err
 	} else if effect != authz.EffectAllow {
 		return nil, errObfuscatedContent
@@ -101,6 +105,7 @@ func RequestPDFExport(ctx context.Context, client deliveryv1.DeliveryServiceClie
 
 // CreateMagicLinkResolver mints a magic-link token for a published policy version under the
 // version's read decision. The link opens the real content, so an obfuscated reader gets nothing.
+// A link outlives the approval seat and can be passed on, so a draft stays editors-only here.
 func CreateMagicLinkResolver(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyVersionID string, sensitive bool) (*MagicLink, error) {
 	claims, ok := principal.FromContext(ctx)
 	if !ok || claims.UserID() == "" {

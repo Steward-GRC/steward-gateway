@@ -76,7 +76,8 @@ addresses or probe errors.
 
 Every field that returns a policy version's content applies the same read decision as
 `policyVersion`: `policyVersion`, `policyVersions`, `diffVersions`, `policyDiff`,
-`renderedContent`, `requestPDFExport`, `createMagicLink` and `policyVersionSummary`. The decision
+`renderedContent`, `requestPDFExport`, `createMagicLink`, `policyVersionSummary` and
+`workflowStatus` (a version's approval run: its approvers, decisions and comments). The decision
 is taken on each version the field draws from (both sides of a diff), and the most restrictive one
 wins. No backend is asked for content the caller may not read.
 
@@ -85,7 +86,9 @@ wins. No backend is asked for content the caller may not read.
 - **Obfuscate:** `policyVersion(s)` return scrambled content; `diffVersions` and `policyDiff` keep
   the sections but drop the word diff (`diffVersions` also scrambles the titles); `renderedContent`,
   `requestPDFExport` and `createMagicLink` are `NotFound`, because delivery serves the real
-  text; and `policyVersionSummary` returns no summary.
+  text; `policyVersionSummary` returns no summary; and `workflowStatus` returns the run without the
+  decision comments (the approvers' names, states and decision times stay, as the policy's
+  metadata does).
 - **Allow:** the real content. A read that only a break-glass grant allows is recorded first (see
   below), once per version.
 

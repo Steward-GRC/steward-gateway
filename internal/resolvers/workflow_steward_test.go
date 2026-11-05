@@ -8,6 +8,7 @@ import (
 	"errors"
 	"testing"
 
+	log "github.com/Bugs5382/go-log"
 	"google.golang.org/grpc"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
@@ -102,7 +103,8 @@ func TestWorkflowStatusResolver_GroupSeatsAndUnitNames(t *testing.T) {
 		}}},
 	}}
 	id := &groupNameIdentity{groups: map[string]string{"approvers": "Approvers"}}
-	out, err := resolvers.WorkflowStatusResolver(context.Background(), wf, id, nil, "pv-1")
+	pc, groups, _ := statusReadSetup(t, false)
+	out, err := resolvers.WorkflowStatusResolver(readerCtx(t), log.Nop(), wf, id, pc, groups, noGrant(), "pol-1-v1")
 	if err != nil {
 		t.Fatalf("WorkflowStatusResolver: %v", err)
 	}

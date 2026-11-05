@@ -48,7 +48,7 @@ func (r *mutationResolver) ArchiveWorkflowDef(ctx context.Context, id string) (b
 
 // WorkflowStatus is the resolver for the workflowStatus field.
 func (r *queryResolver) WorkflowStatus(ctx context.Context, policyVersionID string) (*WorkflowStatus, error) {
-	return WorkflowStatusResolver(ctx, r.WorkflowClient, r.IdentityClient, r.CategoryClient, policyVersionID)
+	return WorkflowStatusResolver(ctx, r.logger(), r.WorkflowClient, r.IdentityClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, policyVersionID)
 }
 
 // PendingTasks is the resolver for the pendingTasks field.

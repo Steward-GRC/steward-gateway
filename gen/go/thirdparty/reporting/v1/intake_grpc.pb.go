@@ -22,6 +22,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	IntakeService_GetIntakeOptions_FullMethodName      = "/steward.reporting.v1.IntakeService/GetIntakeOptions"
 	IntakeService_SubmitAnonymousReport_FullMethodName = "/steward.reporting.v1.IntakeService/SubmitAnonymousReport"
 	IntakeService_CheckReport_FullMethodName           = "/steward.reporting.v1.IntakeService/CheckReport"
 	IntakeService_ReplyToReport_FullMethodName         = "/steward.reporting.v1.IntakeService/ReplyToReport"
@@ -40,9 +41,13 @@ const (
 // them is ignored. The named calls act for the forwarded, signed-in actor and
 // only ever reach that actor's own named reports.
 type IntakeServiceClient interface {
+	// GetIntakeOptions returns what the report form needs before anything is
+	// filed: whether anonymous reports are taken and the intake categories.
+	GetIntakeOptions(ctx context.Context, in *GetIntakeOptionsRequest, opts ...grpc.CallOption) (*GetIntakeOptionsResponse, error)
 	// SubmitAnonymousReport files a report with no name, email or address and
 	// returns the one-time case code. The passphrase is chosen by the reporter
-	// and stored only as a slow password hash.
+	// and stored only as a slow password hash. Refused with PUBLIC_LINK_OFF
+	// while the public report link is switched off.
 	SubmitAnonymousReport(ctx context.Context, in *SubmitAnonymousReportRequest, opts ...grpc.CallOption) (*SubmitAnonymousReportResponse, error)
 	// CheckReport opens an anonymous report by its case code and passphrase.
 	// An unknown code and a wrong passphrase get the same answer.
@@ -65,6 +70,16 @@ type intakeServiceClient struct {
 
 func NewIntakeServiceClient(cc grpc.ClientConnInterface) IntakeServiceClient {
 	return &intakeServiceClient{cc}
+}
+
+func (c *intakeServiceClient) GetIntakeOptions(ctx context.Context, in *GetIntakeOptionsRequest, opts ...grpc.CallOption) (*GetIntakeOptionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetIntakeOptionsResponse)
+	err := c.cc.Invoke(ctx, IntakeService_GetIntakeOptions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *intakeServiceClient) SubmitAnonymousReport(ctx context.Context, in *SubmitAnonymousReportRequest, opts ...grpc.CallOption) (*SubmitAnonymousReportResponse, error) {
@@ -146,9 +161,13 @@ func (c *intakeServiceClient) ReplyToMyReport(ctx context.Context, in *ReplyToMy
 // them is ignored. The named calls act for the forwarded, signed-in actor and
 // only ever reach that actor's own named reports.
 type IntakeServiceServer interface {
+	// GetIntakeOptions returns what the report form needs before anything is
+	// filed: whether anonymous reports are taken and the intake categories.
+	GetIntakeOptions(context.Context, *GetIntakeOptionsRequest) (*GetIntakeOptionsResponse, error)
 	// SubmitAnonymousReport files a report with no name, email or address and
 	// returns the one-time case code. The passphrase is chosen by the reporter
-	// and stored only as a slow password hash.
+	// and stored only as a slow password hash. Refused with PUBLIC_LINK_OFF
+	// while the public report link is switched off.
 	SubmitAnonymousReport(context.Context, *SubmitAnonymousReportRequest) (*SubmitAnonymousReportResponse, error)
 	// CheckReport opens an anonymous report by its case code and passphrase.
 	// An unknown code and a wrong passphrase get the same answer.
@@ -173,6 +192,9 @@ type IntakeServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedIntakeServiceServer struct{}
 
+func (UnimplementedIntakeServiceServer) GetIntakeOptions(context.Context, *GetIntakeOptionsRequest) (*GetIntakeOptionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetIntakeOptions not implemented")
+}
 func (UnimplementedIntakeServiceServer) SubmitAnonymousReport(context.Context, *SubmitAnonymousReportRequest) (*SubmitAnonymousReportResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SubmitAnonymousReport not implemented")
 }
@@ -213,6 +235,24 @@ func RegisterIntakeServiceServer(s grpc.ServiceRegistrar, srv IntakeServiceServe
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&IntakeService_ServiceDesc, srv)
+}
+
+func _IntakeService_GetIntakeOptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetIntakeOptionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IntakeServiceServer).GetIntakeOptions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IntakeService_GetIntakeOptions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IntakeServiceServer).GetIntakeOptions(ctx, req.(*GetIntakeOptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _IntakeService_SubmitAnonymousReport_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -348,6 +388,10 @@ var IntakeService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "steward.reporting.v1.IntakeService",
 	HandlerType: (*IntakeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetIntakeOptions",
+			Handler:    _IntakeService_GetIntakeOptions_Handler,
+		},
 		{
 			MethodName: "SubmitAnonymousReport",
 			Handler:    _IntakeService_SubmitAnonymousReport_Handler,

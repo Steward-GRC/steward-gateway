@@ -1,6 +1,6 @@
 module github.com/Steward-GRC/steward-gateway
 
-go 1.26.9
+go 1.26.10
 
 tool github.com/99designs/gqlgen
 
@@ -51,7 +51,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.21 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rabbitmq/amqp091-go v1.13.0 // indirect
+	github.com/rabbitmq/amqp091-go v1.14.0 // indirect
 	github.com/richardlehane/msoleps v1.0.3 // indirect
 	github.com/rs/zerolog v1.35.1 // indirect
 	github.com/sosodev/duration v1.4.0 // indirect

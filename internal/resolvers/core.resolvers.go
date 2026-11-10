@@ -39,6 +39,11 @@ func (r *mutationResolver) MoveCategory(ctx context.Context, categoryID string, 
 	return MoveCategory(ctx, r.CategoryClient, categoryID, newParentID)
 }
 
+// ReorderCategories is the resolver for the reorderCategories field.
+func (r *mutationResolver) ReorderCategories(ctx context.Context, parentID *string, orderedIds []string) ([]*Category, error) {
+	return ReorderCategories(ctx, r.CategoryClient, parentID, orderedIds)
+}
+
 // CreateTemplate is the resolver for the createTemplate field.
 func (r *mutationResolver) CreateTemplate(ctx context.Context, name string, ownerCategoryID *string) (*Template, error) {
 	return CreateTemplate(ctx, r.TemplateClient, name, ownerCategoryID)

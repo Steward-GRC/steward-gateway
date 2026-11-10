@@ -49,6 +49,11 @@ extend type Mutation {
   # a cycle (moving a category under itself or one of its descendants); nothing is
   # applied on failure.
   moveCategory(categoryId: ID!, newParentId: ID): Category!
+  # Set the order of one parent's children (parentId null = the top level).
+  # orderedIds must list every child of that parent exactly once, else
+  # INVALID_ARGUMENT and nothing changes. Returns the children in the new
+  # order. A new category, and one moved by moveCategory, goes last.
+  reorderCategories(parentId: ID, orderedIds: [ID!]!): [Category!]!
 
   # Templates
   createTemplate(name: String!, ownerCategoryId: ID): Template!
@@ -193,6 +198,10 @@ type Category {
   # from its ancestor chain; true means it carries its own value.
   ackEveryone: Boolean!
   ackEveryoneSet: Boolean!
+  # Position among the siblings under the same parent, from zero; lower comes
+  # first. categoryChildren and categoryTree list siblings in this order. Gaps
+  # are possible after a delete, so only the relative order counts.
+  order: Int!
 }
 
 # EffectiveGovernance carries the inherited ack-audience and exclusion group

@@ -24,6 +24,7 @@ import (
 	"github.com/Bugs5382/go-rabbitmq"
 	redis "github.com/Bugs5382/go-redis"
 	"github.com/Bugs5382/go-redis/ratelimit"
+	workloadidentity "github.com/Bugs5382/go-workload-identity"
 	"google.golang.org/grpc"
 
 	"github.com/Steward-GRC/steward-gateway/internal/aijobs"
@@ -43,7 +44,6 @@ import (
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
 	"github.com/Steward-GRC/steward-gateway/internal/server"
 	"github.com/Steward-GRC/steward-gateway/internal/setup"
-	"github.com/Steward-GRC/steward-gateway/internal/workloadauth"
 )
 
 const serviceName = "steward-gateway"
@@ -69,7 +69,7 @@ func run() error {
 	}
 	defer func() { _ = otelShutdown(context.Background()) }()
 	if !cfg.WorkloadAuth {
-		go workloadauth.WarnDisabled(ctx, logger, workloadauth.DisabledWarnInterval)
+		go workloadidentity.WarnDisabled(ctx, logger, workloadidentity.DisabledWarnInterval)
 	}
 
 	valkey, err := redis.Connect(ctx, redis.WithAddr(cfg.ValkeyAddr), redis.WithPassword(cfg.ValkeyPassword))

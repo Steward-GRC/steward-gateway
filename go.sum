@@ -16,6 +16,8 @@ github.com/Bugs5382/go-rabbitmq v1.3.0 h1:c+YUEBKhSoeh8UXbMzS4u8G0oRxlsmCsWHkojQ
 github.com/Bugs5382/go-rabbitmq v1.3.0/go.mod h1:bjJjrQozm7gQOK9t2vKDYrgi/7j9xuyUzIABW9leOL0=
 github.com/Bugs5382/go-redis v1.2.0 h1:86yqK9NlZNhnglRaxFZdNV9o58+kAgwyfaoIW9WjaVc=
 github.com/Bugs5382/go-redis v1.2.0/go.mod h1:yyz0EuremryinY7TqW49ViZZX/Vbdvjvri1w1n9vthY=
+github.com/Bugs5382/go-workload-identity v1.0.0 h1:XEg8Byo7VH6Mb+Fv0kJEdUCiZXX9DG/BuGSsD2oNHgI=
+github.com/Bugs5382/go-workload-identity v1.0.0/go.mod h1:9IEkIsg3BqcmhT7fV9uO/EWp3VF1b7PYBFrX7x3sN/8=
 github.com/Steward-GRC/steward-authz v0.0.0-20261005231355-d19c8e206a95 h1:2u6CWP7skL3vt6fKcmd41asEakUe6+0lPsYqDhYSeIQ=
 github.com/Steward-GRC/steward-authz v0.0.0-20261005231355-d19c8e206a95/go.mod h1:0eF2fnbW/gqGUeymUZm0bS2ZUDY9IWTWVA7pnkYgiSM=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=
@@ -77,8 +79,8 @@ github.com/mattn/go-isatty v0.0.21 h1:xYae+lCNBP7QuW4PUnNG61ffM4hVIfm+zUzDuSzYLG
 github.com/mattn/go-isatty v0.0.21/go.mod h1:ZXfXG4SQHsB/w3ZeOYbR0PrPwLy+n6xiMrJlRFqopa4=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/rabbitmq/amqp091-go v1.13.0 h1:L8NA1WtF76C6KA3LAoufjfLgbist/If1UQYcsOjtxXA=
-github.com/rabbitmq/amqp091-go v1.13.0/go.mod h1:Hy4jKW5kQART1u+JkDTF9YYOQUHXqMuhrgxOEeS7G4o=
+github.com/rabbitmq/amqp091-go v1.14.0 h1:RSaT7aOKt/OrkVUyswPDW29lnRz9psuGmfZFBmLqLek=
+github.com/rabbitmq/amqp091-go v1.14.0/go.mod h1:Hy4jKW5kQART1u+JkDTF9YYOQUHXqMuhrgxOEeS7G4o=
 github.com/redis/go-redis/v9 v9.22.0 h1:laDvpYXTJtZLloinw1fA5Kqd6HAEH2XKxOkG/PDq2F0=
 github.com/redis/go-redis/v9 v9.22.0/go.mod h1:y2g0Wj8rQvuK0ELM+oxSudcLtC09JScs98I/X9gRWY4=
 github.com/richardlehane/mscfb v1.0.9 h1:8xdd9auUvXbFoCw3L9h1spnQHZgjNsSX+ek46J6A9tE=

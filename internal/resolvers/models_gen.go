@@ -370,6 +370,7 @@ type Category struct {
 	ExclusionGroupIds   []string      `json:"exclusionGroupIds,omitempty"`
 	AckEveryone         bool          `json:"ackEveryone"`
 	AckEveryoneSet      bool          `json:"ackEveryoneSet"`
+	Order               int           `json:"order"`
 }
 
 type CategoryApprovers struct {

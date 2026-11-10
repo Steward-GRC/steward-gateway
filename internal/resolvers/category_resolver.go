@@ -97,6 +97,7 @@ func categoryFromProto(g *corev1.Category) *Category {
 		ExclusionGroupIds:   exclusionGroupIds,
 		AckEveryone:         g.GetAckEveryone(),
 		AckEveryoneSet:      g.GetAckEveryoneSet(),
+		Order:               int(g.GetOrderIndex()),
 	}
 }
 
@@ -296,6 +297,27 @@ func MoveCategory(ctx context.Context, client corev1.CategoryServiceClient, cate
 		return nil, err
 	}
 	return categoryFromProto(resp.Category), nil
+}
+
+// ReorderCategories sets the order of one parent's children; a nil parentID
+// reorders the top level. Core refuses a list that is not every child of the
+// parent exactly once.
+func ReorderCategories(ctx context.Context, client corev1.CategoryServiceClient, parentID *string, orderedIDs []string) ([]*Category, error) {
+	if err := authorizeOp(ctx, authz.GroupManage); err != nil {
+		return nil, err
+	}
+	resp, err := client.ReorderCategories(ctx, &corev1.ReorderCategoriesRequest{
+		ParentId:   derefOrEmpty(parentID),
+		OrderedIds: orderedIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*Category, 0, len(resp.GetCategories()))
+	for _, g := range resp.GetCategories() {
+		out = append(out, categoryFromProto(g))
+	}
+	return out, nil
 }
 
 // GetEffectiveGovernance returns the inherited audience and exclusions core

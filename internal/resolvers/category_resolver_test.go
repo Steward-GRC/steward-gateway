@@ -6,11 +6,14 @@ package resolvers_test
 import (
 	"context"
 	"fmt"
+	"sort"
 	"testing"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // fakeCategoryClient is a hand-rolled stub of corev1.CategoryServiceClient used to
@@ -24,6 +27,8 @@ type fakeCategoryClient struct {
 	lastDefaults        *corev1.SetCategoryDefaultsRequest
 	lastGovernance      *corev1.SetGovernanceRequest
 	effectiveGovernance *corev1.GetEffectiveGovernanceResponse
+	lastReorder         *corev1.ReorderCategoriesRequest
+	reorderErr          error
 }
 
 func (f *fakeCategoryClient) GetCategory(_ context.Context, in *corev1.GetCategoryRequest, _ ...grpc.CallOption) (*corev1.GetCategoryResponse, error) {
@@ -41,7 +46,21 @@ func (f *fakeCategoryClient) ListCategoryChildren(_ context.Context, in *corev1.
 			out = append(out, g)
 		}
 	}
+	// Core lists siblings by their stored order.
+	sort.SliceStable(out, func(i, j int) bool { return out[i].OrderIndex < out[j].OrderIndex })
 	return &corev1.ListCategoryChildrenResponse{Categories: out}, nil
+}
+
+func (f *fakeCategoryClient) ReorderCategories(_ context.Context, in *corev1.ReorderCategoriesRequest, _ ...grpc.CallOption) (*corev1.ReorderCategoriesResponse, error) {
+	f.lastReorder = in
+	if f.reorderErr != nil {
+		return nil, f.reorderErr
+	}
+	var out []*corev1.Category
+	for i, id := range in.OrderedIds {
+		out = append(out, &corev1.Category{Id: id, ParentId: in.ParentId, OrderIndex: int32(i)})
+	}
+	return &corev1.ReorderCategoriesResponse{Categories: out}, nil
 }
 
 func (f *fakeCategoryClient) CreateCategory(_ context.Context, in *corev1.CreateCategoryRequest, _ ...grpc.CallOption) (*corev1.CreateCategoryResponse, error) {
@@ -560,5 +579,84 @@ func TestCategoryTreeMissingRootPropagatesError(t *testing.T) {
 	rootID := "missing"
 	if _, err := resolvers.CategoryTree(ctxWithRoles(t, "u", []string{"site-admin"}), client, &rootID); err == nil {
 		t.Fatal("expected error for missing root category")
+	}
+}
+
+func TestCategoryCarriesItsSiblingOrder(t *testing.T) {
+	client := &fakeCategoryClient{groups: map[string]*corev1.Category{
+		"c": {Id: "c", Name: "C", Slug: "c", OrderIndex: 3},
+	}}
+	g, err := resolvers.GetCategory(ctxWithRoles(t, "u", []string{"site-admin"}), client, "c")
+	if err != nil {
+		t.Fatalf("GetCategory: %v", err)
+	}
+	if g.Order != 3 {
+		t.Fatalf("order: got %d want 3", g.Order)
+	}
+}
+
+func TestCategoryTreeKeepsTheStoredSiblingOrder(t *testing.T) {
+	client := &fakeCategoryClient{groups: map[string]*corev1.Category{
+		"a":  {Id: "a", Name: "A", Slug: "a", OrderIndex: 2},
+		"b":  {Id: "b", Name: "B", Slug: "b", OrderIndex: 0},
+		"c":  {Id: "c", Name: "C", Slug: "c", OrderIndex: 1},
+		"b1": {Id: "b1", Name: "B1", Slug: "b1", ParentId: "b", OrderIndex: 1},
+		"b2": {Id: "b2", Name: "B2", Slug: "b2", ParentId: "b", OrderIndex: 0},
+	}}
+	tree, err := resolvers.CategoryTree(context.Background(), client, nil)
+	if err != nil {
+		t.Fatalf("CategoryTree: %v", err)
+	}
+	var got []string
+	for _, c := range tree {
+		got = append(got, c.ID)
+	}
+	want := []string{"b", "b2", "b1", "c", "a"}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("tree order: got %v want %v", got, want)
+	}
+}
+
+func TestReorderCategoriesForwardsParentAndOrder(t *testing.T) {
+	client := &fakeCategoryClient{}
+	parent := "p"
+	out, err := resolvers.ReorderCategories(ctxWithRoles(t, "u", []string{"site-admin"}), client, &parent, []string{"c3", "c1", "c2"})
+	if err != nil {
+		t.Fatalf("ReorderCategories: %v", err)
+	}
+	if client.lastReorder.GetParentId() != "p" || fmt.Sprint(client.lastReorder.GetOrderedIds()) != "[c3 c1 c2]" {
+		t.Fatalf("forwarded request: %+v", client.lastReorder)
+	}
+	if len(out) != 3 || out[0].ID != "c3" || out[0].Order != 0 || out[2].ID != "c2" || out[2].Order != 2 {
+		t.Fatalf("result: %+v", out)
+	}
+}
+
+func TestReorderCategoriesNilParentReordersTheRoots(t *testing.T) {
+	client := &fakeCategoryClient{}
+	if _, err := resolvers.ReorderCategories(ctxWithRoles(t, "u", []string{"site-admin"}), client, nil, []string{"b", "a"}); err != nil {
+		t.Fatalf("ReorderCategories: %v", err)
+	}
+	if client.lastReorder.GetParentId() != "" {
+		t.Fatalf("a nil parent must reach core as empty, got %q", client.lastReorder.GetParentId())
+	}
+}
+
+func TestReorderCategoriesRequiresCategoryAdmin(t *testing.T) {
+	client := &fakeCategoryClient{}
+	_, err := resolvers.ReorderCategories(ctxWithRoles(t, "u", []string{"policy-author"}), client, nil, []string{"a"})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("want PermissionDenied, got %v", err)
+	}
+	if client.lastReorder != nil {
+		t.Fatal("an unauthorized reorder must not reach core")
+	}
+}
+
+func TestReorderCategoriesPropagatesCoreRefusal(t *testing.T) {
+	client := &fakeCategoryClient{reorderErr: status.Error(codes.InvalidArgument, "ordered ids must list every child of the parent exactly once")}
+	_, err := resolvers.ReorderCategories(ctxWithRoles(t, "u", []string{"site-admin"}), client, nil, []string{"a"})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("want InvalidArgument, got %v", err)
 	}
 }

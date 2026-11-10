@@ -335,6 +335,7 @@ type ComplexityRoot struct {
 		ID                  func(childComplexity int) int
 		IdpGroupIds         func(childComplexity int) int
 		Name                func(childComplexity int) int
+		Order               func(childComplexity int) int
 		Owners              func(childComplexity int) int
 		ParentID            func(childComplexity int) int
 		ReviewCadence       func(childComplexity int) int
@@ -673,6 +674,7 @@ type ComplexityRoot struct {
 		RenameTemplate                func(childComplexity int, id string, name string) int
 		RenameUserMfaFactor           func(childComplexity int, userID string, methodID string, label string) int
 		ReorderAppendices             func(childComplexity int, policyVersionID string, orderedIds []string) int
+		ReorderCategories             func(childComplexity int, parentID *string, orderedIds []string) int
 		ReplyToMyReport               func(childComplexity int, caseID string, body string) int
 		ReplyToReport                 func(childComplexity int, caseCode string, passphrase string, body string) int
 		RequestHardReset              func(childComplexity int, module string, reason string) int
@@ -1418,6 +1420,7 @@ type MutationResolver interface {
 	RenameCategory(ctx context.Context, id string, name string, slug string) (*Category, error)
 	DeleteCategory(ctx context.Context, id string) (bool, error)
 	MoveCategory(ctx context.Context, categoryID string, newParentID *string) (*Category, error)
+	ReorderCategories(ctx context.Context, parentID *string, orderedIds []string) ([]*Category, error)
 	CreateTemplate(ctx context.Context, name string, ownerCategoryID *string) (*Template, error)
 	CreateTemplateVersion(ctx context.Context, templateID string, sections []*SectionInput) (*TemplateVersion, error)
 	UpdateTemplateVersionSections(ctx context.Context, id string, sections []*SectionInput) (*TemplateVersion, error)
@@ -2755,6 +2758,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Category.Name(childComplexity), true
+	case "Category.order":
+		if e.ComplexityRoot.Category.Order == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.Order(childComplexity), true
 	case "Category.owners":
 		if e.ComplexityRoot.Category.Owners == nil {
 			break
@@ -4519,6 +4528,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ReorderAppendices(childComplexity, args["policyVersionId"].(string), args["orderedIds"].([]string)), true
+	case "Mutation.reorderCategories":
+		if e.ComplexityRoot.Mutation.ReorderCategories == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_reorderCategories_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ReorderCategories(childComplexity, args["parentId"].(*string), args["orderedIds"].([]string)), true
 	case "Mutation.replyToMyReport":
 		if e.ComplexityRoot.Mutation.ReplyToMyReport == nil {
 			break
@@ -9219,6 +9239,11 @@ extend type Mutation {
   # a cycle (moving a category under itself or one of its descendants); nothing is
   # applied on failure.
   moveCategory(categoryId: ID!, newParentId: ID): Category!
+  # Set the order of one parent's children (parentId null = the top level).
+  # orderedIds must list every child of that parent exactly once, else
+  # INVALID_ARGUMENT and nothing changes. Returns the children in the new
+  # order. A new category, and one moved by moveCategory, goes last.
+  reorderCategories(parentId: ID, orderedIds: [ID!]!): [Category!]!
 
   # Templates
   createTemplate(name: String!, ownerCategoryId: ID): Template!
@@ -9363,6 +9388,10 @@ type Category {
   # from its ancestor chain; true means it carries its own value.
   ackEveryone: Boolean!
   ackEveryoneSet: Boolean!
+  # Position among the siblings under the same parent, from zero; lower comes
+  # first. categoryChildren and categoryTree list siblings in this order. Gaps
+  # are possible after a delete, so only the relative order counts.
+  order: Int!
 }
 
 # EffectiveGovernance carries the inherited ack-audience and exclusion group
@@ -12033,6 +12062,8 @@ func (ec *executionContext) childFields_Category(ctx context.Context, field grap
 		return ec.fieldContext_Category_ackEveryone(ctx, field)
 	case "ackEveryoneSet":
 		return ec.fieldContext_Category_ackEveryoneSet(ctx, field)
+	case "order":
+		return ec.fieldContext_Category_order(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
 }
@@ -15266,6 +15297,28 @@ func (ec *executionContext) field_Mutation_reorderAppendices_args(ctx context.Co
 		return nil, err
 	}
 	args["policyVersionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "orderedIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["orderedIds"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_reorderCategories_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "parentId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["parentId"] = arg0
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "orderedIds",
 		func(ctx context.Context, v any) ([]string, error) {
 			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
@@ -22405,6 +22458,29 @@ func (ec *executionContext) fieldContext_Category_ackEveryoneSet(_ context.Conte
 	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _Category_order(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_order(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Order, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_order(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
 func (ec *executionContext) _CategoryApprovers_categoryId(ctx context.Context, field graphql.CollectedField, obj *CategoryApprovers) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -26747,6 +26823,50 @@ func (ec *executionContext) fieldContext_Mutation_moveCategory(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_moveCategory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_reorderCategories(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_reorderCategories(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ReorderCategories(ctx, fc.Args["parentId"].(*string), fc.Args["orderedIds"].([]string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_reorderCategories(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Category(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_reorderCategories_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -49641,6 +49761,11 @@ func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "order":
+			out.Values[i] = ec._Category_order(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -51741,6 +51866,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "moveCategory":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_moveCategory(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reorderCategories":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_reorderCategories(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

@@ -13,8 +13,9 @@ import (
 	"strings"
 	"time"
 
+	workloadidentity "github.com/Bugs5382/go-workload-identity"
+
 	"github.com/Steward-GRC/steward-gateway/internal/backend"
-	"github.com/Steward-GRC/steward-gateway/internal/workloadauth"
 )
 
 // Config is the gateway's settings.
@@ -194,17 +195,17 @@ func Load(getenv func(string) string) (Config, error) {
 		c.KubernetesAPI = "https://" + h + ":" + or("KUBERNETES_SERVICE_PORT", "443")
 	}
 
-	switch mode := getenv(workloadauth.EnvAuthMode); mode {
+	switch mode := getenv(workloadidentity.EnvAuthMode); mode {
 	case "":
 		c.WorkloadAuth = true
-		c.TokenFile = or(workloadauth.EnvTokenFile, workloadauth.DefaultTokenFile)
+		c.TokenFile = or(workloadidentity.EnvTokenFile, WorkloadTokenFile)
 		if _, err := os.Stat(c.TokenFile); err != nil {
 			errs = append(errs, fmt.Errorf("config: the workload token %s is unreadable; mount it, or set %s=%s for local development only",
-				workloadauth.EnvTokenFile, workloadauth.EnvAuthMode, workloadauth.AuthDisabled))
+				workloadidentity.EnvTokenFile, workloadidentity.EnvAuthMode, workloadidentity.AuthDisabled))
 		}
-	case workloadauth.AuthDisabled:
+	case workloadidentity.AuthDisabled:
 	default:
-		errs = append(errs, fmt.Errorf("config: %s=%q: the only accepted value is %q", workloadauth.EnvAuthMode, mode, workloadauth.AuthDisabled))
+		errs = append(errs, fmt.Errorf("config: %s=%q: the only accepted value is %q", workloadidentity.EnvAuthMode, mode, workloadidentity.AuthDisabled))
 	}
 	if err := errors.Join(errs...); err != nil {
 		return Config{}, err

@@ -16,6 +16,8 @@ github.com/Bugs5382/go-rabbitmq v1.3.0 h1:c+YUEBKhSoeh8UXbMzS4u8G0oRxlsmCsWHkojQ
 github.com/Bugs5382/go-rabbitmq v1.3.0/go.mod h1:bjJjrQozm7gQOK9t2vKDYrgi/7j9xuyUzIABW9leOL0=
 github.com/Bugs5382/go-redis v1.2.0 h1:86yqK9NlZNhnglRaxFZdNV9o58+kAgwyfaoIW9WjaVc=
 github.com/Bugs5382/go-redis v1.2.0/go.mod h1:yyz0EuremryinY7TqW49ViZZX/Vbdvjvri1w1n9vthY=
+github.com/Bugs5382/go-workload-identity v1.0.0 h1:XEg8Byo7VH6Mb+Fv0kJEdUCiZXX9DG/BuGSsD2oNHgI=
+github.com/Bugs5382/go-workload-identity v1.0.0/go.mod h1:9IEkIsg3BqcmhT7fV9uO/EWp3VF1b7PYBFrX7x3sN/8=
 github.com/Steward-GRC/steward-authz v0.0.0-20261005231355-d19c8e206a95 h1:2u6CWP7skL3vt6fKcmd41asEakUe6+0lPsYqDhYSeIQ=
 github.com/Steward-GRC/steward-authz v0.0.0-20261005231355-d19c8e206a95/go.mod h1:0eF2fnbW/gqGUeymUZm0bS2ZUDY9IWTWVA7pnkYgiSM=
 github.com/agnivade/levenshtein v1.2.1 h1:EHBY3UOn1gwdy/VbFwgo4cxecRznFk7fKWN1KOX7eoM=

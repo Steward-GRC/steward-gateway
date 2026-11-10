@@ -13,10 +13,10 @@ require (
 	github.com/Bugs5382/go-otel v1.3.2
 	github.com/Bugs5382/go-rabbitmq v1.3.0
 	github.com/Bugs5382/go-redis v1.2.0
+	github.com/Bugs5382/go-workload-identity v1.0.0
 	github.com/Steward-GRC/steward-authz v0.0.0-20261005231355-d19c8e206a95
 	github.com/alicebob/miniredis/v2 v2.39.0
 	github.com/coder/websocket v1.8.15
-	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/ledongthuc/pdf v0.0.0-20260907135840-6c8c28e0e8a0
 	github.com/redis/go-redis/v9 v9.22.0
@@ -45,6 +45,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect

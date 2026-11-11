@@ -58,7 +58,9 @@ type AIHealth struct {
 	Reason *string `json:"reason,omitempty"`
 	// Why the model provider is unavailable, as the ai service reports it:
 	// "auth_failed" (the provider refused the credential), "provider_error" (the
-	// provider call failed) or "not_configured" (no provider is set up). Set only
+	// provider call failed), "not_configured" (no provider is set up) or
+	// "jobs_unavailable" (the ai service has no Kubernetes API, so it can neither
+	// create nor read a job). Set only
 	// when reason is "provider_unavailable" and the ai service gave a reason;
 	// null otherwise.
 	ProviderReason *string `json:"providerReason,omitempty"`

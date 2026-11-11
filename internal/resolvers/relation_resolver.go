@@ -11,8 +11,6 @@ import (
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func relatedPolicyFromProto(r *corev1.RelatedPolicy) *RelatedPolicy {
@@ -21,41 +19,6 @@ func relatedPolicyFromProto(r *corev1.RelatedPolicy) *RelatedPolicy {
 		Number:   r.GetNumber(),
 		Title:    r.GetTitle(),
 	}
-}
-
-// RelatedPoliciesResolver lists a policy's structured related-policy links, resolved to
-// number+title.
-func RelatedPoliciesResolver(ctx context.Context, client corev1.RelationServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, policyID string) ([]*RelatedPolicy, error) {
-	resp, err := client.ListRelatedPolicies(ctx, &corev1.ListRelatedPoliciesRequest{PolicyId: policyID})
-	if err != nil {
-		return nil, fmt.Errorf("list related policies: %w", err)
-	}
-	related := resp.GetRelated()
-	if len(related) == 0 {
-		return []*RelatedPolicy{}, nil
-	}
-
-	loaded := make([]*Policy, 0, len(related))
-	for _, r := range related {
-		p, err := loadPolicyByID(ctx, policyClient, r.GetPolicyId())
-		if err != nil {
-			if status.Code(err) == codes.NotFound {
-				continue
-			}
-			return nil, err
-		}
-		loaded = append(loaded, p)
-	}
-
-	visible, err := resolvePolicyReadModel(ctx, loaded, policyClient, categoryClient, adminClient, identity, nil)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]*RelatedPolicy, 0, len(visible))
-	for _, p := range visible {
-		out = append(out, &RelatedPolicy{PolicyID: p.ID, Number: p.Number, Title: p.Title})
-	}
-	return out, nil
 }
 
 // SetRelatedPoliciesResolver replaces a policy's entire related-policy set.

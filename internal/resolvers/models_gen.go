@@ -938,6 +938,15 @@ type PolicyVersion struct {
 	PublishedAt       *string     `json:"publishedAt,omitempty"`
 }
 
+type PolicyVersionLinks struct {
+	PolicyVersionID string             `json:"policyVersionId"`
+	Editable        bool               `json:"editable"`
+	Definitions     []*DefinitionEntry `json:"definitions"`
+	Related         []*RelatedLink     `json:"related"`
+	References      []*Reference       `json:"references"`
+	Contacts        []*ContactBlock    `json:"contacts"`
+}
+
 type PolicyViewerCan struct {
 	Read              bool `json:"read"`
 	Edit              bool `json:"edit"`
@@ -1017,6 +1026,20 @@ type ReindexResult struct {
 	RemovedPrior int    `json:"removedPrior"`
 }
 
+type RelatedLink struct {
+	PolicyID  string           `json:"policyId"`
+	Number    string           `json:"number"`
+	Title     string           `json:"title"`
+	Type      string           `json:"type"`
+	Label     string           `json:"label"`
+	Direction RelatedDirection `json:"direction"`
+}
+
+type RelatedLinkInput struct {
+	PolicyID string `json:"policyId"`
+	Type     string `json:"type"`
+}
+
 type RelatedPolicy struct {
 	PolicyID string `json:"policyId"`
 	Number   string `json:"number"`
@@ -1030,6 +1053,13 @@ type RelatedPolicySuggestion struct {
 	VersionNo   int    `json:"versionNo"`
 	// Cosine distance between the two policies' centroids; lower is more related.
 	Distance float64 `json:"distance"`
+}
+
+type RelationshipTypeInfo struct {
+	ID           string `json:"id"`
+	Label        string `json:"label"`
+	InverseID    string `json:"inverseId"`
+	InverseLabel string `json:"inverseLabel"`
 }
 
 type RenamePolicyResult struct {
@@ -3167,6 +3197,61 @@ func (e *ReferenceKind) UnmarshalJSON(b []byte) error {
 }
 
 func (e ReferenceKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RelatedDirection string
+
+const (
+	RelatedDirectionOutgoing RelatedDirection = "OUTGOING"
+	RelatedDirectionIncoming RelatedDirection = "INCOMING"
+)
+
+var AllRelatedDirection = []RelatedDirection{
+	RelatedDirectionOutgoing,
+	RelatedDirectionIncoming,
+}
+
+func (e RelatedDirection) IsValid() bool {
+	switch e {
+	case RelatedDirectionOutgoing, RelatedDirectionIncoming:
+		return true
+	}
+	return false
+}
+
+func (e RelatedDirection) String() string {
+	return string(e)
+}
+
+func (e *RelatedDirection) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RelatedDirection(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RelatedDirection", str)
+	}
+	return nil
+}
+
+func (e RelatedDirection) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RelatedDirection) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RelatedDirection) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

@@ -119,13 +119,24 @@ func PolicyDefinitionCandidatesResolver(ctx context.Context, client corev1.Defin
 	return definitionEntriesFromProto(resp.GetDefinitions()), nil
 }
 
-// PolicyDefinitionEntriesResolver lists the definitions attached to a policy (resolved live, incl.
-func PolicyDefinitionEntriesResolver(ctx context.Context, client corev1.DefinitionLibraryServiceClient, policyID string) ([]*DefinitionEntry, error) {
-	resp, err := client.ListPolicyDefinitionEntries(ctx, &corev1.ListPolicyDefinitionEntriesRequest{PolicyId: policyID})
-	if err != nil {
-		return nil, fmt.Errorf("list policy definitions: %w", err)
+// Fixed sentences for the title refusals core relays on create and update. Core's own
+// text names the title and the store, so the client gets these.
+const (
+	msgDefinitionTaken = "A definition with that title already exists."
+	msgDefinitionNeeds = "That definition is not valid. Give it a title and a meaning."
+)
+
+// definitionTitleError maps core's refusal of a taken title (AlreadyExists) or an empty or
+// invalid one (InvalidArgument) to the same code with a fixed sentence. Any other failure is
+// wrapped as before and shown by the error presenter as a fault.
+func definitionTitleError(op string, err error) error {
+	switch status.Code(err) {
+	case codes.AlreadyExists:
+		return status.Error(codes.AlreadyExists, msgDefinitionTaken)
+	case codes.InvalidArgument:
+		return status.Error(codes.InvalidArgument, msgDefinitionNeeds)
 	}
-	return definitionEntriesFromProto(resp.GetDefinitions()), nil
+	return fmt.Errorf("%s: %w", op, err)
 }
 
 // CreateDefinitionResolver adds a library entry.
@@ -136,7 +147,7 @@ func CreateDefinitionResolver(ctx context.Context, client corev1.DefinitionLibra
 	}
 	resp, err := client.CreateDefinitionEntry(ctx, &corev1.CreateDefinitionEntryRequest{Input: definitionEntryInputToProto(in), ActorUserId: actor})
 	if err != nil {
-		return nil, fmt.Errorf("create definition: %w", err)
+		return nil, definitionTitleError("create definition", err)
 	}
 	return definitionEntryFromProto(resp.GetDefinition()), nil
 }
@@ -149,7 +160,7 @@ func UpdateDefinitionResolver(ctx context.Context, client corev1.DefinitionLibra
 	}
 	resp, err := client.UpdateDefinitionEntry(ctx, &corev1.UpdateDefinitionEntryRequest{Id: id, Input: definitionEntryInputToProto(in), ActorUserId: actor})
 	if err != nil {
-		return nil, fmt.Errorf("update definition: %w", err)
+		return nil, definitionTitleError("update definition", err)
 	}
 	return definitionEntryFromProto(resp.GetDefinition()), nil
 }

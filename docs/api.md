@@ -192,6 +192,39 @@ whether the caller may edit the policy:
   published row of each live appendix of the policy on every version.
 - Not served yet: reordering, deleting for good, the draft diff and the co-editing token.
 
+## Library links per policy version
+
+What a policy or procedure version links to from the libraries (definitions, references, contact
+blocks and related policies) is stored with the version, so it goes through approval with it, stays
+as approved once published and is copied into a new draft. Core's `VersionLinkService` keeps it; the
+gateway serves `relationshipTypes`, `policyVersionLinks(policyVersionId)` and the full-replace
+`setVersionReferences`, `setVersionContacts`, `setVersionDefinitions` and `setVersionRelated`. The
+shapes follow the mock server's schema.
+
+- **Read.** The version is read under the same gate as any version: an unknown version, a draft the
+  caller may not see and a denied read are `NotFound`. References and contacts keep the order the
+  author gave, definitions are listed alphabetically (core sorts), and `related` holds the version's
+  own links (`OUTGOING`) and the incoming ones from the published version of other policies, read as
+  the inverse type. A related policy that is not in the caller's read model (denied, or never
+  published and not theirs to edit) is left out, so a link does not give it away.
+- **`editable`** is core's flag (the version holds the draft slot) AND the caller's right to edit the
+  policy.
+- **Write.** The read gate runs first, then the edit check: a caller who may not edit gets
+  `PermissionDenied` (`NotFound` for a draft they cannot see) and core is never asked. A related
+  target the caller cannot read is `NotFound`, the same as one that does not exist. Linking never
+  creates a draft.
+- **Core's refusals** keep their code with a fixed sentence (core's text is logged, not sent):
+  `NotFound` (version, library item or policy), `FailedPrecondition` (the version is not a draft or
+  in review) and `InvalidArgument` (an id named twice, an unknown relationship type, a policy related
+  to itself, a repeated link). `createDefinition` and `updateDefinition` relay `AlreadyExists` for a
+  taken title and `InvalidArgument` for an empty one the same way.
+- **Older queries.** `relatedPolicies`, `policyReferences`, `policyContactBlocks` and
+  `policyDefinitionEntries` are answered from the links of the policy's published version, else its
+  draft (for those who may see the draft; anyone else, and a policy with no version, gets an empty
+  list). `relatedPolicies` lists the policy's own links only. The older `setRelatedPolicies`,
+  `setPolicyReferences`, `setPolicyContactBlocks` and `setPolicyDefinitionEntries` still write
+  core's per-policy store and no longer show in those reads.
+
 ## Break-glass reads
 
 A site admin who sees a document obfuscated can ask for a time-boxed reveal of that one document

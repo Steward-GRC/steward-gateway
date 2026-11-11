@@ -1,0 +1,62 @@
+# --- Library links per policy version ---
+# What a policy or procedure VERSION links to from the libraries. The library items (definitions,
+# references, contacts) are not versioned; the links are stored with the version, so they are
+# approved with it, stay as approved once it is published, and are copied into a new draft. A link
+# can only be added, removed or reordered while the version is editable (a draft or one in review);
+# otherwise the call is refused as FailedPrecondition. Linking never creates a draft. Definitions are listed alphabetically by title; references and contacts keep the order the
+# author gave them. Related items are other policies, each with a relationship type.
+type RelationshipTypeInfo {
+  id: ID!
+  # How this side reads, for example "is related to".
+  label: String!
+  # The type the other side of the link takes, and how it reads ("is related by").
+  inverseId: ID!
+  inverseLabel: String!
+}
+
+enum RelatedDirection {
+  # This version names the other policy.
+  OUTGOING
+  # The other policy's published version names this one; type and label are the inverse.
+  INCOMING
+}
+
+type RelatedLink {
+  policyId: ID!
+  number: String!
+  title: String!
+  type: ID!
+  label: String!
+  direction: RelatedDirection!
+}
+
+input RelatedLinkInput {
+  policyId: ID!
+  type: ID!
+}
+
+type PolicyVersionLinks {
+  policyVersionId: ID!
+  # Whether the caller can change the links now: the version holds the draft slot (core, by status)
+  # AND the caller may edit the policy (gateway).
+  editable: Boolean!
+  definitions: [DefinitionEntry!]!
+  related: [RelatedLink!]!
+  references: [Reference!]!
+  contacts: [ContactBlock!]!
+}
+
+extend type Query {
+  # The fixed list of relationship types, each with its inverse.
+  relationshipTypes: [RelationshipTypeInfo!]!
+  policyVersionLinks(policyVersionId: ID!): PolicyVersionLinks!
+}
+
+extend type Mutation {
+  # Each is a full replace of that kind of link on the version. Authors only.
+  setVersionDefinitions(policyVersionId: ID!, definitionIds: [ID!]!): PolicyVersionLinks!
+  setVersionRelated(policyVersionId: ID!, links: [RelatedLinkInput!]!): PolicyVersionLinks!
+  # The order given is the order kept.
+  setVersionReferences(policyVersionId: ID!, referenceIds: [ID!]!): PolicyVersionLinks!
+  setVersionContacts(policyVersionId: ID!, contactBlockIds: [ID!]!): PolicyVersionLinks!
+}

@@ -772,6 +772,10 @@ type ComplexityRoot struct {
 		SetTypeCadence                func(childComplexity int, kind string, cadence NotifCadence) int
 		SetUserAiQueryLimit           func(childComplexity int, userID string, limit int) int
 		SetUserPolicyOverride         func(childComplexity int, userID string, policyNumber string, effect *OverrideEffect) int
+		SetVersionContacts            func(childComplexity int, policyVersionID string, contactBlockIds []string) int
+		SetVersionDefinitions         func(childComplexity int, policyVersionID string, definitionIds []string) int
+		SetVersionReferences          func(childComplexity int, policyVersionID string, referenceIds []string) int
+		SetVersionRelated             func(childComplexity int, policyVersionID string, links []*RelatedLinkInput) int
 		SetWorkflowVetoEnabled        func(childComplexity int, id string, enabled bool) int
 		ShredAuditSubject             func(childComplexity int, subjectKey string, reason string) int
 		SignalWorkflow                func(childComplexity int, policyVersionID string, runID string, taskID string, signal SignalType, comment string) int
@@ -954,6 +958,15 @@ type ComplexityRoot struct {
 		VersionNo         func(childComplexity int) int
 	}
 
+	PolicyVersionLinks struct {
+		Contacts        func(childComplexity int) int
+		Definitions     func(childComplexity int) int
+		Editable        func(childComplexity int) int
+		PolicyVersionID func(childComplexity int) int
+		References      func(childComplexity int) int
+		Related         func(childComplexity int) int
+	}
+
 	PolicyViewerCan struct {
 		Ack               func(childComplexity int) int
 		Approve           func(childComplexity int) int
@@ -1033,6 +1046,7 @@ type ComplexityRoot struct {
 		PolicyDiff                 func(childComplexity int, fromVersionID string, toVersionID string) int
 		PolicyReferences           func(childComplexity int, policyID string) int
 		PolicyVersion              func(childComplexity int, id string) int
+		PolicyVersionLinks         func(childComplexity int, policyVersionID string) int
 		PolicyVersionSummary       func(childComplexity int, versionID string) int
 		PolicyVersions             func(childComplexity int, policyID string) int
 		PreviewAccountMerge        func(childComplexity int, sourceUserID string, targetUserID string) int
@@ -1041,6 +1055,7 @@ type ComplexityRoot struct {
 		RelatedPolicies            func(childComplexity int, policyID string) int
 		RelatedPolicyCandidates    func(childComplexity int, policyID string) int
 		RelatedPolicySuggestions   func(childComplexity int, policyID string, first *int) int
+		RelationshipTypes          func(childComplexity int) int
 		RenderedContent            func(childComplexity int, policyVersionID string) int
 		ReportAttachment           func(childComplexity int, caseID string, attachmentID string) int
 		ReportCase                 func(childComplexity int, caseID string) int
@@ -1111,6 +1126,15 @@ type ComplexityRoot struct {
 		VersionID    func(childComplexity int) int
 	}
 
+	RelatedLink struct {
+		Direction func(childComplexity int) int
+		Label     func(childComplexity int) int
+		Number    func(childComplexity int) int
+		PolicyID  func(childComplexity int) int
+		Title     func(childComplexity int) int
+		Type      func(childComplexity int) int
+	}
+
 	RelatedPolicy struct {
 		Number   func(childComplexity int) int
 		PolicyID func(childComplexity int) int
@@ -1123,6 +1147,13 @@ type ComplexityRoot struct {
 		PolicyID    func(childComplexity int) int
 		PolicyTitle func(childComplexity int) int
 		VersionNo   func(childComplexity int) int
+	}
+
+	RelationshipTypeInfo struct {
+		ID           func(childComplexity int) int
+		InverseID    func(childComplexity int) int
+		InverseLabel func(childComplexity int) int
+		Label        func(childComplexity int) int
 	}
 
 	RenamePolicyResult struct {
@@ -1673,6 +1704,10 @@ type MutationResolver interface {
 	AddGroupMapping(ctx context.Context, connectionID string, idpGroupClaimValue string, targetGroupID string) (*GroupMapping, error)
 	DeleteGroupMapping(ctx context.Context, mappingID string) (bool, error)
 	ForceRotateSpCertificate(ctx context.Context) (*SpCertificate, error)
+	SetVersionDefinitions(ctx context.Context, policyVersionID string, definitionIds []string) (*PolicyVersionLinks, error)
+	SetVersionRelated(ctx context.Context, policyVersionID string, links []*RelatedLinkInput) (*PolicyVersionLinks, error)
+	SetVersionReferences(ctx context.Context, policyVersionID string, referenceIds []string) (*PolicyVersionLinks, error)
+	SetVersionContacts(ctx context.Context, policyVersionID string, contactBlockIds []string) (*PolicyVersionLinks, error)
 	SubmitWorkflow(ctx context.Context, policyVersionID string, policyID string, categoryID string, ancestorCategoryIds []string) (*WorkflowSubmitResult, error)
 	SignalWorkflow(ctx context.Context, policyVersionID string, runID string, taskID string, signal SignalType, comment string) (bool, error)
 	SwapAssignee(ctx context.Context, input SwapAssigneeInput) (*SwapAssigneeResult, error)
@@ -1778,6 +1813,8 @@ type QueryResolver interface {
 	SpCertificate(ctx context.Context) (*SpCertificate, error)
 	SpCertificates(ctx context.Context) ([]*SpCertificate, error)
 	GroupMappings(ctx context.Context, connectionID string) ([]*GroupMapping, error)
+	RelationshipTypes(ctx context.Context) ([]*RelationshipTypeInfo, error)
+	PolicyVersionLinks(ctx context.Context, policyVersionID string) (*PolicyVersionLinks, error)
 	WorkflowStatus(ctx context.Context, policyVersionID string) (*WorkflowStatus, error)
 	PendingTasks(ctx context.Context) ([]*PendingTask, error)
 	UpcomingApprovals(ctx context.Context) ([]*UpcomingApproval, error)
@@ -5464,6 +5501,50 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetUserPolicyOverride(childComplexity, args["userId"].(string), args["policyNumber"].(string), args["effect"].(*OverrideEffect)), true
+	case "Mutation.setVersionContacts":
+		if e.ComplexityRoot.Mutation.SetVersionContacts == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setVersionContacts_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetVersionContacts(childComplexity, args["policyVersionId"].(string), args["contactBlockIds"].([]string)), true
+	case "Mutation.setVersionDefinitions":
+		if e.ComplexityRoot.Mutation.SetVersionDefinitions == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setVersionDefinitions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetVersionDefinitions(childComplexity, args["policyVersionId"].(string), args["definitionIds"].([]string)), true
+	case "Mutation.setVersionReferences":
+		if e.ComplexityRoot.Mutation.SetVersionReferences == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setVersionReferences_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetVersionReferences(childComplexity, args["policyVersionId"].(string), args["referenceIds"].([]string)), true
+	case "Mutation.setVersionRelated":
+		if e.ComplexityRoot.Mutation.SetVersionRelated == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setVersionRelated_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetVersionRelated(childComplexity, args["policyVersionId"].(string), args["links"].([]*RelatedLinkInput)), true
 	case "Mutation.setWorkflowVetoEnabled":
 		if e.ComplexityRoot.Mutation.SetWorkflowVetoEnabled == nil {
 			break
@@ -6374,6 +6455,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PolicyVersion.VersionNo(childComplexity), true
 
+	case "PolicyVersionLinks.contacts":
+		if e.ComplexityRoot.PolicyVersionLinks.Contacts == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersionLinks.Contacts(childComplexity), true
+	case "PolicyVersionLinks.definitions":
+		if e.ComplexityRoot.PolicyVersionLinks.Definitions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersionLinks.Definitions(childComplexity), true
+	case "PolicyVersionLinks.editable":
+		if e.ComplexityRoot.PolicyVersionLinks.Editable == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersionLinks.Editable(childComplexity), true
+	case "PolicyVersionLinks.policyVersionId":
+		if e.ComplexityRoot.PolicyVersionLinks.PolicyVersionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersionLinks.PolicyVersionID(childComplexity), true
+	case "PolicyVersionLinks.references":
+		if e.ComplexityRoot.PolicyVersionLinks.References == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersionLinks.References(childComplexity), true
+	case "PolicyVersionLinks.related":
+		if e.ComplexityRoot.PolicyVersionLinks.Related == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersionLinks.Related(childComplexity), true
+
 	case "PolicyViewerCan.ack":
 		if e.ComplexityRoot.PolicyViewerCan.Ack == nil {
 			break
@@ -7051,6 +7169,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.PolicyVersion(childComplexity, args["id"].(string)), true
+	case "Query.policyVersionLinks":
+		if e.ComplexityRoot.Query.PolicyVersionLinks == nil {
+			break
+		}
+
+		args, err := ec.field_Query_policyVersionLinks_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PolicyVersionLinks(childComplexity, args["policyVersionId"].(string)), true
 	case "Query.policyVersionSummary":
 		if e.ComplexityRoot.Query.PolicyVersionSummary == nil {
 			break
@@ -7139,6 +7268,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.RelatedPolicySuggestions(childComplexity, args["policyId"].(string), args["first"].(*int)), true
+	case "Query.relationshipTypes":
+		if e.ComplexityRoot.Query.RelationshipTypes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.RelationshipTypes(childComplexity), true
 	case "Query.renderedContent":
 		if e.ComplexityRoot.Query.RenderedContent == nil {
 			break
@@ -7558,6 +7693,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ReindexResult.VersionID(childComplexity), true
 
+	case "RelatedLink.direction":
+		if e.ComplexityRoot.RelatedLink.Direction == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RelatedLink.Direction(childComplexity), true
+	case "RelatedLink.label":
+		if e.ComplexityRoot.RelatedLink.Label == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RelatedLink.Label(childComplexity), true
+	case "RelatedLink.number":
+		if e.ComplexityRoot.RelatedLink.Number == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RelatedLink.Number(childComplexity), true
+	case "RelatedLink.policyId":
+		if e.ComplexityRoot.RelatedLink.PolicyID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RelatedLink.PolicyID(childComplexity), true
+	case "RelatedLink.title":
+		if e.ComplexityRoot.RelatedLink.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RelatedLink.Title(childComplexity), true
+	case "RelatedLink.type":
+		if e.ComplexityRoot.RelatedLink.Type == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RelatedLink.Type(childComplexity), true
+
 	case "RelatedPolicy.number":
 		if e.ComplexityRoot.RelatedPolicy.Number == nil {
 			break
@@ -7607,6 +7779,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RelatedPolicySuggestion.VersionNo(childComplexity), true
+
+	case "RelationshipTypeInfo.id":
+		if e.ComplexityRoot.RelationshipTypeInfo.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RelationshipTypeInfo.ID(childComplexity), true
+	case "RelationshipTypeInfo.inverseId":
+		if e.ComplexityRoot.RelationshipTypeInfo.InverseID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RelationshipTypeInfo.InverseID(childComplexity), true
+	case "RelationshipTypeInfo.inverseLabel":
+		if e.ComplexityRoot.RelationshipTypeInfo.InverseLabel == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RelationshipTypeInfo.InverseLabel(childComplexity), true
+	case "RelationshipTypeInfo.label":
+		if e.ComplexityRoot.RelationshipTypeInfo.Label == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RelationshipTypeInfo.Label(childComplexity), true
 
 	case "RenamePolicyResult.draftVersionId":
 		if e.ComplexityRoot.RenamePolicyResult.DraftVersionID == nil {
@@ -9166,6 +9363,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRaciRuleInput,
 		ec.unmarshalInputReferenceDocumentInput,
 		ec.unmarshalInputReferenceInput,
+		ec.unmarshalInputRelatedLinkInput,
 		ec.unmarshalInputReportAttachmentInput,
 		ec.unmarshalInputReportDetailsInput,
 		ec.unmarshalInputRiskFactorsInput,
@@ -12108,6 +12306,69 @@ extend type Mutation {
 
 
 `, BuiltIn: false},
+	{Name: "../../graphql/version_link.graphqls", Input: `# --- Library links per policy version ---
+# What a policy or procedure VERSION links to from the libraries. The library items (definitions,
+# references, contacts) are not versioned; the links are stored with the version, so they are
+# approved with it, stay as approved once it is published, and are copied into a new draft. A link
+# can only be added, removed or reordered while the version is editable (a draft or one in review);
+# otherwise the call is refused as FailedPrecondition. Linking never creates a draft. Definitions are listed alphabetically by title; references and contacts keep the order the
+# author gave them. Related items are other policies, each with a relationship type.
+type RelationshipTypeInfo {
+  id: ID!
+  # How this side reads, for example "is related to".
+  label: String!
+  # The type the other side of the link takes, and how it reads ("is related by").
+  inverseId: ID!
+  inverseLabel: String!
+}
+
+enum RelatedDirection {
+  # This version names the other policy.
+  OUTGOING
+  # The other policy's published version names this one; type and label are the inverse.
+  INCOMING
+}
+
+type RelatedLink {
+  policyId: ID!
+  number: String!
+  title: String!
+  type: ID!
+  label: String!
+  direction: RelatedDirection!
+}
+
+input RelatedLinkInput {
+  policyId: ID!
+  type: ID!
+}
+
+type PolicyVersionLinks {
+  policyVersionId: ID!
+  # Whether the caller can change the links now: the version holds the draft slot (core, by status)
+  # AND the caller may edit the policy (gateway).
+  editable: Boolean!
+  definitions: [DefinitionEntry!]!
+  related: [RelatedLink!]!
+  references: [Reference!]!
+  contacts: [ContactBlock!]!
+}
+
+extend type Query {
+  # The fixed list of relationship types, each with its inverse.
+  relationshipTypes: [RelationshipTypeInfo!]!
+  policyVersionLinks(policyVersionId: ID!): PolicyVersionLinks!
+}
+
+extend type Mutation {
+  # Each is a full replace of that kind of link on the version. Authors only.
+  setVersionDefinitions(policyVersionId: ID!, definitionIds: [ID!]!): PolicyVersionLinks!
+  setVersionRelated(policyVersionId: ID!, links: [RelatedLinkInput!]!): PolicyVersionLinks!
+  # The order given is the order kept.
+  setVersionReferences(policyVersionId: ID!, referenceIds: [ID!]!): PolicyVersionLinks!
+  setVersionContacts(policyVersionId: ID!, contactBlockIds: [ID!]!): PolicyVersionLinks!
+}
+`, BuiltIn: false},
 	{Name: "../../graphql/workflow.graphqls", Input: `# --- Workflow: approval-saga submit/signal/status/pending-tasks ---
 # Backed by workflow (WorkflowService). The caller is the signed-in user:
 # submitWorkflow's submitter, signalWorkflow's actor and pendingTasks's
@@ -14028,6 +14289,24 @@ func (ec *executionContext) childFields_PolicyVersion(ctx context.Context, field
 	return nil, fmt.Errorf("no field named %q was found under type PolicyVersion", field.Name)
 }
 
+func (ec *executionContext) childFields_PolicyVersionLinks(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "policyVersionId":
+		return ec.fieldContext_PolicyVersionLinks_policyVersionId(ctx, field)
+	case "editable":
+		return ec.fieldContext_PolicyVersionLinks_editable(ctx, field)
+	case "definitions":
+		return ec.fieldContext_PolicyVersionLinks_definitions(ctx, field)
+	case "related":
+		return ec.fieldContext_PolicyVersionLinks_related(ctx, field)
+	case "references":
+		return ec.fieldContext_PolicyVersionLinks_references(ctx, field)
+	case "contacts":
+		return ec.fieldContext_PolicyVersionLinks_contacts(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PolicyVersionLinks", field.Name)
+}
+
 func (ec *executionContext) childFields_PolicyViewerCan(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "read":
@@ -14136,6 +14415,24 @@ func (ec *executionContext) childFields_ReindexResult(ctx context.Context, field
 	return nil, fmt.Errorf("no field named %q was found under type ReindexResult", field.Name)
 }
 
+func (ec *executionContext) childFields_RelatedLink(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "policyId":
+		return ec.fieldContext_RelatedLink_policyId(ctx, field)
+	case "number":
+		return ec.fieldContext_RelatedLink_number(ctx, field)
+	case "title":
+		return ec.fieldContext_RelatedLink_title(ctx, field)
+	case "type":
+		return ec.fieldContext_RelatedLink_type(ctx, field)
+	case "label":
+		return ec.fieldContext_RelatedLink_label(ctx, field)
+	case "direction":
+		return ec.fieldContext_RelatedLink_direction(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type RelatedLink", field.Name)
+}
+
 func (ec *executionContext) childFields_RelatedPolicy(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "policyId":
@@ -14162,6 +14459,20 @@ func (ec *executionContext) childFields_RelatedPolicySuggestion(ctx context.Cont
 		return ec.fieldContext_RelatedPolicySuggestion_distance(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type RelatedPolicySuggestion", field.Name)
+}
+
+func (ec *executionContext) childFields_RelationshipTypeInfo(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_RelationshipTypeInfo_id(ctx, field)
+	case "label":
+		return ec.fieldContext_RelationshipTypeInfo_label(ctx, field)
+	case "inverseId":
+		return ec.fieldContext_RelationshipTypeInfo_inverseId(ctx, field)
+	case "inverseLabel":
+		return ec.fieldContext_RelationshipTypeInfo_inverseLabel(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type RelationshipTypeInfo", field.Name)
 }
 
 func (ec *executionContext) childFields_RenamePolicyResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -17832,6 +18143,94 @@ func (ec *executionContext) field_Mutation_setUserPolicyOverride_args(ctx contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setVersionContacts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyVersionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "contactBlockIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["contactBlockIds"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setVersionDefinitions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyVersionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "definitionIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["definitionIds"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setVersionReferences_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyVersionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "referenceIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["referenceIds"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setVersionRelated_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyVersionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "links",
+		func(ctx context.Context, v any) ([]*RelatedLinkInput, error) {
+			return ec.unmarshalNRelatedLinkInput2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedLinkInputᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["links"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_setWorkflowVetoEnabled_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19271,6 +19670,20 @@ func (ec *executionContext) field_Query_policyReferences_args(ctx context.Contex
 		return nil, err
 	}
 	args["policyId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_policyVersionLinks_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyVersionId"] = arg0
 	return args, nil
 }
 
@@ -34980,6 +35393,182 @@ func (ec *executionContext) fieldContext_Mutation_forceRotateSpCertificate(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setVersionDefinitions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setVersionDefinitions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetVersionDefinitions(ctx, fc.Args["policyVersionId"].(string), fc.Args["definitionIds"].([]string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyVersionLinks) graphql.Marshaler {
+			return ec.marshalNPolicyVersionLinks2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyVersionLinks(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setVersionDefinitions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyVersionLinks(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setVersionDefinitions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setVersionRelated(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setVersionRelated(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetVersionRelated(ctx, fc.Args["policyVersionId"].(string), fc.Args["links"].([]*RelatedLinkInput))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyVersionLinks) graphql.Marshaler {
+			return ec.marshalNPolicyVersionLinks2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyVersionLinks(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setVersionRelated(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyVersionLinks(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setVersionRelated_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setVersionReferences(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setVersionReferences(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetVersionReferences(ctx, fc.Args["policyVersionId"].(string), fc.Args["referenceIds"].([]string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyVersionLinks) graphql.Marshaler {
+			return ec.marshalNPolicyVersionLinks2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyVersionLinks(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setVersionReferences(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyVersionLinks(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setVersionReferences_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setVersionContacts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setVersionContacts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetVersionContacts(ctx, fc.Args["policyVersionId"].(string), fc.Args["contactBlockIds"].([]string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyVersionLinks) graphql.Marshaler {
+			return ec.marshalNPolicyVersionLinks2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyVersionLinks(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setVersionContacts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyVersionLinks(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setVersionContacts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_submitWorkflow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -37655,6 +38244,180 @@ func (ec *executionContext) _PolicyVersion_publishedAt(ctx context.Context, fiel
 }
 func (ec *executionContext) fieldContext_PolicyVersion_publishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersionLinks_policyVersionId(ctx context.Context, field graphql.CollectedField, obj *PolicyVersionLinks) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersionLinks_policyVersionId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PolicyVersionID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersionLinks_policyVersionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersionLinks", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersionLinks_editable(ctx context.Context, field graphql.CollectedField, obj *PolicyVersionLinks) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersionLinks_editable(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Editable, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersionLinks_editable(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersionLinks", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersionLinks_definitions(ctx context.Context, field graphql.CollectedField, obj *PolicyVersionLinks) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersionLinks_definitions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Definitions, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*DefinitionEntry) graphql.Marshaler {
+			return ec.marshalNDefinitionEntry2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDefinitionEntryᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersionLinks_definitions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicyVersionLinks",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_DefinitionEntry(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PolicyVersionLinks_related(ctx context.Context, field graphql.CollectedField, obj *PolicyVersionLinks) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersionLinks_related(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Related, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*RelatedLink) graphql.Marshaler {
+			return ec.marshalNRelatedLink2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedLinkᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersionLinks_related(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicyVersionLinks",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RelatedLink(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PolicyVersionLinks_references(ctx context.Context, field graphql.CollectedField, obj *PolicyVersionLinks) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersionLinks_references(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.References, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*Reference) graphql.Marshaler {
+			return ec.marshalNReference2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReferenceᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersionLinks_references(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicyVersionLinks",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Reference(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PolicyVersionLinks_contacts(ctx context.Context, field graphql.CollectedField, obj *PolicyVersionLinks) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersionLinks_contacts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Contacts, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*ContactBlock) graphql.Marshaler {
+			return ec.marshalNContactBlock2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐContactBlockᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersionLinks_contacts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicyVersionLinks",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ContactBlock(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _PolicyViewerCan_read(ctx context.Context, field graphql.CollectedField, obj *PolicyViewerCan) (ret graphql.Marshaler) {
@@ -41548,6 +42311,82 @@ func (ec *executionContext) fieldContext_Query_groupMappings(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_relationshipTypes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_relationshipTypes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().RelationshipTypes(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*RelationshipTypeInfo) graphql.Marshaler {
+			return ec.marshalNRelationshipTypeInfo2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelationshipTypeInfoᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_relationshipTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RelationshipTypeInfo(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_policyVersionLinks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_policyVersionLinks(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PolicyVersionLinks(ctx, fc.Args["policyVersionId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyVersionLinks) graphql.Marshaler {
+			return ec.marshalNPolicyVersionLinks2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyVersionLinks(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_policyVersionLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyVersionLinks(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_policyVersionLinks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_workflowStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -42607,6 +43446,144 @@ func (ec *executionContext) fieldContext_ReindexResult_removedPrior(_ context.Co
 	return graphql.NewScalarFieldContext("ReindexResult", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
+func (ec *executionContext) _RelatedLink_policyId(ctx context.Context, field graphql.CollectedField, obj *RelatedLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RelatedLink_policyId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PolicyID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RelatedLink_policyId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RelatedLink", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RelatedLink_number(ctx context.Context, field graphql.CollectedField, obj *RelatedLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RelatedLink_number(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Number, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RelatedLink_number(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RelatedLink", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RelatedLink_title(ctx context.Context, field graphql.CollectedField, obj *RelatedLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RelatedLink_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RelatedLink_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RelatedLink", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RelatedLink_type(ctx context.Context, field graphql.CollectedField, obj *RelatedLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RelatedLink_type(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Type, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RelatedLink_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RelatedLink", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RelatedLink_label(ctx context.Context, field graphql.CollectedField, obj *RelatedLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RelatedLink_label(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RelatedLink_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RelatedLink", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RelatedLink_direction(ctx context.Context, field graphql.CollectedField, obj *RelatedLink) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RelatedLink_direction(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Direction, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v RelatedDirection) graphql.Marshaler {
+			return ec.marshalNRelatedDirection2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedDirection(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RelatedLink_direction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RelatedLink", field, false, false, errors.New("field of type RelatedDirection does not have child fields"))
+}
+
 func (ec *executionContext) _RelatedPolicy_policyId(ctx context.Context, field graphql.CollectedField, obj *RelatedPolicy) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -42789,6 +43766,98 @@ func (ec *executionContext) _RelatedPolicySuggestion_distance(ctx context.Contex
 }
 func (ec *executionContext) fieldContext_RelatedPolicySuggestion_distance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("RelatedPolicySuggestion", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _RelationshipTypeInfo_id(ctx context.Context, field graphql.CollectedField, obj *RelationshipTypeInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RelationshipTypeInfo_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RelationshipTypeInfo_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RelationshipTypeInfo", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RelationshipTypeInfo_label(ctx context.Context, field graphql.CollectedField, obj *RelationshipTypeInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RelationshipTypeInfo_label(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RelationshipTypeInfo_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RelationshipTypeInfo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RelationshipTypeInfo_inverseId(ctx context.Context, field graphql.CollectedField, obj *RelationshipTypeInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RelationshipTypeInfo_inverseId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.InverseID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RelationshipTypeInfo_inverseId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RelationshipTypeInfo", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RelationshipTypeInfo_inverseLabel(ctx context.Context, field graphql.CollectedField, obj *RelationshipTypeInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RelationshipTypeInfo_inverseLabel(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.InverseLabel, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RelationshipTypeInfo_inverseLabel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RelationshipTypeInfo", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _RenamePolicyResult_policy(ctx context.Context, field graphql.CollectedField, obj *RenamePolicyResult) (ret graphql.Marshaler) {
@@ -50939,6 +52008,43 @@ func (ec *executionContext) unmarshalInputReferenceInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRelatedLinkInput(ctx context.Context, obj any) (RelatedLinkInput, error) {
+	var it RelatedLinkInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"policyId", "type"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "policyId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("policyId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PolicyID = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputReportAttachmentInput(ctx context.Context, obj any) (ReportAttachmentInput, error) {
 	var it ReportAttachmentInput
 	if obj == nil {
@@ -57298,6 +58404,34 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setVersionDefinitions":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setVersionDefinitions(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setVersionRelated":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setVersionRelated(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setVersionReferences":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setVersionReferences(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setVersionContacts":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setVersionContacts(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "submitWorkflow":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_submitWorkflow(ctx, field)
@@ -58460,6 +59594,69 @@ func (ec *executionContext) _PolicyVersion(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._PolicyVersion_publishedAt(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var policyVersionLinksImplementors = []string{"PolicyVersionLinks"}
+
+func (ec *executionContext) _PolicyVersionLinks(ctx context.Context, sel ast.SelectionSet, obj *PolicyVersionLinks) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, policyVersionLinksImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PolicyVersionLinks")
+		case "policyVersionId":
+			out.Values[i] = ec._PolicyVersionLinks_policyVersionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "editable":
+			out.Values[i] = ec._PolicyVersionLinks_editable(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "definitions":
+			out.Values[i] = ec._PolicyVersionLinks_definitions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "related":
+			out.Values[i] = ec._PolicyVersionLinks_related(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "references":
+			out.Values[i] = ec._PolicyVersionLinks_references(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "contacts":
+			out.Values[i] = ec._PolicyVersionLinks_contacts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -60594,6 +61791,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "relationshipTypes":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_relationshipTypes(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "policyVersionLinks":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_policyVersionLinks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "workflowStatus":
 			field := field
 
@@ -61115,6 +62356,69 @@ func (ec *executionContext) _ReindexResult(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var relatedLinkImplementors = []string{"RelatedLink"}
+
+func (ec *executionContext) _RelatedLink(ctx context.Context, sel ast.SelectionSet, obj *RelatedLink) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, relatedLinkImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RelatedLink")
+		case "policyId":
+			out.Values[i] = ec._RelatedLink_policyId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "number":
+			out.Values[i] = ec._RelatedLink_number(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._RelatedLink_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._RelatedLink_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._RelatedLink_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "direction":
+			out.Values[i] = ec._RelatedLink_direction(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var relatedPolicyImplementors = []string{"RelatedPolicy"}
 
 func (ec *executionContext) _RelatedPolicy(ctx context.Context, sel ast.SelectionSet, obj *RelatedPolicy) graphql.Marshaler {
@@ -61197,6 +62501,59 @@ func (ec *executionContext) _RelatedPolicySuggestion(ctx context.Context, sel as
 			}
 		case "distance":
 			out.Values[i] = ec._RelatedPolicySuggestion_distance(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var relationshipTypeInfoImplementors = []string{"RelationshipTypeInfo"}
+
+func (ec *executionContext) _RelationshipTypeInfo(ctx context.Context, sel ast.SelectionSet, obj *RelationshipTypeInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, relationshipTypeInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RelationshipTypeInfo")
+		case "id":
+			out.Values[i] = ec._RelationshipTypeInfo_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._RelationshipTypeInfo_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "inverseId":
+			out.Values[i] = ec._RelationshipTypeInfo_inverseId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "inverseLabel":
+			out.Values[i] = ec._RelationshipTypeInfo_inverseLabel(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -66792,6 +68149,20 @@ func (ec *executionContext) marshalNPolicyVersion2ᚖgithubᚗcomᚋStewardᚑGR
 	return ec._PolicyVersion(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPolicyVersionLinks2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyVersionLinks(ctx context.Context, sel ast.SelectionSet, v PolicyVersionLinks) graphql.Marshaler {
+	return ec._PolicyVersionLinks(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPolicyVersionLinks2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyVersionLinks(ctx context.Context, sel ast.SelectionSet, v *PolicyVersionLinks) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PolicyVersionLinks(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPolicyViewerCan2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyViewerCan(ctx context.Context, sel ast.SelectionSet, v *PolicyViewerCan) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -66959,6 +68330,61 @@ func (ec *executionContext) marshalNReindexResult2ᚖgithubᚗcomᚋStewardᚑGR
 	return ec._ReindexResult(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNRelatedDirection2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedDirection(ctx context.Context, v any) (RelatedDirection, error) {
+	var res RelatedDirection
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRelatedDirection2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedDirection(ctx context.Context, sel ast.SelectionSet, v RelatedDirection) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNRelatedLink2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedLinkᚄ(ctx context.Context, sel ast.SelectionSet, v []*RelatedLink) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNRelatedLink2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedLink(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRelatedLink2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedLink(ctx context.Context, sel ast.SelectionSet, v *RelatedLink) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RelatedLink(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNRelatedLinkInput2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedLinkInputᚄ(ctx context.Context, v any) ([]*RelatedLinkInput, error) {
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]*RelatedLinkInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNRelatedLinkInput2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedLinkInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNRelatedLinkInput2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedLinkInput(ctx context.Context, v any) (*RelatedLinkInput, error) {
+	res, err := ec.unmarshalInputRelatedLinkInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNRelatedPolicy2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelatedPolicyᚄ(ctx context.Context, sel ast.SelectionSet, v []*RelatedPolicy) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -67009,6 +68435,32 @@ func (ec *executionContext) marshalNRelatedPolicySuggestion2ᚖgithubᚗcomᚋSt
 		return graphql.Null
 	}
 	return ec._RelatedPolicySuggestion(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRelationshipTypeInfo2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelationshipTypeInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*RelationshipTypeInfo) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNRelationshipTypeInfo2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelationshipTypeInfo(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRelationshipTypeInfo2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRelationshipTypeInfo(ctx context.Context, sel ast.SelectionSet, v *RelationshipTypeInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RelationshipTypeInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNRenamePolicyResult2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRenamePolicyResult(ctx context.Context, sel ast.SelectionSet, v RenamePolicyResult) graphql.Marshaler {

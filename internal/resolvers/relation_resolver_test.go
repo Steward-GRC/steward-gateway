@@ -33,29 +33,6 @@ func (f *fakeRelationClient) SetRelatedPolicies(_ context.Context, in *corev1.Se
 	return &corev1.SetRelatedPoliciesResponse{Related: out}, nil
 }
 
-// TestRelatedPoliciesResolver_FiltersUnreadableAndDrafts: the display resolver
-// runs each linked policy through the read model with the caller's subject, so a
-// read-only viewer sees a published related link but NOT a never-published draft
-// linked as related — a related link must never disclose a draft's existence
-// (the reported leak). Authoritative Number/Title come from the loaded policy.
-func TestRelatedPoliciesResolver_FiltersUnreadableAndDrafts(t *testing.T) {
-	gc, ic, pc := core22Fixtures()
-	rc := &fakeRelationClient{list: []*corev1.RelatedPolicy{
-		{PolicyId: "B-open", Number: "stale", Title: "stale"},
-		{PolicyId: "D-draft", Number: "POL-OPEN-D", Title: "Secret draft"},
-	}}
-	// u-contractor reads cat-open (Everyone) but is not an overseer of either.
-	ctx := ctxWithRoles(t, "u-contractor", nil)
-
-	out, err := resolvers.RelatedPoliciesResolver(ctx, rc, pc, gc, nil, ic, "A-open")
-	if err != nil {
-		t.Fatalf("RelatedPoliciesResolver: %v", err)
-	}
-	if len(out) != 1 || out[0].PolicyID != "B-open" || out[0].Number != "POL-OPEN-B" {
-		t.Fatalf("expected only the published link [B-open] with authoritative number, got: %+v", out)
-	}
-}
-
 func TestSetRelatedPoliciesResolver_ForwardsAndGates(t *testing.T) {
 	c := &fakeRelationClient{}
 	// Unauthenticated is denied and never calls core. nil policy/group/identity

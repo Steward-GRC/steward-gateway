@@ -1,0 +1,89 @@
+# --- Appendix life cycle ---
+# An appendix belongs to a policy or procedure, not to one of its versions, and has a version
+# table of its own: create gives a draft, publish makes the row readers see, an edit starts a new
+# draft beside it, and retire keeps the appendix with its history so it can be restored. Core
+# stores the rows and returns the published row and the draft side by side; the gateway decides
+# what the caller sees. Whoever may edit the policy sees the drafts, every row and the
+# contributors; anyone else who may read the policy sees only the latest published row of an
+# appendix that has one, and no contributors. A reader's write is refused as permission denied.
+# Appendices take no part in an approval. PolicyVersion.appendices keeps the older Appendix shape,
+# filled from the latest published row of each live appendix of the policy, on every version.
+
+enum AppendixState {
+  DRAFT
+  PUBLISHED
+}
+
+# Someone who saved or published an appendix. A user who was removed, or never found, stays
+# listed: the name is then the user id and active is false.
+type AppendixContributor {
+  userId: ID!
+  name: String!
+  active: Boolean!
+}
+
+# One row of an appendix's own version table (not a policy version).
+type AppendixVersion {
+  # Everyone who saved or published this row, in the order they first did. Editors only; empty
+  # for anyone else.
+  contributors: [AppendixContributor!]!
+  id: ID!
+  versionNo: Int!
+  state: AppendixState!
+  title: String!
+  contentJson: String!
+  createdAt: String!  # RFC-3339
+  createdBy: ID!
+  updatedAt: String!  # RFC-3339
+  updatedBy: ID!
+  publishedAt: String  # RFC-3339; null on a draft
+  publishedBy: ID
+}
+
+type PolicyAppendix {
+  id: ID!
+  policyId: ID!
+  # The place among the live appendices (A, B, C); null while retired.
+  letter: String
+  orderIndex: Int!
+  # When and by whom the first row was written.
+  createdAt: String!  # RFC-3339
+  createdBy: ID!
+  retiredAt: String  # RFC-3339; null while live
+  # Core does not record who retired an appendix yet, so this is always null.
+  retiredBy: ID
+  # The latest published row. Readers see only this.
+  published: AppendixVersion
+  # The author's work in progress. Editors only.
+  draft: AppendixVersion
+  # Every row, oldest first with the draft last. Readers get the published row only.
+  versions: [AppendixVersion!]!
+  # The published rows, newest first, for the Published tab drop-down. Readers get the latest only.
+  publishedVersions: [AppendixVersion!]!
+  # Everyone who ever saved or published the appendix, in the order they first did. Editors only;
+  # empty for anyone else.
+  contributors: [AppendixContributor!]!
+}
+
+extend type Query {
+  # Readers get the live appendices that have a published row. Editors also get the drafts, and
+  # the retired ones with includeRetired.
+  policyAppendices(policyId: ID!, includeRetired: Boolean): [PolicyAppendix!]!
+  # One appendix. A reader gets NotFound for one that is retired or has no published row.
+  policyAppendix(id: ID!): PolicyAppendix!
+}
+
+extend type Mutation {
+  # A blank or missing title becomes "Appendix A", "Appendix B", ...: the next name no other
+  # appendix of the policy uses. Editors only.
+  createPolicyAppendix(policyId: ID!, title: String, contentJson: String!): PolicyAppendix!
+  # Updates the open draft, or starts the next one beside the published row. A save equal to the
+  # published title and content, with no draft open, changes nothing. Editors only.
+  saveAppendixDraft(id: ID!, title: String!, contentJson: String!): PolicyAppendix!
+  # Promotes the draft to the next published version. Editors only.
+  publishAppendix(id: ID!): PolicyAppendix!
+  # Hides an appendix and keeps it with its history. Editors only.
+  retireAppendix(id: ID!): PolicyAppendix!
+  # Brings a retired appendix back, last in the order. Editors only.
+  restoreAppendix(id: ID!): PolicyAppendix!
+}

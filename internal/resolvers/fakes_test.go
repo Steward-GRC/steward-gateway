@@ -100,6 +100,10 @@ type fakeWorkflowClient struct {
 	pendingResp  *workflowv1.ListPendingTasksResponse
 	pendingErr   error
 	lastPending  *workflowv1.ListPendingTasksRequest
+	decidedResp  *workflowv1.ListDecidedApprovalsResponse
+	decidedErr   error
+	lastDecided  *workflowv1.ListDecidedApprovalsRequest
+	decidedCalls int
 	upcomingResp *workflowv1.ListUpcomingTasksResponse
 	upcomingErr  error
 	lastUpcoming *workflowv1.ListUpcomingTasksRequest
@@ -162,6 +166,18 @@ func (f *fakeWorkflowClient) GetStatus(_ context.Context, in *workflowv1.GetStat
 func (f *fakeWorkflowClient) ListPendingTasks(_ context.Context, in *workflowv1.ListPendingTasksRequest, _ ...grpc.CallOption) (*workflowv1.ListPendingTasksResponse, error) {
 	f.lastPending = in
 	return f.pendingResp, f.pendingErr
+}
+
+func (f *fakeWorkflowClient) ListDecidedApprovals(_ context.Context, in *workflowv1.ListDecidedApprovalsRequest, _ ...grpc.CallOption) (*workflowv1.ListDecidedApprovalsResponse, error) {
+	f.lastDecided = in
+	f.decidedCalls++
+	if f.decidedErr != nil {
+		return nil, f.decidedErr
+	}
+	if f.decidedResp == nil {
+		return &workflowv1.ListDecidedApprovalsResponse{}, nil
+	}
+	return f.decidedResp, nil
 }
 
 func (f *fakeWorkflowClient) ListUpcomingTasks(_ context.Context, in *workflowv1.ListUpcomingTasksRequest, _ ...grpc.CallOption) (*workflowv1.ListUpcomingTasksResponse, error) {

@@ -66,6 +66,11 @@ func (r *queryResolver) UpcomingApprovals(ctx context.Context) ([]*UpcomingAppro
 	return UpcomingApprovalsResolver(ctx, r.WorkflowClient, r.PolicyClient)
 }
 
+// DecidedApprovals is the resolver for the decidedApprovals field.
+func (r *queryResolver) DecidedApprovals(ctx context.Context) ([]*DecidedApproval, error) {
+	return DecidedApprovalsResolver(ctx, r.logger().Ctx(ctx), r.WorkflowClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient)
+}
+
 // EffectiveWorkflow is the resolver for the effectiveWorkflow field.
 func (r *queryResolver) EffectiveWorkflow(ctx context.Context, policyID string) (*EffectiveWorkflow, error) {
 	return ResolveEffectiveWorkflowResolver(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.WorkflowClient, policyID)

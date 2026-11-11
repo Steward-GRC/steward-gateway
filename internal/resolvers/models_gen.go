@@ -505,6 +505,16 @@ type CorrectiveActionInput struct {
 	PolicyID    *string `json:"policyId,omitempty"`
 }
 
+type DecidedApproval struct {
+	PolicyVersionID string `json:"policyVersionId"`
+	PolicyTitle     string `json:"policyTitle"`
+	RunID           string `json:"runId"`
+	CurrentStageIdx int    `json:"currentStageIdx"`
+	StageCount      int    `json:"stageCount"`
+	Decision        string `json:"decision"`
+	DecidedAt       string `json:"decidedAt"`
+}
+
 type DecisionInput struct {
 	PolicyVersionID string       `json:"policyVersionId"`
 	StageIndex      int          `json:"stageIndex"`

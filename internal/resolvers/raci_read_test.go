@@ -530,3 +530,47 @@ func TestMeritRACIRead_SensitiveGateHidesWithoutClearance(t *testing.T) {
 		t.Fatalf("read_sensitive holder must see sensitive policy; got %v", visible)
 	}
 }
+
+// TestGetPolicy_ViewerCan_AckProcedure verifies a procedure is never
+// acknowledged: with the same ack rule that lets the caller acknowledge a
+// policy, viewerCan.ack is false for a procedure and every other flag is the
+// same as for the policy (steward-gateway#160).
+func TestGetPolicy_ViewerCan_AckProcedure(t *testing.T) {
+	everyoneReadAck := &corev1.CategoryRule{
+		SubjectKind: corev1.RuleSubjectKind_RULE_SUBJECT_KIND_EVERYONE,
+		Read:        corev1.GrantEffect_GRANT_EFFECT_ALLOW,
+		Ack:         corev1.GrantEffect_GRANT_EFFECT_ALLOW,
+	}
+	gc := newRaciReadClient(
+		map[string]*corev1.Category{"g-it": {Id: "g-it", Name: "IT", ParentId: ""}},
+		map[string][]*corev1.CategoryRule{"g-it": {everyoneReadAck}},
+	)
+	pc := &fakePolicyClient{policies: map[string]*corev1.Policy{
+		"pol-it": {Id: "pol-it", HomeCategoryId: "g-it", Number: "POL-IT-1", Title: "IT pol", CurrentPublishedVersionId: "pol-it-v1", DocumentType: corev1.DocumentType_DOCUMENT_TYPE_POLICY},
+		"prc-it": {Id: "prc-it", HomeCategoryId: "g-it", Number: "PRC-IT-1", Title: "IT proc", CurrentPublishedVersionId: "prc-it-v1", DocumentType: corev1.DocumentType_DOCUMENT_TYPE_PROCEDURE},
+	}}
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "plain-u"})
+
+	pol, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "pol-it")
+	if err != nil {
+		t.Fatalf("GetPolicy policy: %v", err)
+	}
+	prc, err := resolvers.GetPolicy(ctx, pc, gc, nil, nil, nil, "prc-it")
+	if err != nil {
+		t.Fatalf("GetPolicy procedure: %v", err)
+	}
+	if pol.ViewerCan == nil || prc.ViewerCan == nil {
+		t.Fatal("viewerCan must be populated")
+	}
+	if !pol.ViewerCan.Ack {
+		t.Fatalf("policy must be acknowledgeable; got %+v", pol.ViewerCan)
+	}
+	if prc.ViewerCan.Ack {
+		t.Fatalf("procedure must never be acknowledgeable; got %+v", prc.ViewerCan)
+	}
+	want := *pol.ViewerCan
+	want.Ack = false
+	if *prc.ViewerCan != want {
+		t.Fatalf("every other viewerCan flag must match the policy; got %+v want %+v", *prc.ViewerCan, want)
+	}
+}

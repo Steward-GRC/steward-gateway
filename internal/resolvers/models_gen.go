@@ -323,6 +323,7 @@ type AuditRecord struct {
 	ActorName        *string `json:"actorName,omitempty"`
 	GroupName        *string `json:"groupName,omitempty"`
 	SubjectLabel     *string `json:"subjectLabel,omitempty"`
+	VersionNumber    *int    `json:"versionNumber,omitempty"`
 }
 
 type AuditSegment struct {

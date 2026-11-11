@@ -298,6 +298,7 @@ type ComplexityRoot struct {
 		Subject          func(childComplexity int) int
 		SubjectLabel     func(childComplexity int) int
 		Tier             func(childComplexity int) int
+		VersionNumber    func(childComplexity int) int
 	}
 
 	AuditSegment struct {
@@ -1091,6 +1092,7 @@ type ComplexityRoot struct {
 		PolicyDefinitionCandidates func(childComplexity int, policyID string, includeArchived *bool) int
 		PolicyDefinitionEntries    func(childComplexity int, policyID string) int
 		PolicyDiff                 func(childComplexity int, fromVersionID string, toVersionID string) int
+		PolicyHistory              func(childComplexity int, policyID string, pageSize *int, pageToken *string) int
 		PolicyReferences           func(childComplexity int, policyID string) int
 		PolicyVersion              func(childComplexity int, id string) int
 		PolicyVersionLinks         func(childComplexity int, policyVersionID string) int
@@ -1867,6 +1869,7 @@ type QueryResolver interface {
 	ExportAcks(ctx context.Context, policyVersionID string, format string) (*AckExport, error)
 	AckRoster(ctx context.Context, policyVersionID string, groupID *string) (*AckRoster, error)
 	AckActivity(ctx context.Context, policyVersionID string, groupID *string, days int) ([]*AckActivityDay, error)
+	PolicyHistory(ctx context.Context, policyID string, pageSize *int, pageToken *string) (*AuditQueryPage, error)
 	PreviewMovePolicies(ctx context.Context, policyIds []string, homeCategoryID string) (*MovePoliciesPreview, error)
 	MyReports(ctx context.Context) ([]*MyReport, error)
 	MyReport(ctx context.Context, caseID string) (*ReporterView, error)
@@ -2896,6 +2899,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AuditRecord.Tier(childComplexity), true
+	case "AuditRecord.versionNumber":
+		if e.ComplexityRoot.AuditRecord.VersionNumber == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuditRecord.VersionNumber(childComplexity), true
 
 	case "AuditSegment.checkpoints":
 		if e.ComplexityRoot.AuditSegment.Checkpoints == nil {
@@ -7430,6 +7439,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.PolicyDiff(childComplexity, args["fromVersionId"].(string), args["toVersionId"].(string)), true
+	case "Query.policyHistory":
+		if e.ComplexityRoot.Query.PolicyHistory == nil {
+			break
+		}
+
+		args, err := ec.field_Query_policyHistory_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PolicyHistory(childComplexity, args["policyId"].(string), args["pageSize"].(*int), args["pageToken"].(*string)), true
 	case "Query.policyReferences":
 		if e.ComplexityRoot.Query.PolicyReferences == nil {
 			break
@@ -12205,6 +12225,28 @@ extend type Mutation {
 
 
 `, BuiltIn: false},
+	{Name: "../../graphql/policy_history.graphqls", Input: `# --- Policy history across versions ---
+# Backed by audit, joined by the gateway. Core files a policy's creation and a
+# discarded draft under the subject policy:<id>; its draft saves, publishes and
+# status changes, and every approval event workflow writes, go under
+# policy_version:<id>. policyHistory reads them all and returns the one merged
+# timeline, so a reader asks once and never needs audit.read.
+
+extend type AuditRecord {
+  # The number of the policy version the record is about. Null on a record
+  # about no version, such as a policy's creation or a discarded draft.
+  versionNumber: Int
+}
+
+extend type Query {
+  # Newest first. Every record for policy:<policyId> and for each of the
+  # policy's versions the caller may see: a draft, a version in review or a
+  # rejected one only for an editor or the holder of a pending approval seat on
+  # it. NotFound for a caller who cannot read the policy. pageSize is 1 to 200
+  # (anything else means 50); pageToken is a previous page's nextPageToken.
+  policyHistory(policyId: ID!, pageSize: Int, pageToken: String): AuditQueryPage!
+}
+`, BuiltIn: false},
 	{Name: "../../graphql/policy_move.graphqls", Input: `extend type Query {
   # Site-admin: the dry run of movePolicies. What moving these documents to the
   # category would do, in the order asked. Nothing changes.
@@ -13787,6 +13829,8 @@ func (ec *executionContext) childFields_AuditRecord(ctx context.Context, field g
 		return ec.fieldContext_AuditRecord_groupName(ctx, field)
 	case "subjectLabel":
 		return ec.fieldContext_AuditRecord_subjectLabel(ctx, field)
+	case "versionNumber":
+		return ec.fieldContext_AuditRecord_versionNumber(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type AuditRecord", field.Name)
 }
@@ -20373,6 +20417,36 @@ func (ec *executionContext) field_Query_policyDiff_args(ctx context.Context, raw
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_policyHistory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pageToken",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["pageToken"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_policyReferences_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -24743,6 +24817,29 @@ func (ec *executionContext) _AuditRecord_subjectLabel(ctx context.Context, field
 }
 func (ec *executionContext) fieldContext_AuditRecord_subjectLabel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("AuditRecord", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AuditRecord_versionNumber(ctx context.Context, field graphql.CollectedField, obj *AuditRecord) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AuditRecord_versionNumber(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.VersionNumber, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *int) graphql.Marshaler {
+			return ec.marshalOInt2ᚖint(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AuditRecord_versionNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AuditRecord", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _AuditSegment_records(ctx context.Context, field graphql.CollectedField, obj *AuditSegment) (ret graphql.Marshaler) {
@@ -43376,6 +43473,50 @@ func (ec *executionContext) fieldContext_Query_ackActivity(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_policyHistory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_policyHistory(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PolicyHistory(ctx, fc.Args["policyId"].(string), fc.Args["pageSize"].(*int), fc.Args["pageToken"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *AuditQueryPage) graphql.Marshaler {
+			return ec.marshalNAuditQueryPage2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAuditQueryPage(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_policyHistory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AuditQueryPage(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_policyHistory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_previewMovePolicies(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -56554,6 +56695,11 @@ func (ec *executionContext) _AuditRecord(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
+		case "versionNumber":
+			out.Values[i] = ec._AuditRecord_versionNumber(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -63711,6 +63857,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_ackActivity(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "policyHistory":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_policyHistory(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

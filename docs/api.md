@@ -42,6 +42,13 @@ membership.
 reads every group, and to a group manager: the gateway reads the caller's managed group ids from
 identity and sends them as `managed_groups`, and audit lets a manager query only a group it
 manages (named in `groupId`) and verify. Anyone else is refused with `PermissionDenied`.
+`auditLog` also takes `actions` (several action codes), `subjectType` (the kind before the colon in a
+subject, such as `policy`) and `actorGroupId` (records made by a member of that group). They combine
+with each other and with the existing arguments. The gateway reads the group's members from
+identity and sends their ids, because audit calls no other service; a group with no members returns
+no records, and a failed lookup fails the query rather than returning an unfiltered page. A group
+manager may name only a group they manage in `actorGroupId`; any other group is refused with
+`PermissionDenied`.
 `auditSegment` (the raw export) needs `audit.read`, because record ids span every group.
 
 **Shred and legal holds:** `shredAuditSubject` (crypto-shred a subject: audit erases its key and

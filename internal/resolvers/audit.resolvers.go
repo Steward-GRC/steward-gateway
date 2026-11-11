@@ -27,8 +27,9 @@ func (r *mutationResolver) ReleaseAuditLegalHold(ctx context.Context, holdUUID s
 }
 
 // AuditLog is the resolver for the auditLog field.
-func (r *queryResolver) AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) (*AuditQueryPage, error) {
-	return QueryAuditLogResolver(ctx, r.AuditClient, r.IdentityClient, r.CategoryClient, r.PolicyClient, r.TemplateClient, tier, groupID, actorUserID, subject, pageSize, pageToken)
+func (r *queryResolver) AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, actions []string, subjectType *string, actorGroupID *string, pageSize *int, pageToken *string) (*AuditQueryPage, error) {
+	return QueryAuditLogResolver(ctx, r.logger(), r.AuditClient, r.IdentityClient, r.CategoryClient, r.PolicyClient, r.TemplateClient, tier, groupID, actorUserID, subject, pageSize, pageToken,
+		AuditLogFilter{Actions: actions, SubjectType: subjectType, ActorGroupID: actorGroupID})
 }
 
 // AuditSegment is the resolver for the auditSegment field.

@@ -7,9 +7,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	authz "github.com/Steward-GRC/steward-authz"
 	auditv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/audit/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
@@ -118,17 +120,61 @@ func auditCheckpointFromProto(c *auditv1.Checkpoint) *AuditCheckpoint {
 	return out
 }
 
+// AuditLogFilter holds the optional filters of the auditLog query that go beyond the tier, group,
+// actor and subject arguments. They combine: a record must match every one that is set.
+type AuditLogFilter struct {
+	// Actions keeps records whose action is one of these codes; empty means any.
+	Actions []string
+	// SubjectType keeps records whose subject kind (the part before the colon) is this.
+	SubjectType *string
+	// ActorGroupID keeps records made by a member of this group.
+	ActorGroupID *string
+}
+
+// actorUsersFor resolves an actor group to its members for the audit query, which calls no other
+// service. The result is a set that is present even when the group is empty, because audit reads
+// an unset set as "any actor" and a present empty set as "nobody". A lookup failure is returned,
+// never read as "no members", so a failed lookup cannot widen or silently empty the query.
+//
+// A group manager may only name a group they manage: otherwise the filter would let them probe
+// the membership of groups outside their scope.
+func actorUsersFor(ctx context.Context, lg log.Logger, identity identityv1.IdentityReadServiceClient, req *auditv1.RequesterIdentity, groupID string) (*auditv1.UserIdSet, error) {
+	if len(req.GetManagedGroups()) > 0 && !slices.Contains(req.GetManagedGroups(), groupID) {
+		lg.Warn("audit actor group filter refused", log.F("reason", "group_not_managed"), log.F("group_id", groupID))
+		return nil, status.Error(codes.PermissionDenied, "not authorized to filter by actor group "+groupID)
+	}
+	if identity == nil {
+		return nil, status.Error(codes.FailedPrecondition, "actor group filter needs the identity service")
+	}
+	start := time.Now()
+	resp, err := identity.ListUsersInGroup(ctx, &identityv1.ListUsersInGroupRequest{GroupId: groupID})
+	if err != nil {
+		lg.Error(err, "audit actor group lookup failed", log.F("group_id", groupID), log.F("duration", time.Since(start)))
+		return nil, err
+	}
+	ids := make([]string, 0, len(resp.GetUsers()))
+	for _, u := range resp.GetUsers() {
+		ids = append(ids, u.GetId())
+	}
+	lg.Debug("audit actor group resolved", log.F("group_id", groupID), log.F("members", len(ids)), log.F("duration", time.Since(start)))
+	return &auditv1.UserIdSet{UserIds: ids}, nil
+}
+
 // QueryAuditLogResolver returns a paged window over the audit log, filtered by optional tier /
-// groupId / actorUserId / subject.
+// groupId / actorUserId / subject and by the AuditLogFilter fields. Access is the same as before:
+// audit.read, or a group manager within the groups they manage.
 func QueryAuditLogResolver(
 	ctx context.Context,
+	logger log.Logger,
 	client auditv1.AuditServiceClient,
 	identity identityv1.IdentityReadServiceClient,
 	groups corev1.CategoryServiceClient,
 	policies corev1.PolicyServiceClient,
 	tmpls corev1.TemplateServiceClient,
 	tier, groupID, actorUserID, subject *string, pageSize *int, pageToken *string,
+	filter AuditLogFilter,
 ) (*AuditQueryPage, error) {
+	lg := logger.Ctx(ctx)
 	req, err := auditReader(ctx, identity)
 	if err != nil {
 		return nil, err
@@ -137,6 +183,15 @@ func QueryAuditLogResolver(
 	if pageSize != nil {
 		size = toInt32(*pageSize)
 	}
+	var actorUsers *auditv1.UserIdSet
+	if g := derefOrEmpty(filter.ActorGroupID); g != "" {
+		if actorUsers, err = actorUsersFor(ctx, lg, identity, req, g); err != nil {
+			return nil, err
+		}
+	}
+	lg.Debug("audit query",
+		log.F("actions", len(filter.Actions)), log.F("subject_type", derefOrEmpty(filter.SubjectType)),
+		log.F("actor_group", actorUsers != nil), log.F("page_size", size))
 	resp, err := client.QueryAuditLog(ctx, &auditv1.QueryAuditLogRequest{
 		Tier:        derefOrEmpty(tier),
 		GroupId:     derefOrEmpty(groupID),
@@ -145,6 +200,9 @@ func QueryAuditLogResolver(
 		PageSize:    size,
 		PageToken:   derefOrEmpty(pageToken),
 		Requester:   req,
+		Actions:     append([]string(nil), filter.Actions...),
+		SubjectType: derefOrEmpty(filter.SubjectType),
+		ActorUsers:  actorUsers,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("audit query: %w", err)

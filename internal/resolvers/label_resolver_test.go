@@ -6,6 +6,7 @@ package resolvers_test
 import (
 	"context"
 	"errors"
+	log "github.com/Bugs5382/go-log"
 	"testing"
 
 	auditv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/audit/v1"
@@ -106,8 +107,8 @@ func TestAuditLogEnrichesLabels(t *testing.T) {
 		&auditv1.AuditRecord{Id: 3, ActorUserId: "u-1", GroupId: "g-1", Subject: "template_version:tv-9"},
 	)
 
-	out, err := resolvers.QueryAuditLogResolver(ctx, client, identity, groups, policies, tmpls,
-		nil, nil, nil, nil, nil, nil)
+	out, err := resolvers.QueryAuditLogResolver(ctx, log.Nop(), client, identity, groups, policies, tmpls,
+		nil, nil, nil, nil, nil, nil, resolvers.AuditLogFilter{})
 	if err != nil {
 		t.Fatalf("QueryAuditLog: %v", err)
 	}
@@ -164,8 +165,8 @@ func TestAuditLogFallsBackOnMiss(t *testing.T) {
 	client := auditClientWith(
 		&auditv1.AuditRecord{Id: 1, ActorUserId: "u-missing", GroupId: "g-missing", Subject: "policy_version:pv-missing"},
 	)
-	out, err := resolvers.QueryAuditLogResolver(ctx, client, identity, groups, policies, tmpls,
-		nil, nil, nil, nil, nil, nil)
+	out, err := resolvers.QueryAuditLogResolver(ctx, log.Nop(), client, identity, groups, policies, tmpls,
+		nil, nil, nil, nil, nil, nil, resolvers.AuditLogFilter{})
 	if err != nil {
 		t.Fatalf("QueryAuditLog: %v", err)
 	}
@@ -184,8 +185,8 @@ func TestAuditLogNilClientsDoNotError(t *testing.T) {
 	// (no labels), never error.
 	ctx := ctxWithRoles(t, "auditor-1", []string{"site-admin"})
 	client := auditClientWith(&auditv1.AuditRecord{Id: 1, ActorUserId: "u-1", GroupId: "g-1", Subject: "group:g-1"})
-	out, err := resolvers.QueryAuditLogResolver(ctx, client, nil, nil, nil, nil,
-		nil, nil, nil, nil, nil, nil)
+	out, err := resolvers.QueryAuditLogResolver(ctx, log.Nop(), client, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, resolvers.AuditLogFilter{})
 	if err != nil {
 		t.Fatalf("QueryAuditLog with nil clients: %v", err)
 	}
@@ -200,8 +201,8 @@ func TestAuditLogUntypedSubjectPassesThrough(t *testing.T) {
 	// A legacy, already-readable subject ("POL-0012") with no "type:uuid" shape
 	// is surfaced unchanged as the label.
 	client := auditClientWith(&auditv1.AuditRecord{Id: 1, Subject: "POL-0012"})
-	out, err := resolvers.QueryAuditLogResolver(ctx, client, identity, nil, nil, nil,
-		nil, nil, nil, nil, nil, nil)
+	out, err := resolvers.QueryAuditLogResolver(ctx, log.Nop(), client, identity, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, resolvers.AuditLogFilter{})
 	if err != nil {
 		t.Fatalf("QueryAuditLog: %v", err)
 	}
@@ -243,8 +244,8 @@ func TestAuditLogPolicySubjectsAreDocTypeAware(t *testing.T) {
 		&auditv1.AuditRecord{Id: 6, Subject: "policy_version:v-prc"},
 	)
 
-	out, err := resolvers.QueryAuditLogResolver(ctx, client, identity, nil, policies, nil,
-		nil, nil, nil, nil, nil, nil)
+	out, err := resolvers.QueryAuditLogResolver(ctx, log.Nop(), client, identity, nil, policies, nil,
+		nil, nil, nil, nil, nil, nil, resolvers.AuditLogFilter{})
 	if err != nil {
 		t.Fatalf("QueryAuditLog: %v", err)
 	}

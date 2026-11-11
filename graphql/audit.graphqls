@@ -77,7 +77,12 @@ type AuditLegalHold {
 }
 
 extend type Query {
-  auditLog(tier: String, groupId: ID, actorUserId: ID, subject: String, pageSize: Int, pageToken: String): AuditQueryPage!
+  # Every filter is optional and they combine (all must match). actions: records whose action is
+  # one of these codes. subjectType: the kind before the colon in a subject ("policy" in
+  # "policy:POL-000001"); it combines with subject. actorGroupId: records made by a member of that
+  # group; a group with no members returns no records. A group manager may only name a group they
+  # manage in actorGroupId.
+  auditLog(tier: String, groupId: ID, actorUserId: ID, subject: String, actions: [String!], subjectType: String, actorGroupId: ID, pageSize: Int, pageToken: String): AuditQueryPage!
   auditSegment(fromRecordId: String!, toRecordId: String!): AuditSegment!
   verifyAuditChain(fromRecordId: String!, toRecordId: String!): AuditChainVerification!
   # Oldest first; released holds only with includeReleased.

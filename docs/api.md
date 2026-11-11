@@ -272,6 +272,27 @@ shapes follow the mock server's schema.
   `setPolicyReferences`, `setPolicyContactBlocks` and `setPolicyDefinitionEntries` still write
   core's per-policy store and no longer show in those reads.
 
+## Policy text search
+
+`searchPolicies(query, documentType, first, after)` asks core's `PolicyService.SearchPolicies` for the
+documents whose title, number or published text (appendices included) hold every word of the query,
+as whole words ignoring case, and returns a page `{hits, nextPageToken}`. Each hit has the `policy`
+(through the same read model as `policies`), a `rank` and a `snippet` of plain text with `matches`
+counted in UTF-16 code units. `first` is the page size (default 20, at most 100) and `after` the
+`nextPageToken` of the page before; a token the gateway did not hand out is `INVALID_ARGUMENT`, and
+so is `first` under 1. A blank query finds nothing.
+
+- A document the caller may not read never appears.
+- For a caller whose content is obfuscated on a document, or who reads it only under a break-glass
+  grant, the document matches on its title and number alone: a hit stays only when every word is in
+  the title and number, it carries the title-only rank, and it has no snippet. Search cannot reveal
+  hidden text one guess at a time, and a break-glass read is never made through search.
+- Core pages the ranked hits and the gateway filters after it, so the token is core's offset of the
+  first hit not yet returned and a page can end in the middle of a core page. A page can be shorter
+  than `first` and still carry a token when the caller cannot read many of the hits that follow
+  (the gateway reads at most five core pages per request).
+- Neither the query nor any document text is logged, only the query's length.
+
 ## Break-glass reads
 
 A site admin who sees a document obfuscated can ask for a time-boxed reveal of that one document

@@ -986,6 +986,22 @@ type ComplexityRoot struct {
 		PolicyNumber func(childComplexity int) int
 	}
 
+	PolicySearchHit struct {
+		Policy  func(childComplexity int) int
+		Rank    func(childComplexity int) int
+		Snippet func(childComplexity int) int
+	}
+
+	PolicySearchPage struct {
+		Hits          func(childComplexity int) int
+		NextPageToken func(childComplexity int) int
+	}
+
+	PolicySearchSnippet struct {
+		Matches func(childComplexity int) int
+		Text    func(childComplexity int) int
+	}
+
 	PolicySummaryResult struct {
 		GeneratedAt func(childComplexity int) int
 		SummaryText func(childComplexity int) int
@@ -1112,6 +1128,7 @@ type ComplexityRoot struct {
 		ResolveUserLabels          func(childComplexity int, ids []string) int
 		ReviewThreads              func(childComplexity int, policyVersionID string) int
 		SearchAndAnswer            func(childComplexity int, question string, categoryID *string) int
+		SearchPolicies             func(childComplexity int, query string, documentType *DocumentType, first *int, after *string) int
 		SearchUsers                func(childComplexity int, query string, limit *int) int
 		SimulateCategory           func(childComplexity int, categoryID string, userID string, draftRules []*RaciRuleInput) int
 		SpCertificate              func(childComplexity int) int
@@ -1444,6 +1461,11 @@ type ComplexityRoot struct {
 		Status     func(childComplexity int) int
 		TemplateID func(childComplexity int) int
 		VersionNo  func(childComplexity int) int
+	}
+
+	TextSpan struct {
+		Length func(childComplexity int) int
+		Start  func(childComplexity int) int
 	}
 
 	ThreadMessage struct {
@@ -1877,6 +1899,7 @@ type QueryResolver interface {
 	ReportAttachment(ctx context.Context, caseID string, attachmentID string) (*ReportAttachmentContent, error)
 	ReviewThreads(ctx context.Context, policyVersionID string) ([]*ReviewThread, error)
 	VersionChangesSinceReview(ctx context.Context, policyVersionID string) ([]*SectionDiff, error)
+	SearchPolicies(ctx context.Context, query string, documentType *DocumentType, first *int, after *string) (*PolicySearchPage, error)
 	Organizations(ctx context.Context) ([]*Organization, error)
 	Organization(ctx context.Context, domain string) (*Organization, error)
 	SpCertificate(ctx context.Context) (*SpCertificate, error)
@@ -6655,6 +6678,51 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PolicyOverride.PolicyNumber(childComplexity), true
 
+	case "PolicySearchHit.policy":
+		if e.ComplexityRoot.PolicySearchHit.Policy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicySearchHit.Policy(childComplexity), true
+	case "PolicySearchHit.rank":
+		if e.ComplexityRoot.PolicySearchHit.Rank == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicySearchHit.Rank(childComplexity), true
+	case "PolicySearchHit.snippet":
+		if e.ComplexityRoot.PolicySearchHit.Snippet == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicySearchHit.Snippet(childComplexity), true
+
+	case "PolicySearchPage.hits":
+		if e.ComplexityRoot.PolicySearchPage.Hits == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicySearchPage.Hits(childComplexity), true
+	case "PolicySearchPage.nextPageToken":
+		if e.ComplexityRoot.PolicySearchPage.NextPageToken == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicySearchPage.NextPageToken(childComplexity), true
+
+	case "PolicySearchSnippet.matches":
+		if e.ComplexityRoot.PolicySearchSnippet.Matches == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicySearchSnippet.Matches(childComplexity), true
+	case "PolicySearchSnippet.text":
+		if e.ComplexityRoot.PolicySearchSnippet.Text == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicySearchSnippet.Text(childComplexity), true
+
 	case "PolicySummaryResult.generatedAt":
 		if e.ComplexityRoot.PolicySummaryResult.GeneratedAt == nil {
 			break
@@ -7658,6 +7726,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.SearchAndAnswer(childComplexity, args["question"].(string), args["categoryId"].(*string)), true
+	case "Query.searchPolicies":
+		if e.ComplexityRoot.Query.SearchPolicies == nil {
+			break
+		}
+
+		args, err := ec.field_Query_searchPolicies_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SearchPolicies(childComplexity, args["query"].(string), args["documentType"].(*DocumentType), args["first"].(*int), args["after"].(*string)), true
 	case "Query.searchUsers":
 		if e.ComplexityRoot.Query.SearchUsers == nil {
 			break
@@ -9057,6 +9136,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.TemplateVersion.VersionNo(childComplexity), true
+
+	case "TextSpan.length":
+		if e.ComplexityRoot.TextSpan.Length == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TextSpan.Length(childComplexity), true
+	case "TextSpan.start":
+		if e.ComplexityRoot.TextSpan.Start == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TextSpan.Start(childComplexity), true
 
 	case "ThreadMessage.author":
 		if e.ComplexityRoot.ThreadMessage.Author == nil {
@@ -12615,6 +12707,47 @@ type Subscription
 
 type HealthStatus { status: String! }
 `, BuiltIn: false},
+	{Name: "../../graphql/search.graphqls", Input: `extend type Query {
+  # Searches the published text of policies and procedures, and their titles and numbers. Every
+  # word of the query must match, as a whole word, ignoring case. A policy the viewer can't read
+  # never appears. For a viewer whose content is obfuscated (or who reads it only under a
+  # break-glass grant), a policy matches on its title and number only and gets no snippet, so
+  # search can't reveal hidden text one guess at a time. Drafts, superseded versions and retired
+  # policies never match. documentType null searches both kinds. first is the page size (default
+  # 20, at most 100). after is the nextPageToken of the page before; a token the gateway didn't
+  # hand out is INVALID_ARGUMENT.
+  searchPolicies(query: String!, documentType: DocumentType, first: Int, after: String): PolicySearchPage!
+}
+
+# One page of hits, best first. A page can be shorter than first and still carry a nextPageToken
+# when the viewer can't read many of the hits that follow.
+type PolicySearchPage {
+  hits: [PolicySearchHit!]!
+  # Opaque; pass as ` + "`" + `after` + "`" + ` for the next page. Empty on the last page.
+  nextPageToken: String!
+}
+
+type PolicySearchHit {
+  policy: Policy!
+  # Higher is better. Only comparable within one search's results.
+  rank: Float!
+  # Null when the match is in the title or number only, or the viewer's content is obfuscated.
+  snippet: PolicySearchSnippet
+}
+
+# A passage of the published text, plain (no markup), and where the query matched in it. A long
+# passage is cut to a window around its first match, with an ellipsis at a cut end.
+type PolicySearchSnippet {
+  text: String!
+  matches: [TextSpan!]!
+}
+
+# A run of ` + "`" + `text` + "`" + `, counted in UTF-16 code units, as JavaScript, NSString and Kotlin index strings.
+type TextSpan {
+  start: Int!
+  length: Int!
+}
+`, BuiltIn: false},
 	{Name: "../../graphql/sso.graphqls", Input: `# ---------------------------------------------------------------------------
 # SSO admin (SAML/OIDC organization connections) — site-admin only.
 # Backed by the identity IdentitySSOAdminService. An Organization is one email
@@ -14831,6 +14964,38 @@ func (ec *executionContext) childFields_PolicyOverride(ctx context.Context, fiel
 	return nil, fmt.Errorf("no field named %q was found under type PolicyOverride", field.Name)
 }
 
+func (ec *executionContext) childFields_PolicySearchHit(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "policy":
+		return ec.fieldContext_PolicySearchHit_policy(ctx, field)
+	case "rank":
+		return ec.fieldContext_PolicySearchHit_rank(ctx, field)
+	case "snippet":
+		return ec.fieldContext_PolicySearchHit_snippet(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PolicySearchHit", field.Name)
+}
+
+func (ec *executionContext) childFields_PolicySearchPage(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "hits":
+		return ec.fieldContext_PolicySearchPage_hits(ctx, field)
+	case "nextPageToken":
+		return ec.fieldContext_PolicySearchPage_nextPageToken(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PolicySearchPage", field.Name)
+}
+
+func (ec *executionContext) childFields_PolicySearchSnippet(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "text":
+		return ec.fieldContext_PolicySearchSnippet_text(ctx, field)
+	case "matches":
+		return ec.fieldContext_PolicySearchSnippet_matches(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PolicySearchSnippet", field.Name)
+}
+
 func (ec *executionContext) childFields_PolicySummaryResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "summaryText":
@@ -15521,6 +15686,16 @@ func (ec *executionContext) childFields_TemplateVersion(ctx context.Context, fie
 		return ec.fieldContext_TemplateVersion_sections(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type TemplateVersion", field.Name)
+}
+
+func (ec *executionContext) childFields_TextSpan(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "start":
+		return ec.fieldContext_TextSpan_start(ctx, field)
+	case "length":
+		return ec.fieldContext_TextSpan_length(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type TextSpan", field.Name)
 }
 
 func (ec *executionContext) childFields_ThreadMessage(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -20750,6 +20925,44 @@ func (ec *executionContext) field_Query_searchAndAnswer_args(ctx context.Context
 		return nil, err
 	}
 	args["categoryId"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_searchPolicies_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "query",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["query"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "documentType",
+		func(ctx context.Context, v any) (*DocumentType, error) {
+			return ec.unmarshalODocumentType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDocumentType(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["documentType"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "first",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["first"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "after",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["after"] = arg3
 	return args, nil
 }
 
@@ -39537,6 +39750,203 @@ func (ec *executionContext) fieldContext_PolicyOverride_effect(_ context.Context
 	return graphql.NewScalarFieldContext("PolicyOverride", field, false, false, errors.New("field of type OverrideEffect does not have child fields"))
 }
 
+func (ec *executionContext) _PolicySearchHit_policy(ctx context.Context, field graphql.CollectedField, obj *PolicySearchHit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicySearchHit_policy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Policy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *Policy) graphql.Marshaler {
+			return ec.marshalNPolicy2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicy(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicySearchHit_policy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicySearchHit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Policy(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PolicySearchHit_rank(ctx context.Context, field graphql.CollectedField, obj *PolicySearchHit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicySearchHit_rank(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Rank, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicySearchHit_rank(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicySearchHit", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _PolicySearchHit_snippet(ctx context.Context, field graphql.CollectedField, obj *PolicySearchHit) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicySearchHit_snippet(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Snippet, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicySearchSnippet) graphql.Marshaler {
+			return ec.marshalOPolicySearchSnippet2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicySearchSnippet(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicySearchHit_snippet(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicySearchHit",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicySearchSnippet(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PolicySearchPage_hits(ctx context.Context, field graphql.CollectedField, obj *PolicySearchPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicySearchPage_hits(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Hits, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*PolicySearchHit) graphql.Marshaler {
+			return ec.marshalNPolicySearchHit2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicySearchHitᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicySearchPage_hits(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicySearchPage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicySearchHit(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PolicySearchPage_nextPageToken(ctx context.Context, field graphql.CollectedField, obj *PolicySearchPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicySearchPage_nextPageToken(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.NextPageToken, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicySearchPage_nextPageToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicySearchPage", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PolicySearchSnippet_text(ctx context.Context, field graphql.CollectedField, obj *PolicySearchSnippet) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicySearchSnippet_text(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Text, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicySearchSnippet_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicySearchSnippet", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PolicySearchSnippet_matches(ctx context.Context, field graphql.CollectedField, obj *PolicySearchSnippet) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicySearchSnippet_matches(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Matches, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*TextSpan) graphql.Marshaler {
+			return ec.marshalNTextSpan2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐTextSpanᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicySearchSnippet_matches(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicySearchSnippet",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_TextSpan(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PolicySummaryResult_summaryText(ctx context.Context, field graphql.CollectedField, obj *PolicySummaryResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -43806,6 +44216,50 @@ func (ec *executionContext) fieldContext_Query_versionChangesSinceReview(ctx con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_versionChangesSinceReview_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_searchPolicies(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_searchPolicies(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SearchPolicies(ctx, fc.Args["query"].(string), fc.Args["documentType"].(*DocumentType), fc.Args["first"].(*int), fc.Args["after"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicySearchPage) graphql.Marshaler {
+			return ec.marshalNPolicySearchPage2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicySearchPage(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_searchPolicies(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicySearchPage(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_searchPolicies_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -49270,6 +49724,52 @@ func (ec *executionContext) fieldContext_TemplateVersion_sections(_ context.Cont
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _TextSpan_start(ctx context.Context, field graphql.CollectedField, obj *TextSpan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TextSpan_start(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Start, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TextSpan_start(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TextSpan", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _TextSpan_length(ctx context.Context, field graphql.CollectedField, obj *TextSpan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TextSpan_length(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Length, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_TextSpan_length(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TextSpan", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _ThreadMessage_id(ctx context.Context, field graphql.CollectedField, obj *ThreadMessage) (ret graphql.Marshaler) {
@@ -61717,6 +62217,140 @@ func (ec *executionContext) _PolicyOverride(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var policySearchHitImplementors = []string{"PolicySearchHit"}
+
+func (ec *executionContext) _PolicySearchHit(ctx context.Context, sel ast.SelectionSet, obj *PolicySearchHit) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, policySearchHitImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PolicySearchHit")
+		case "policy":
+			out.Values[i] = ec._PolicySearchHit_policy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rank":
+			out.Values[i] = ec._PolicySearchHit_rank(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "snippet":
+			out.Values[i] = ec._PolicySearchHit_snippet(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var policySearchPageImplementors = []string{"PolicySearchPage"}
+
+func (ec *executionContext) _PolicySearchPage(ctx context.Context, sel ast.SelectionSet, obj *PolicySearchPage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, policySearchPageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PolicySearchPage")
+		case "hits":
+			out.Values[i] = ec._PolicySearchPage_hits(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nextPageToken":
+			out.Values[i] = ec._PolicySearchPage_nextPageToken(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var policySearchSnippetImplementors = []string{"PolicySearchSnippet"}
+
+func (ec *executionContext) _PolicySearchSnippet(ctx context.Context, sel ast.SelectionSet, obj *PolicySearchSnippet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, policySearchSnippetImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PolicySearchSnippet")
+		case "text":
+			out.Values[i] = ec._PolicySearchSnippet_text(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "matches":
+			out.Values[i] = ec._PolicySearchSnippet_matches(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var policySummaryResultImplementors = []string{"PolicySummaryResult"}
 
 func (ec *executionContext) _PolicySummaryResult(ctx context.Context, sel ast.SelectionSet, obj *PolicySummaryResult) graphql.Marshaler {
@@ -63990,6 +64624,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_versionChangesSinceReview(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "searchPolicies":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_searchPolicies(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -66621,6 +67277,49 @@ func (ec *executionContext) _TemplateVersion(ctx context.Context, sel ast.Select
 			}
 		case "sections":
 			out.Values[i] = ec._TemplateVersion_sections(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var textSpanImplementors = []string{"TextSpan"}
+
+func (ec *executionContext) _TextSpan(ctx context.Context, sel ast.SelectionSet, obj *TextSpan) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, textSpanImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TextSpan")
+		case "start":
+			out.Values[i] = ec._TextSpan_start(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "length":
+			out.Values[i] = ec._TextSpan_length(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -70663,6 +71362,46 @@ func (ec *executionContext) unmarshalNPolicyRevisionSectionInput2ᚖgithubᚗcom
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNPolicySearchHit2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicySearchHitᚄ(ctx context.Context, sel ast.SelectionSet, v []*PolicySearchHit) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPolicySearchHit2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicySearchHit(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPolicySearchHit2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicySearchHit(ctx context.Context, sel ast.SelectionSet, v *PolicySearchHit) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PolicySearchHit(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPolicySearchPage2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicySearchPage(ctx context.Context, sel ast.SelectionSet, v PolicySearchPage) graphql.Marshaler {
+	return ec._PolicySearchPage(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPolicySearchPage2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicySearchPage(ctx context.Context, sel ast.SelectionSet, v *PolicySearchPage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PolicySearchPage(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPolicyVersion2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyVersion(ctx context.Context, sel ast.SelectionSet, v PolicyVersion) graphql.Marshaler {
 	return ec._PolicyVersion(ctx, sel, &v)
 }
@@ -71854,6 +72593,32 @@ func (ec *executionContext) marshalNTemplateVersion2ᚖgithubᚗcomᚋStewardᚑ
 	return ec._TemplateVersion(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNTextSpan2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐTextSpanᚄ(ctx context.Context, sel ast.SelectionSet, v []*TextSpan) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNTextSpan2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐTextSpan(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNTextSpan2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐTextSpan(ctx context.Context, sel ast.SelectionSet, v *TextSpan) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TextSpan(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNThreadMessage2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐThreadMessage(ctx context.Context, sel ast.SelectionSet, v ThreadMessage) graphql.Marshaler {
 	return ec._ThreadMessage(ctx, sel, &v)
 }
@@ -72797,6 +73562,13 @@ func (ec *executionContext) marshalOPolicy2ᚖgithubᚗcomᚋStewardᚑGRCᚋste
 		return graphql.Null
 	}
 	return ec._Policy(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOPolicySearchSnippet2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicySearchSnippet(ctx context.Context, sel ast.SelectionSet, v *PolicySearchSnippet) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PolicySearchSnippet(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOPolicySummaryResult2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicySummaryResult(ctx context.Context, sel ast.SelectionSet, v *PolicySummaryResult) graphql.Marshaler {

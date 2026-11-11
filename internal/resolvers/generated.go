@@ -363,22 +363,23 @@ type ComplexityRoot struct {
 	}
 
 	Category struct {
-		AckEveryone         func(childComplexity int) int
-		AckEveryoneSet      func(childComplexity int) int
-		AckTriggers         func(childComplexity int) int
-		DefaultTemplateID   func(childComplexity int) int
-		DefaultTemplateNone func(childComplexity int) int
-		DefaultWorkflowID   func(childComplexity int) int
-		ExclusionGroupIds   func(childComplexity int) int
-		ID                  func(childComplexity int) int
-		IdpGroupIds         func(childComplexity int) int
-		Name                func(childComplexity int) int
-		Order               func(childComplexity int) int
-		Owners              func(childComplexity int) int
-		ParentID            func(childComplexity int) int
-		ReviewCadence       func(childComplexity int) int
-		ReviewDate          func(childComplexity int) int
-		Slug                func(childComplexity int) int
+		AckEveryone           func(childComplexity int) int
+		AckEveryoneSet        func(childComplexity int) int
+		AckTriggers           func(childComplexity int) int
+		DefaultTemplateID     func(childComplexity int) int
+		DefaultTemplateLocked func(childComplexity int) int
+		DefaultTemplateNone   func(childComplexity int) int
+		DefaultWorkflowID     func(childComplexity int) int
+		ExclusionGroupIds     func(childComplexity int) int
+		ID                    func(childComplexity int) int
+		IdpGroupIds           func(childComplexity int) int
+		Name                  func(childComplexity int) int
+		Order                 func(childComplexity int) int
+		Owners                func(childComplexity int) int
+		ParentID              func(childComplexity int) int
+		ReviewCadence         func(childComplexity int) int
+		ReviewDate            func(childComplexity int) int
+		Slug                  func(childComplexity int) int
 	}
 
 	CategoryApprovers struct {
@@ -753,6 +754,7 @@ type ComplexityRoot struct {
 		SetCategoryDefaults           func(childComplexity int, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) int
 		SetCategoryGovernance         func(childComplexity int, id string, owners []string, idpGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) int
 		SetCategoryRuleset            func(childComplexity int, categoryID string, rules []*RaciRuleInput) int
+		SetCategoryTemplateLock       func(childComplexity int, id string, locked bool) int
 		SetContactBlockArchived       func(childComplexity int, id string, archived bool) int
 		SetDefinitionArchived         func(childComplexity int, id string, archived bool) int
 		SetDigestWindow               func(childComplexity int, dailyHour int, weeklyDow int) int
@@ -1539,6 +1541,7 @@ type MutationResolver interface {
 	IssueCollabToken(ctx context.Context, input IssueCollabTokenInput) (*IssueCollabTokenPayload, error)
 	CreateCategory(ctx context.Context, name string, slug string, parentID *string) (*Category, error)
 	SetCategoryDefaults(ctx context.Context, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) (*Category, error)
+	SetCategoryTemplateLock(ctx context.Context, id string, locked bool) (*Category, error)
 	RenameCategory(ctx context.Context, id string, name string, slug string) (*Category, error)
 	DeleteCategory(ctx context.Context, id string) (bool, error)
 	MoveCategory(ctx context.Context, categoryID string, newParentID *string) (*Category, error)
@@ -3018,6 +3021,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Category.DefaultTemplateID(childComplexity), true
+	case "Category.defaultTemplateLocked":
+		if e.ComplexityRoot.Category.DefaultTemplateLocked == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.DefaultTemplateLocked(childComplexity), true
 	case "Category.defaultTemplateNone":
 		if e.ComplexityRoot.Category.DefaultTemplateNone == nil {
 			break
@@ -5255,6 +5264,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetCategoryRuleset(childComplexity, args["categoryId"].(string), args["rules"].([]*RaciRuleInput)), true
+	case "Mutation.setCategoryTemplateLock":
+		if e.ComplexityRoot.Mutation.SetCategoryTemplateLock == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setCategoryTemplateLock_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetCategoryTemplateLock(childComplexity, args["id"].(string), args["locked"].(bool)), true
 	case "Mutation.setContactBlockArchived":
 		if e.ComplexityRoot.Mutation.SetContactBlockArchived == nil {
 			break
@@ -10101,6 +10121,14 @@ extend type Mutation {
   # defaultTemplateNone=false with a defaultTemplateId sets that specific
   # template; false with a null id means inherit from the ancestor chain.
   setCategoryDefaults(id: ID!, defaultTemplateId: ID, defaultWorkflowId: ID, defaultTemplateNone: Boolean): Category!
+  # Lock or unlock the category's default template (site admin only). While locked,
+  # a document under the category, or under one that inherits its template, must use
+  # that template: createPolicy and setPolicyTemplate refuse freeform and any other
+  # template, though asking for none (inherit) is still allowed. Locking is refused
+  # (FAILED_PRECONDITION, TEMPLATE_LOCK_NEEDS_DEFAULT) while the category names no
+  # default template. Core's refusals reach the client as extensions code
+  # CATEGORY_TEMPLATE_LOCKED (4004) and TEMPLATE_LOCK_NEEDS_DEFAULT (4005).
+  setCategoryTemplateLock(id: ID!, locked: Boolean!): Category!
   # Rename a category (name + slug). Does NOT renumber existing policies.
   renameCategory(id: ID!, name: String!, slug: String!): Category!
   # Delete a category and its policy-free descendants. Refused
@@ -10248,6 +10276,9 @@ type Category {
   # both unset (none=false, id=null) → inherit from ancestor chain.
   defaultTemplateId: ID
   defaultTemplateNone: Boolean!
+  # True when defaultTemplateId is binding: a document in this category, or in one
+  # that inherits the template, must use it. Never true without a defaultTemplateId.
+  defaultTemplateLocked: Boolean!
   defaultWorkflowId: ID
   owners: [ID!]!
   # Per-category ack-audience IdP group names. Empty list = "no audience"
@@ -13192,6 +13223,8 @@ func (ec *executionContext) childFields_Category(ctx context.Context, field grap
 		return ec.fieldContext_Category_defaultTemplateId(ctx, field)
 	case "defaultTemplateNone":
 		return ec.fieldContext_Category_defaultTemplateNone(ctx, field)
+	case "defaultTemplateLocked":
+		return ec.fieldContext_Category_defaultTemplateLocked(ctx, field)
 	case "defaultWorkflowId":
 		return ec.fieldContext_Category_defaultWorkflowId(ctx, field)
 	case "owners":
@@ -17411,6 +17444,28 @@ func (ec *executionContext) field_Mutation_setCategoryRuleset_args(ctx context.C
 		return nil, err
 	}
 	args["rules"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setCategoryTemplateLock_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "locked",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["locked"] = arg1
 	return args, nil
 }
 
@@ -24515,6 +24570,29 @@ func (ec *executionContext) fieldContext_Category_defaultTemplateNone(_ context.
 	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _Category_defaultTemplateLocked(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_defaultTemplateLocked(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultTemplateLocked, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_defaultTemplateLocked(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _Category_defaultWorkflowId(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -29198,6 +29276,50 @@ func (ec *executionContext) fieldContext_Mutation_setCategoryDefaults(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setCategoryDefaults_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setCategoryTemplateLock(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setCategoryTemplateLock(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetCategoryTemplateLock(ctx, fc.Args["id"].(string), fc.Args["locked"].(bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setCategoryTemplateLock(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Category(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setCategoryTemplateLock_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -54187,6 +54309,11 @@ func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "defaultTemplateLocked":
+			out.Values[i] = ec._Category_defaultTemplateLocked(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "defaultWorkflowId":
 			out.Values[i] = ec._Category_defaultWorkflowId(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
@@ -56356,6 +56483,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setCategoryDefaults":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setCategoryDefaults(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setCategoryTemplateLock":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setCategoryTemplateLock(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

@@ -24,6 +24,11 @@ func (r *mutationResolver) SetCategoryDefaults(ctx context.Context, id string, d
 	return SetCategoryDefaults(ctx, r.CategoryClient, id, defaultTemplateID, defaultWorkflowID, defaultTemplateNone)
 }
 
+// SetCategoryTemplateLock is the resolver for the setCategoryTemplateLock field.
+func (r *mutationResolver) SetCategoryTemplateLock(ctx context.Context, id string, locked bool) (*Category, error) {
+	return SetCategoryTemplateLock(ctx, r.CategoryClient, id, locked)
+}
+
 // RenameCategory is the resolver for the renameCategory field.
 func (r *mutationResolver) RenameCategory(ctx context.Context, id string, name string, slug string) (*Category, error) {
 	return RenameCategory(ctx, r.CategoryClient, id, name, slug)

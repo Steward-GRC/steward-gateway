@@ -478,32 +478,46 @@ func ListPolicies(ctx context.Context, client corev1.PolicyServiceClient, catego
 // that only the caller's active break-glass grant allows the read, so the read
 // must be recorded before the content is served.
 func versionReadDecision(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyID string) (effect authz.Effect, breakGlass bool) {
+	effect, breakGlass, _ = versionReadDecisionChecked(ctx, client, categoryClient, adminClient, policyID)
+	return effect, breakGlass
+}
+
+// versionReadDecisionChecked is versionReadDecision that also reports why a
+// deny could not be decided. err is set only when the policy read itself
+// failed with something other than NotFound (core down, a timeout), so a caller
+// that must not read "could not check" as "denied" can fail instead. A policy
+// core no longer holds is a plain deny with a nil err, and every other
+// fail-closed case keeps the deny and nil err of versionReadDecision.
+func versionReadDecisionChecked(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyID string) (effect authz.Effect, breakGlass bool, err error) {
 	subj, err := subjectFromCtx(ctx)
 	if err != nil {
-		return authz.EffectDeny, false
+		return authz.EffectDeny, false, nil
 	}
 	subj.BreakGlass = activeBreakGlassFor(ctx, adminClient, subj.SiteAdmin())
 	resp, err := client.GetPolicy(ctx, &corev1.GetPolicyRequest{Id: policyID})
 	if err != nil {
-		return authz.EffectDeny, false
+		if status.Code(err) == codes.NotFound {
+			return authz.EffectDeny, false, nil
+		}
+		return authz.EffectDeny, false, err
 	}
 	p := policyFromProto(resp.GetPolicy())
 	if p == nil {
-		return authz.EffectDeny, false
+		return authz.EffectDeny, false, nil
 	}
 	effect, err = policyReadEffect(ctx, subj, p, categoryClient)
 	if err != nil {
-		return authz.EffectDeny, false
+		return authz.EffectDeny, false, nil
 	}
 	if effect != authz.EffectAllow || !subj.BreakGlass[p.Number] {
-		return effect, false
+		return effect, false, nil
 	}
 	subj.BreakGlass = nil
 	without, err := policyReadEffect(ctx, subj, p, categoryClient)
 	if err != nil {
-		return authz.EffectDeny, false
+		return authz.EffectDeny, false, nil
 	}
-	return effect, without != authz.EffectAllow
+	return effect, without != authz.EffectAllow, nil
 }
 
 // policyReadEffect is the read effect for subj on p: the category rules when

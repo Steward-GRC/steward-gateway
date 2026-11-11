@@ -34,7 +34,8 @@ type decidedPolicy struct {
 // out. An obfuscated reader keeps the entry, as the title is metadata the way
 // WorkflowStatus treats it. A read only a break-glass grant allows is left out
 // as well, since a list cannot record each read first. An entry core answers
-// NotFound for is left out and logged; any other core error fails the query.
+// NotFound for is left out and logged; any other core error, including one on the read decision's own policy read,
+// fails the query.
 //
 // Core is asked once per distinct version and once per distinct policy.
 func DecidedApprovalsResolver(
@@ -131,7 +132,14 @@ func decidedPolicyFor(ctx context.Context, logger log.Logger, policies corev1.Po
 			log.F("policy_id", policyID), log.F("code", status.Code(err).String()))
 		return nil, fmt.Errorf("core get policy: %w", err)
 	}
-	effect, breakGlass := versionReadDecision(ctx, policies, categories, admin, policyID)
+	effect, breakGlass, derr := versionReadDecisionChecked(ctx, policies, categories, admin, policyID)
+	if derr != nil {
+		// Could not check the read rule: that is not a deny, so the query fails
+		// rather than dropping the entry (steward-gateway#158).
+		logger.Error(derr, "decided approvals: core policy read for the read decision failed",
+			log.F("policy_id", policyID), log.F("code", status.Code(derr).String()))
+		return nil, fmt.Errorf("core get policy for read decision: %w", derr)
+	}
 	visible := effect != authz.EffectDeny && !breakGlass
 	logger.Debug("decided approvals: policy read decision",
 		log.F("policy_id", policyID), log.F("effect", string(effect)), log.F("break_glass_only", breakGlass), log.F("visible", visible))

@@ -407,23 +407,24 @@ type CaseSummary struct {
 }
 
 type Category struct {
-	ID                    string        `json:"id"`
-	Name                  string        `json:"name"`
-	Slug                  string        `json:"slug"`
-	ParentID              *string       `json:"parentId,omitempty"`
-	DefaultTemplateID     *string       `json:"defaultTemplateId,omitempty"`
-	DefaultTemplateNone   bool          `json:"defaultTemplateNone"`
-	DefaultTemplateLocked bool          `json:"defaultTemplateLocked"`
-	DefaultWorkflowID     *string       `json:"defaultWorkflowId,omitempty"`
-	Owners                []string      `json:"owners"`
-	IdpGroupIds           []string      `json:"idpGroupIds,omitempty"`
-	AckTriggers           AckTrigger    `json:"ackTriggers"`
-	ReviewCadence         ReviewCadence `json:"reviewCadence"`
-	ReviewDate            *string       `json:"reviewDate,omitempty"`
-	ExclusionGroupIds     []string      `json:"exclusionGroupIds,omitempty"`
-	AckEveryone           bool          `json:"ackEveryone"`
-	AckEveryoneSet        bool          `json:"ackEveryoneSet"`
-	Order                 int           `json:"order"`
+	ID                    string                `json:"id"`
+	Name                  string                `json:"name"`
+	Slug                  string                `json:"slug"`
+	ParentID              *string               `json:"parentId,omitempty"`
+	DefaultTemplateID     *string               `json:"defaultTemplateId,omitempty"`
+	DefaultTemplateNone   bool                  `json:"defaultTemplateNone"`
+	DefaultTemplateLocked bool                  `json:"defaultTemplateLocked"`
+	DocumentTypes         CategoryDocumentTypes `json:"documentTypes"`
+	DefaultWorkflowID     *string               `json:"defaultWorkflowId,omitempty"`
+	Owners                []string              `json:"owners"`
+	IdpGroupIds           []string              `json:"idpGroupIds,omitempty"`
+	AckTriggers           AckTrigger            `json:"ackTriggers"`
+	ReviewCadence         ReviewCadence         `json:"reviewCadence"`
+	ReviewDate            *string               `json:"reviewDate,omitempty"`
+	ExclusionGroupIds     []string              `json:"exclusionGroupIds,omitempty"`
+	AckEveryone           bool                  `json:"ackEveryone"`
+	AckEveryoneSet        bool                  `json:"ackEveryoneSet"`
+	Order                 int                   `json:"order"`
 }
 
 type CategoryApprovers struct {
@@ -434,6 +435,11 @@ type CategoryApprovers struct {
 type CategoryApproversInput struct {
 	CategoryID  string   `json:"categoryId"`
 	ApproverIds []string `json:"approverIds"`
+}
+
+type CategoryDocumentCounts struct {
+	Policies   int `json:"policies"`
+	Procedures int `json:"procedures"`
 }
 
 type CategoryPref struct {
@@ -2124,6 +2130,65 @@ func (e *CaseStatus) UnmarshalJSON(b []byte) error {
 }
 
 func (e CaseStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type CategoryDocumentTypes string
+
+const (
+	CategoryDocumentTypesBoth       CategoryDocumentTypes = "BOTH"
+	CategoryDocumentTypesPolicies   CategoryDocumentTypes = "POLICIES"
+	CategoryDocumentTypesProcedures CategoryDocumentTypes = "PROCEDURES"
+	CategoryDocumentTypesNone       CategoryDocumentTypes = "NONE"
+)
+
+var AllCategoryDocumentTypes = []CategoryDocumentTypes{
+	CategoryDocumentTypesBoth,
+	CategoryDocumentTypesPolicies,
+	CategoryDocumentTypesProcedures,
+	CategoryDocumentTypesNone,
+}
+
+func (e CategoryDocumentTypes) IsValid() bool {
+	switch e {
+	case CategoryDocumentTypesBoth, CategoryDocumentTypesPolicies, CategoryDocumentTypesProcedures, CategoryDocumentTypesNone:
+		return true
+	}
+	return false
+}
+
+func (e CategoryDocumentTypes) String() string {
+	return string(e)
+}
+
+func (e *CategoryDocumentTypes) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CategoryDocumentTypes(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CategoryDocumentTypes", str)
+	}
+	return nil
+}
+
+func (e CategoryDocumentTypes) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CategoryDocumentTypes) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CategoryDocumentTypes) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

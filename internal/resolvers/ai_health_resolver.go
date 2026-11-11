@@ -31,7 +31,7 @@ func AIHealthResolver(ctx context.Context, client aiv1.AiServiceClient) (*AIHeal
 	}
 	if !statusResp.GetAvailable() {
 		// Keep reason as the one stable value and pass ai's own reason (auth_failed,
-		// provider_error, not_configured) alongside it. A provider reason is a fixed code,
+		// provider_error, not_configured, jobs_unavailable) alongside it. A provider reason is a fixed code,
 		// never provider output, so it is safe to expose.
 		reason := "provider_unavailable"
 		return &AIHealth{Available: false, Reason: &reason, ProviderReason: nilIfEmpty(statusResp.GetReason())}, nil

@@ -94,10 +94,11 @@ func TestAIHealthResolver_providerUnavailable_appliesToEveryoneIncludingSiteAdmi
 	}
 }
 
-// The provider's own reason (auth_failed, provider_error, not_configured) rides in providerReason
+// The provider's own reason (auth_failed, provider_error, not_configured, or jobs_unavailable while
+// ai has no Kubernetes API and so cannot run a job) rides in providerReason
 // while reason keeps the single value provider_unavailable, so a site admin can see what to fix.
 func TestAIHealthResolver_providerReasonIsExposed(t *testing.T) {
-	for _, reason := range []string{"auth_failed", "provider_error", "not_configured"} {
+	for _, reason := range []string{"auth_failed", "provider_error", "not_configured", "jobs_unavailable"} {
 		t.Run(reason, func(t *testing.T) {
 			client := &fakeAIClient{
 				providerStatusResp: &aiv1.GetProviderStatusResponse{Available: false, Reason: reason},

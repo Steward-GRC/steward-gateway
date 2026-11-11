@@ -66,7 +66,7 @@ func reviewCases() []reviewCase {
 			return rc != nil && rc.HTML != "", err
 		}},
 		{"requestPDFExport", func(ctx context.Context, pc *reviewPolicyClient, gc corev1.CategoryServiceClient, wf *seatWorkflow, d *countingDeliveryClient, _ *fakeAIClient) (bool, error) {
-			job, err := resolvers.RequestPDFExport(ctx, d, pc, gc, nil, wf, "draft-1")
+			job, err := resolvers.RequestPDFExport(ctx, d, pc, gc, nil, wf, &fakeAuditSink{}, "draft-1")
 			return job != nil, err
 		}},
 		{"policyVersionSummary", func(ctx context.Context, pc *reviewPolicyClient, gc corev1.CategoryServiceClient, wf *seatWorkflow, _ *countingDeliveryClient, ai *fakeAIClient) (bool, error) {

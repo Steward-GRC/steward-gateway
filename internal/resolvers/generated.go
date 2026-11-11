@@ -746,6 +746,7 @@ type ComplexityRoot struct {
 		PublishTemplateVersion        func(childComplexity int, id string) int
 		ReassignUserPolicies          func(childComplexity int, fromUserID string, toUserID string) int
 		RecordAck                     func(childComplexity int, policyVersionID string) int
+		RecordPolicyExport            func(childComplexity int, policyID string, kind PolicyExportKind, includeHistory bool) int
 		RecordRiskAssessment          func(childComplexity int, caseID string, factors RiskFactorsInput, decision BreachDecision, reason string) int
 		RecordView                    func(childComplexity int, policyVersionID string) int
 		ReindexPolicy                 func(childComplexity int, policyID string) int
@@ -1688,6 +1689,7 @@ type MutationResolver interface {
 	RequestPDFExport(ctx context.Context, policyVersionID string) (*PDFExportJob, error)
 	CreateMagicLink(ctx context.Context, policyVersionID string, sensitive bool) (*MagicLink, error)
 	RevokeMagicLink(ctx context.Context, token string) (bool, error)
+	RecordPolicyExport(ctx context.Context, policyID string, kind PolicyExportKind, includeHistory bool) (bool, error)
 	GrantRole(ctx context.Context, userID string, role string, category *string) (*User, error)
 	RevokeRole(ctx context.Context, userID string, role string, category *string) (*User, error)
 	EnableUser(ctx context.Context, userID string) (*User, error)
@@ -5001,6 +5003,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RecordAck(childComplexity, args["policyVersionId"].(string)), true
+	case "Mutation.recordPolicyExport":
+		if e.ComplexityRoot.Mutation.RecordPolicyExport == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_recordPolicyExport_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RecordPolicyExport(childComplexity, args["policyId"].(string), args["kind"].(PolicyExportKind), args["includeHistory"].(bool)), true
 	case "Mutation.recordRiskAssessment":
 		if e.ComplexityRoot.Mutation.RecordRiskAssessment == nil {
 			break
@@ -11450,7 +11463,16 @@ extend type Mutation {
   requestPDFExport(policyVersionId: ID!): PDFExportJob!
   createMagicLink(policyVersionId: ID!, sensitive: Boolean!): MagicLink!
   revokeMagicLink(token: String!): Boolean!
+  # Records that the signed-in caller printed or exported a policy, for the audit log. Only a
+  # SENSITIVE policy is recorded: true means an entry was written, false means the policy is not
+  # sensitive (or the caller sees it obfuscated) and nothing was. A caller who cannot read the
+  # policy gets NotFound. The entry names the policy, the version, the kind and the time, never the
+  # content. requestPDFExport records a sensitive PDF on its own, so the browser print is the one
+  # call a client makes.
+  recordPolicyExport(policyId: ID!, kind: PolicyExportKind!, includeHistory: Boolean!): Boolean!
 }
+
+enum PolicyExportKind { PRINT PDF }
 
 
 `, BuiltIn: false},
@@ -17365,6 +17387,36 @@ func (ec *executionContext) field_Mutation_recordAck_args(ctx context.Context, r
 		return nil, err
 	}
 	args["policyVersionId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_recordPolicyExport_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "kind",
+		func(ctx context.Context, v any) (PolicyExportKind, error) {
+			return ec.unmarshalNPolicyExportKind2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyExportKind(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["kind"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "includeHistory",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["includeHistory"] = arg2
 	return args, nil
 }
 
@@ -33473,6 +33525,50 @@ func (ec *executionContext) fieldContext_Mutation_revokeMagicLink(ctx context.Co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_revokeMagicLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_recordPolicyExport(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_recordPolicyExport(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RecordPolicyExport(ctx, fc.Args["policyId"].(string), fc.Args["kind"].(PolicyExportKind), fc.Args["includeHistory"].(bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_recordPolicyExport(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_recordPolicyExport_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -60025,6 +60121,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "recordPolicyExport":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_recordPolicyExport(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "grantRole":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_grantRole(ctx, field)
@@ -70532,6 +70635,16 @@ func (ec *executionContext) marshalNPolicyDiff2ᚖgithubᚗcomᚋStewardᚑGRC�
 		return graphql.Null
 	}
 	return ec._PolicyDiff(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNPolicyExportKind2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyExportKind(ctx context.Context, v any) (PolicyExportKind, error) {
+	var res PolicyExportKind
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPolicyExportKind2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyExportKind(ctx context.Context, sel ast.SelectionSet, v PolicyExportKind) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNPolicyOverride2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyOverrideᚄ(ctx context.Context, sel ast.SelectionSet, v []*PolicyOverride) graphql.Marshaler {

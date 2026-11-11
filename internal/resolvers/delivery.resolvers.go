@@ -13,7 +13,7 @@ import (
 
 // RequestPDFExport is the resolver for the requestPDFExport field.
 func (r *mutationResolver) RequestPDFExport(ctx context.Context, policyVersionID string) (*PDFExportJob, error) {
-	return RequestPDFExport(ctx, r.DeliveryClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.WorkflowClient, policyVersionID)
+	return RequestPDFExport(ctx, r.DeliveryClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.WorkflowClient, r.AuditEmitter, policyVersionID)
 }
 
 // CreateMagicLink is the resolver for the createMagicLink field.
@@ -24,6 +24,11 @@ func (r *mutationResolver) CreateMagicLink(ctx context.Context, policyVersionID 
 // RevokeMagicLink is the resolver for the revokeMagicLink field.
 func (r *mutationResolver) RevokeMagicLink(ctx context.Context, token string) (bool, error) {
 	return RevokeMagicLinkResolver(ctx, r.DeliveryClient, token)
+}
+
+// RecordPolicyExport is the resolver for the recordPolicyExport field.
+func (r *mutationResolver) RecordPolicyExport(ctx context.Context, policyID string, kind PolicyExportKind, includeHistory bool) (bool, error) {
+	return RecordPolicyExport(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.AuditEmitter, policyID, kind, includeHistory)
 }
 
 // RenderedContent is the resolver for the renderedContent field.

@@ -217,8 +217,10 @@ whether the caller may edit the policy:
   Without a collab client it is `Unavailable`. The token is never logged.
 - `publishAppendix` also settles the appendix's room when collab is wired: collab's `FlushDraft`
   (draft id `appendix:<id>`), then core's `PublishAppendix`, then `NotifyDraftPublished` with the
-  version that went live. Unlike `publishDraft`, a failed flush does not stop the publish and a
-  failed flush or notify is only logged; neither turns a successful publish into an error.
+  version that went live. As for `publishDraft`, a failed flush fails closed with the same coded
+  error (`COLLAB_FLUSH_UNAVAILABLE`, `COLLAB_FLUSH_REJECTED` or `COLLAB_FLUSH_FAILED`): core is not
+  called and no notify is sent. A failed notify is only logged and never turns a successful publish
+  into an error. With no collab client the publish is core's alone.
 - Not served yet: deleting for good.
 
 ## Library links per policy version

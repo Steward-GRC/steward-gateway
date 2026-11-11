@@ -280,17 +280,21 @@ func (r *Resolver) SaveAppendixDraftResolver(ctx context.Context, id, title, con
 // PublishAppendixResolver promotes the draft to the next published version.
 // With a collab room client wired it also settles the appendix's room, as the
 // policy publish does: flush the live room into core's draft, publish, then
-// freeze the room on the version that went live. Unlike the policy publish,
-// a failed flush is logged and the publish goes ahead, and a failed notify is
-// logged too: neither turns the call into an error. Appendix text is never
-// logged.
+// freeze the room on the version that went live. As for a policy, a failed
+// flush fails closed (the same coded error as publishDraft; core is not called
+// and no notify is sent), while a failed notify is only logged. Appendix text
+// is never logged.
 func (r *Resolver) PublishAppendixResolver(ctx context.Context, id string) (*PolicyAppendix, error) {
 	client, access, actor, appendix, err := r.editableAppendixRow(ctx, "publishAppendix", id)
 	if err != nil {
 		return nil, err
 	}
 	policyID := appendix.GetPolicyId()
-	r.flushAppendixRoom(ctx, id, policyID)
+	// Fails closed, as publishDraft does: publishing after a failed flush would
+	// cut the version from content older than the room holds.
+	if err := flushCollabDraft(ctx, r.logger().Ctx(ctx), r.CollabRoomClient, policyID, appendixRoomKey(id)); err != nil {
+		return nil, err
+	}
 	resp, err := client.PublishAppendix(ctx, &corev1.PublishAppendixRequest{Id: id, ActorUserId: actor})
 	if err != nil {
 		r.logger().Error(err, "publish appendix: core failed", log.F("appendix_id", id), log.F("code", status.Code(err).String()))
@@ -299,27 +303,6 @@ func (r *Resolver) PublishAppendixResolver(ctx context.Context, id string) (*Pol
 	r.logger().Info("appendix published", log.F("appendix_id", id), log.F("version_no", resp.GetAppendix().GetPublished().GetVersionNo()))
 	r.notifyAppendixRoom(ctx, id, policyID, resp.GetAppendix().GetPublished().GetVersionNo())
 	return shapePolicyAppendix(ctx, newAppendixPeople(r.IdentityClient), resp.GetAppendix(), access), nil
-}
-
-// flushAppendixRoom has collab send the live room's newest checkpoint to core
-// before the publish. A failure is logged and the publish still goes ahead.
-func (r *Resolver) flushAppendixRoom(ctx context.Context, id, policyID string) {
-	if r.CollabRoomClient == nil {
-		return
-	}
-	logger := r.logger()
-	flushCtx, cancel := context.WithTimeout(ctx, collabFlushTimeout)
-	defer cancel()
-	start := time.Now()
-	resp, err := r.CollabRoomClient.FlushDraft(flushCtx, &collabv1.FlushDraftRequest{DraftId: appendixRoomKey(id), PolicyId: policyID})
-	if err != nil {
-		logger.Warn("appendix room flush failed; publishing without it",
-			log.F("appendix_id", id), log.F("policy_id", policyID), log.F("code", status.Code(err).String()),
-			log.F("duration_ms", time.Since(start).Milliseconds()), log.F("error", err.Error()))
-		return
-	}
-	logger.Debug("appendix room flushed", log.F("appendix_id", id), log.F("duration_ms", time.Since(start).Milliseconds()),
-		log.F("room_found", resp.GetRoomFound()), log.F("content_flushed", resp.GetContentFlushed()))
 }
 
 // notifyAppendixRoom drops the appendix's live room to read-only on the version

@@ -19,6 +19,7 @@ import (
 
 	collabv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/collab/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	"github.com/Steward-GRC/steward-gateway/internal/errcodes"
 )
 
 // The appendix's own co-editing room (#126). Each test names the mock server
@@ -308,22 +309,30 @@ func TestPublishAppendix_FlushesPublishesThenNotifiesInOrder(t *testing.T) {
 	}
 }
 
-// gateway: a failed flush is logged, the appendix is still published and the
-// room is still told.
-func TestPublishAppendix_FlushFailureDoesNotSkipPublish(t *testing.T) {
+// gateway: as for a policy publish, a failed flush fails closed: nothing is
+// published, the room is not told, and the coded error is the one publishDraft
+// returns (COLLAB_FLUSH_UNAVAILABLE for an unreachable collab).
+func TestPublishAppendix_FlushFailureAbortsBeforeCore(t *testing.T) {
 	e := newApxEnv(t)
 	_, room, order := e.withCollab()
 	room.flushErr = status.Error(codes.Unavailable, "collab down")
 	publishableApx(t, e)
-	got, err := e.r.Mutation().PublishAppendix(apxCtx(t, "bob"), apxSeeded)
-	if err != nil {
-		t.Fatalf("publish after a failed flush: %v", err)
+	_, err := e.r.Mutation().PublishAppendix(apxCtx(t, "bob"), apxSeeded)
+	if err == nil {
+		t.Fatal("publish succeeded after a failed flush")
 	}
-	if got.Published == nil || got.Published.VersionNo != 2 {
-		t.Fatalf("published = %v", got.Published)
+	if got := gatewayStatus(err).Code(); got != codes.Unavailable {
+		t.Errorf("gRPC code = %v, want Unavailable", got)
 	}
-	if want := []string{"flush", "publish", "notify"}; !slices.Equal(order.snapshot(), want) {
-		t.Fatalf("call order = %v, want %v", order.snapshot(), want)
+	want := gatewayEntry(errcodes.CodeCollabFlushUnavailable)
+	if info := codedInfo(t, err); info.Code != want.Code || info.Symbol != want.Symbol || info.Domain != "gateway" {
+		t.Errorf("coded error = %d %s (%s), want %d %s (gateway)", info.Code, info.Symbol, info.Domain, want.Code, want.Symbol)
+	}
+	if want := []string{"flush"}; !slices.Equal(order.snapshot(), want) {
+		t.Fatalf("call order = %v, want %v: core must not be called and no notify sent", order.snapshot(), want)
+	}
+	if len(room.notifies) != 0 {
+		t.Fatalf("notify calls = %d, want 0", len(room.notifies))
 	}
 }
 

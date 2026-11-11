@@ -765,3 +765,66 @@ func TestWorkflowStatusResolver_ShowsWhichSeatsHoldAVeto(t *testing.T) {
 		t.Fatalf("veto marks = [%v %v], want [false true]", row[0].Veto, row[1].Veto)
 	}
 }
+
+// TestSubmitWorkflow_NonAuthorDenied verifies a caller who cannot edit the
+// policy is refused with PermissionDenied before the workflow service is asked
+// to start a run (mock: "refuses someone who can't edit the policy").
+func TestSubmitWorkflow_NonAuthorDenied(t *testing.T) {
+	pc, gc := coAuthMatrixEnv("creator-other", nil,
+		[]*corev1.CategoryRule{authorRule("someone-else", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
+	wf := &fakeWorkflowClient{submitResp: &workflowv1.SubmitResponse{RunId: "run-1"}}
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-9", RolesValue: []string{"policy-author"}})
+	res, err := resolvers.SubmitWorkflowResolver(ctx, log.Nop(), wf, gc, pc, "v-1", "pol", "g-cat", nil)
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("want PermissionDenied, got %v", err)
+	}
+	if res != nil {
+		t.Fatalf("expected no result, got %+v", res)
+	}
+	if wf.lastSubmit != nil {
+		t.Fatal("must not call the workflow service for a non-author")
+	}
+}
+
+// TestSubmitWorkflow_Unauthenticated verifies a submit with no authenticated
+// user is refused and reaches nothing.
+func TestSubmitWorkflow_Unauthenticated(t *testing.T) {
+	pc, gc := coAuthMatrixEnv("u-1", nil, nil)
+	wf := &fakeWorkflowClient{submitResp: &workflowv1.SubmitResponse{RunId: "run-1"}}
+	res, err := resolvers.SubmitWorkflowResolver(context.Background(), log.Nop(), wf, gc, pc, "v-1", "pol", "g-cat", nil)
+	if err == nil {
+		t.Fatal("expected an error with no authenticated user")
+	}
+	if res != nil {
+		t.Fatalf("expected no result, got %+v", res)
+	}
+	if wf.lastSubmit != nil {
+		t.Fatal("must not call the workflow service without a caller")
+	}
+}
+
+// TestSubmitWorkflow_ServiceRefusalKeepsItsCode verifies a refusal from the
+// workflow service still carries its gRPC code to the client after the
+// resolver adds its own context to the error.
+func TestSubmitWorkflow_ServiceRefusalKeepsItsCode(t *testing.T) {
+	for _, code := range []codes.Code{codes.PermissionDenied, codes.FailedPrecondition} {
+		t.Run(code.String(), func(t *testing.T) {
+			pc, gc := coAuthMatrixEnv("u-1", nil, nil)
+			wf := &fakeWorkflowClient{submitErr: status.Error(code, "refused by workflow")}
+			ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-1", RolesValue: []string{"policy-author"}})
+			res, err := resolvers.SubmitWorkflowResolver(ctx, log.Nop(), wf, gc, pc, "v-1", "pol", "g-cat", nil)
+			if err == nil || res != nil {
+				t.Fatalf("want an error and no result, got %+v, %v", res, err)
+			}
+			if wf.lastSubmit == nil {
+				t.Fatal("the workflow service should have been asked")
+			}
+			if got := status.Code(err); got != code {
+				t.Fatalf("status.Code = %v, want %v", got, code)
+			}
+			if got := wireStatus(err).Code(); got != code {
+				t.Fatalf("wire code = %v, want %v", got, code)
+			}
+		})
+	}
+}

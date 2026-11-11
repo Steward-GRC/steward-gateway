@@ -90,6 +90,7 @@ type fakeWorkflowClient struct {
 	lastSignal   *workflowv1.SignalRequest
 	submitResp   *workflowv1.SubmitResponse
 	submitErr    error
+	lastSubmit   *workflowv1.SubmitRequest
 	resolveResp  *workflowv1.ResolveWorkflowResponse
 	resolveErr   error
 	lastResolve  *workflowv1.ResolveWorkflowRequest
@@ -126,7 +127,8 @@ type fakeWorkflowClient struct {
 	lastVeto *workflowv1.SetWorkflowVetoEnabledRequest
 }
 
-func (f *fakeWorkflowClient) Submit(_ context.Context, _ *workflowv1.SubmitRequest, _ ...grpc.CallOption) (*workflowv1.SubmitResponse, error) {
+func (f *fakeWorkflowClient) Submit(_ context.Context, in *workflowv1.SubmitRequest, _ ...grpc.CallOption) (*workflowv1.SubmitResponse, error) {
+	f.lastSubmit = in
 	return f.submitResp, f.submitErr
 }
 

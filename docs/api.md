@@ -114,6 +114,16 @@ the caller is seated on the version's approval run, in any stage and in any stat
 workflow's `GetStatus`. The author, anyone else, and a version with no run get `PermissionDenied`
 and core is never asked. The user id core receives is always the signed-in user's.
 
+The snapshot also moves when the approver acts, so nothing they have just dealt with shows as
+changed. After `signalWorkflow` with approve, reject or request_changes succeeds, and for each item
+`bulkDecide` decided, the gateway marks that version reviewed for the caller. After
+`addReviewThread`, `replyReviewThread`, `setReviewThreadResolved` (resolve and reopen),
+`counterReviewSuggestion` and `closeReviewSuggestion` by a caller who holds a seat on the version's
+run, it does the same; the author side holds no seat and moves nobody. Sending comments
+(request_changes) changes no status and leaves the seat open. A failed mark is logged as a warning
+(version id, user id and status code only) and never fails the act, because the vote or comment
+already happened.
+
 ## Inline review threads
 
 `reviewThreads(policyVersionId)`, `addReviewThread`, `replyReviewThread`, `setReviewThreadResolved`

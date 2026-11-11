@@ -16,6 +16,7 @@ import (
 	"context"
 	"testing"
 
+	log "github.com/Bugs5382/go-log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -147,7 +148,7 @@ func TestBulkDecideNoLongerGatesOnApprove(t *testing.T) {
 	// gateway does not return PermissionDenied; the request is forwarded to the
 	// (fake) workflow client, whose empty response yields a nil-error result.
 	c := &fakeWorkflowClient{bulkResp: &workflowv1.BulkDecideResponse{}}
-	_, err := resolvers.BulkDecideResolver(ctxWithRoles(t, "u", []string{"author"}), c, resolvers.BulkDecideInput{
+	_, err := resolvers.BulkDecideResolver(ctxWithRoles(t, "u", []string{"author"}), log.Nop(), c, nil, resolvers.BulkDecideInput{
 		Decisions: []*resolvers.DecisionInput{
 			{PolicyVersionID: "pv1", StageIndex: 0, Decision: resolvers.DecisionTypeDecisionTypeApprove, Comment: "ok"},
 		},

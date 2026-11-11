@@ -113,24 +113,35 @@ func authorizeSnapshotAccess(ctx context.Context, logger log.Logger, op string, 
 // version with no run seats nobody. Any other workflow error is returned, so
 // nothing is served when the seat cannot be checked.
 func holdsSeatOnRun(ctx context.Context, client workflowv1.WorkflowServiceClient, versionID, userID string) (bool, error) {
+	seats, err := seatsOnRun(ctx, client, versionID)
+	if err != nil {
+		return false, err
+	}
+	return seats[userID], nil
+}
+
+// seatsOnRun lists everyone seated on the version's approval run, by user id,
+// with the same rules as holdsSeatOnRun.
+func seatsOnRun(ctx context.Context, client workflowv1.WorkflowServiceClient, versionID string) (map[string]bool, error) {
 	if client == nil {
-		return false, status.Error(codes.Unavailable, "workflow is not available")
+		return nil, status.Error(codes.Unavailable, "workflow is not available")
 	}
 	resp, err := client.GetStatus(ctx, &workflowv1.GetStatusRequest{PolicyVersionId: versionID})
 	if err != nil {
 		if st, ok := status.FromError(err); (ok && st.Code() == codes.NotFound) || strings.Contains(err.Error(), "no approval run") {
-			return false, nil
+			return map[string]bool{}, nil
 		}
-		return false, err
+		return nil, err
 	}
+	seats := map[string]bool{}
 	for _, stage := range resp.GetStageAssignees() {
 		for _, a := range stage.GetAssignees() {
-			if a.GetUserId() == userID {
-				return true, nil
+			if id := a.GetUserId(); id != "" {
+				seats[id] = true
 			}
 		}
 	}
-	return false, nil
+	return seats, nil
 }
 
 // sectionDiffFromProto maps core's section diff to the GraphQL type.

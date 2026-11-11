@@ -1,0 +1,95 @@
+# --- Review threads ---
+# Inline comments on a policy version (#79). An approver comments on text in the version under
+# review; the drafter sees the threads on the highlighted text, replies and resolves. A rejected
+# version keeps its open threads as the feedback. Anchors are the quoted text plus which match of
+# it (counting from 1), so a client can place the highlight again in the stored document. Core
+# keeps the threads; the gateway decides the caller's side (author, or reviewer with a seat on
+# the version's run), who may see a thread, and hides message bodies from an obfuscated reader.
+
+extend type Query {
+  # The threads on a version the caller may read: an approver gets only their own, the authors
+  # and site admins all of them. An obfuscated reader gets no message bodies.
+  reviewThreads(policyVersionId: ID!): [ReviewThread!]!
+}
+
+extend type Mutation {
+  # Starts a thread with its first message. Approvers on the version's run, its authors and site
+  # admins only.
+  # suggestedText proposes replacement text for the quote; it opens a suggestion on the other
+  # side's turn. Text equal to the quote is a plain comment. Suggestions are not served yet, so
+  # text that differs from the quote is refused.
+  # toUserId is for the author: the one approver the thread is with. An approver's own thread is
+  # with that approver and the author.
+  addReviewThread(policyVersionId: ID!, quote: String!, occurrence: Int!, body: String!, suggestedText: String, toUserId: ID): ReviewThread!
+  # Appends a message to a thread.
+  replyReviewThread(threadId: ID!, body: String!): ReviewThread!
+  # Resolves a thread, or reopens it with resolved: false.
+  setReviewThreadResolved(threadId: ID!, resolved: Boolean!): ReviewThread!
+  # Deletes a thread; only the person who started it.
+  deleteReviewThread(threadId: ID!): Boolean!
+}
+
+type ReviewThread {
+  id: ID!
+  policyVersionId: ID!
+  # The text the thread was made on.
+  quote: String!
+  # Which match of the quote in the version's text, counting from 1.
+  occurrence: Int!
+  resolved: Boolean!
+  createdAt: DateTime!
+  # The approver the thread is with. Only that approver and the policy's authors see it.
+  approverUserId: ID!
+  messages: [ReviewMessage!]!
+  # Present when someone proposed replacement text for the quote. Always empty until suggestions
+  # are served.
+  suggestion: ReviewSuggestion
+}
+
+type ReviewMessage {
+  id: ID!
+  authorUserId: ID!
+  authorName: String
+  # Empty for a reader whose view of the policy is obfuscated.
+  body: String!
+  createdAt: DateTime!
+}
+
+# Who is acting on a suggestion: the policy's authors, or a reviewer on its run.
+enum SuggestionSide {
+  AUTHOR
+  REVIEWER
+}
+
+enum SuggestionOutcome {
+  # The author took the text. Closes on the author's turn.
+  CHANGED
+  # The reviewer accepted the author's counter. Closes on the reviewer's turn.
+  AGREED
+  # The author dropped the note without changing the text. Closes on the author's turn.
+  REMOVED
+  # The side that proposed first took it back, while it was not their turn.
+  WITHDRAWN
+  # The side whose turn it was ended it, with a reason.
+  NOT_AGREED
+}
+
+type ReviewSuggestion {
+  # The text now proposed.
+  text: String!
+  # Whose turn it is to answer.
+  turn: SuggestionSide!
+  rounds: [SuggestionRound!]!
+  # Set once it has ended.
+  outcome: SuggestionOutcome
+  reason: String
+  closedBy: ID
+  closedText: String
+}
+
+type SuggestionRound {
+  by: SuggestionSide!
+  text: String!
+  userId: ID!
+  createdAt: DateTime!
+}

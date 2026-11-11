@@ -838,7 +838,7 @@ func flushCollabDraft(ctx context.Context, logger log.Logger, rooms collabv1.Col
 	start := time.Now()
 	resp, err := rooms.FlushDraft(flushCtx, &collabv1.FlushDraftRequest{DraftId: draftID, PolicyId: policyID})
 	if err != nil {
-		logger.Warn("collab flush failed; the policy was not published",
+		logger.Warn("collab flush failed; the draft was not published",
 			log.F("policy_id", policyID), log.F("draft_id", draftID), log.F("duration_ms", time.Since(start).Milliseconds()), log.F("error", err.Error()))
 		st := status.Convert(err)
 		switch st.Code() {

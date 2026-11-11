@@ -27,7 +27,14 @@ func AIJobResultResolver(ctx context.Context, client aiv1.AiServiceClient, broke
 
 	in, cancel := broker.Subscribe(jobID, actorUserID)
 
-	initial, _ := client.GetAIJob(ctx, &aiv1.GetAIJobRequest{JobId: jobID})
+	// ai answers NotFound for a job the caller did not submit. Return that (and any other
+	// failure) to the caller, like the mock, instead of holding a stream that never delivers.
+	// The error layer maps the status; the job id is an opaque key, no job content is involved.
+	initial, err := client.GetAIJob(ctx, &aiv1.GetAIJobRequest{JobId: jobID})
+	if err != nil {
+		cancel()
+		return nil, err
+	}
 
 	out := make(chan *AIJobResult, 1)
 	go func() {

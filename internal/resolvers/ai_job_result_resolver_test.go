@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/aijobs"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
@@ -180,5 +183,35 @@ func TestAIJobResult_ClientDisconnectStopsStream(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("stream did not close on disconnect")
+	}
+}
+
+// TestAIJobResult_ReadErrorIsReturned verifies a GetAIJob failure is returned to the caller with
+// its gRPC status intact (so the error layer maps it) instead of leaving the stream open. This
+// matches the mock, which refuses an unknown or foreign job at subscribe time with NotFound.
+func TestAIJobResult_ReadErrorIsReturned(t *testing.T) {
+	cases := []struct {
+		name string
+		code codes.Code
+	}{
+		{"a job the caller does not own reads as not found", codes.NotFound},
+		{"a refused caller", codes.PermissionDenied},
+		{"ai unreachable", codes.Unavailable},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			client := &fakeAIClient{getErr: status.Error(tc.code, "ai said no")}
+			ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-a"})
+			ch, err := resolvers.AIJobResultResolver(ctx, client, aijobs.NewBroker(), "job-other")
+			if err == nil {
+				t.Fatal("expected the GetAIJob error to be returned")
+			}
+			if ch != nil {
+				t.Fatal("expected no stream when the job cannot be read")
+			}
+			if got := status.Code(err); got != tc.code {
+				t.Fatalf("status code: got %v, want %v", got, tc.code)
+			}
+		})
 	}
 }

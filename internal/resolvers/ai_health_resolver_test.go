@@ -94,6 +94,63 @@ func TestAIHealthResolver_providerUnavailable_appliesToEveryoneIncludingSiteAdmi
 	}
 }
 
+// The provider's own reason (auth_failed, provider_error, not_configured) rides in providerReason
+// while reason keeps the single value provider_unavailable, so a site admin can see what to fix.
+func TestAIHealthResolver_providerReasonIsExposed(t *testing.T) {
+	for _, reason := range []string{"auth_failed", "provider_error", "not_configured"} {
+		t.Run(reason, func(t *testing.T) {
+			client := &fakeAIClient{
+				providerStatusResp: &aiv1.GetProviderStatusResponse{Available: false, Reason: reason},
+			}
+			ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-1"})
+			got, err := resolvers.AIHealthResolver(ctx, client)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got.Available || got.Reason == nil || *got.Reason != "provider_unavailable" {
+				t.Fatalf("expected unavailable/provider_unavailable, got %+v", got)
+			}
+			if got.ProviderReason == nil || *got.ProviderReason != reason {
+				t.Fatalf("expected providerReason %q, got %v", reason, got.ProviderReason)
+			}
+		})
+	}
+}
+
+// ai may report unavailable with no reason; providerReason is then null, not an empty string.
+func TestAIHealthResolver_providerUnavailableWithoutReason(t *testing.T) {
+	client := &fakeAIClient{providerStatusResp: &aiv1.GetProviderStatusResponse{Available: false}}
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-1"})
+	got, err := resolvers.AIHealthResolver(ctx, client)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Reason == nil || *got.Reason != "provider_unavailable" || got.ProviderReason != nil {
+		t.Fatalf("expected provider_unavailable with a null providerReason, got %+v", got)
+	}
+}
+
+// providerReason is only for a provider outage: the other states and a healthy ai leave it null.
+func TestAIHealthResolver_providerReasonNullOutsideProviderOutage(t *testing.T) {
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-1"})
+	for name, client := range map[string]*fakeAIClient{
+		"healthy":           {},
+		"unreachable":       {getEnabledErr: errors.New("dial tcp: connection refused")},
+		"disabled":          {getEnabledResp: &aiv1.GetAIEnabledResponse{Enabled: false}},
+		"status call fails": {providerStatusErr: errors.New("boom")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := resolvers.AIHealthResolver(ctx, client)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got.ProviderReason != nil {
+				t.Fatalf("expected a null providerReason, got %q", *got.ProviderReason)
+			}
+		})
+	}
+}
+
 func TestAIEnabledResolver_readsRawFlag(t *testing.T) {
 	client := &fakeAIClient{getEnabledResp: &aiv1.GetAIEnabledResponse{Enabled: false}}
 	got, err := resolvers.AIEnabledResolver(context.Background(), client)

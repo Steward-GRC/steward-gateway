@@ -6,6 +6,7 @@ package resolvers_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -528,6 +529,25 @@ func TestObligatedAudienceCountUnauthenticated(t *testing.T) {
 type fakeComplianceIdentityClient struct {
 	identityv1.IdentityReadServiceClient
 	names map[string]string
+
+	// groups maps a user id to the group names ListUserGroupNames answers.
+	groups map[string][]string
+	// groupsErr, when set, fails every ListUserGroupNames call.
+	groupsErr error
+	// groupCalls records the user ids of each ListUserGroupNames call.
+	groupCalls [][]string
+}
+
+func (f *fakeComplianceIdentityClient) ListUserGroupNames(_ context.Context, in *identityv1.ListUserGroupNamesRequest, _ ...grpc.CallOption) (*identityv1.ListUserGroupNamesResponse, error) {
+	f.groupCalls = append(f.groupCalls, append([]string(nil), in.GetUserIds()...))
+	if f.groupsErr != nil {
+		return nil, f.groupsErr
+	}
+	out := &identityv1.ListUserGroupNamesResponse{}
+	for _, id := range in.GetUserIds() {
+		out.Users = append(out.Users, &identityv1.UserGroupNames{UserId: id, GroupNames: f.groups[id]})
+	}
+	return out, nil
 }
 
 func (f *fakeComplianceIdentityClient) GetUser(_ context.Context, in *identityv1.GetUserRequest, _ ...grpc.CallOption) (*identityv1.GetUserResponse, error) {
@@ -630,7 +650,7 @@ func TestAckRosterResolver_EnrichesNames(t *testing.T) {
 		Pending: []*obligationsv1.AckRosterEntry{{UserId: "u2", Email: "u2@example.org"}},
 	}}
 	identity := &fakeComplianceIdentityClient{names: map[string]string{"u1": "Uma One"}}
-	out, err := resolvers.AckRosterResolver(ctxWithRoles(t, "u", []string{"compliance-admin"}), reporting, identity, "pv1", nil)
+	out, err := resolvers.AckRosterResolver(ctxWithRoles(t, "u", []string{"compliance-admin"}), log.Nop(), reporting, identity, "pv1", nil)
 	if err != nil {
 		t.Fatalf("roster: %v", err)
 	}
@@ -639,6 +659,107 @@ func TestAckRosterResolver_EnrichesNames(t *testing.T) {
 	}
 	if len(out.Pending) != 1 {
 		t.Fatalf("pending: %+v", out.Pending)
+	}
+}
+
+func rosterOf(acked, pending []string) *fakeReportingClient {
+	r := &obligationsv1.GetAckRosterResponse{}
+	for _, id := range acked {
+		r.Acked = append(r.Acked, &obligationsv1.AckRosterEntry{UserId: id, Email: id + "@example.org"})
+	}
+	for _, id := range pending {
+		r.Pending = append(r.Pending, &obligationsv1.AckRosterEntry{UserId: id, Email: id + "@example.org"})
+	}
+	return &fakeReportingClient{roster: r}
+}
+
+func TestAckRosterResolver_FillsGroupsWithOneCall(t *testing.T) {
+	identity := &fakeComplianceIdentityClient{groups: map[string][]string{
+		"u1": {"Approvers", "Finance team"},
+		"u3": {"Ops"},
+	}}
+	// u1 appears in both lists: asked once.
+	out, err := resolvers.AckRosterResolver(ctxWithRoles(t, "u", []string{"compliance-admin"}), log.Nop(),
+		rosterOf([]string{"u1"}, []string{"u2", "u3", "u1"}), identity, "pv1", nil)
+	if err != nil {
+		t.Fatalf("roster: %v", err)
+	}
+	if len(identity.groupCalls) != 1 {
+		t.Fatalf("want one ListUserGroupNames call, got %d", len(identity.groupCalls))
+	}
+	if got := identity.groupCalls[0]; len(got) != 3 || got[0] != "u1" || got[1] != "u2" || got[2] != "u3" {
+		t.Fatalf("ids asked (distinct, roster order): %v", got)
+	}
+	if g := out.Acked[0].Groups; len(g) != 2 || g[0] != "Approvers" || g[1] != "Finance team" {
+		t.Fatalf("acked groups: %v", g)
+	}
+	if g := out.Pending[0].Groups; g == nil || len(g) != 0 {
+		t.Fatalf("no groups must be an empty non-nil list, got %#v", g)
+	}
+	if g := out.Pending[1].Groups; len(g) != 1 || g[0] != "Ops" {
+		t.Fatalf("pending groups: %v", g)
+	}
+	if g := out.Pending[2].Groups; len(g) != 2 {
+		t.Fatalf("repeated person gets the same groups: %v", g)
+	}
+}
+
+func TestAckRosterResolver_ChunksGroupLookupAt1000(t *testing.T) {
+	var ids []string
+	for i := 0; i < 2500; i++ {
+		ids = append(ids, fmt.Sprintf("u%d", i))
+	}
+	identity := &fakeComplianceIdentityClient{groups: map[string][]string{"u2499": {"Last"}}}
+	out, err := resolvers.AckRosterResolver(ctxWithRoles(t, "u", []string{"compliance-admin"}), log.Nop(),
+		rosterOf(nil, ids), identity, "pv1", nil)
+	if err != nil {
+		t.Fatalf("roster: %v", err)
+	}
+	if len(identity.groupCalls) != 3 || len(identity.groupCalls[0]) != 1000 || len(identity.groupCalls[1]) != 1000 || len(identity.groupCalls[2]) != 500 {
+		t.Fatalf("want chunks 1000/1000/500, got %d calls", len(identity.groupCalls))
+	}
+	if g := out.Pending[2499].Groups; len(g) != 1 || g[0] != "Last" {
+		t.Fatalf("last chunk groups: %v", g)
+	}
+}
+
+func TestAckRosterResolver_IdentityErrorDegradesToEmptyGroups(t *testing.T) {
+	identity := &fakeComplianceIdentityClient{groupsErr: status.Error(codes.Unavailable, "identity down")}
+	out, err := resolvers.AckRosterResolver(ctxWithRoles(t, "u", []string{"compliance-admin"}), log.Nop(),
+		rosterOf([]string{"u1"}, []string{"u2"}), identity, "pv1", nil)
+	if err != nil {
+		t.Fatalf("an identity error must not fail the roster: %v", err)
+	}
+	if len(out.Acked) != 1 || len(out.Pending) != 1 {
+		t.Fatalf("roster rows lost: %+v", out)
+	}
+	for _, e := range []*resolvers.AckRosterEntry{out.Acked[0], out.Pending[0]} {
+		if e.Groups == nil || len(e.Groups) != 0 {
+			t.Fatalf("want empty non-nil groups, got %#v", e.Groups)
+		}
+	}
+}
+
+func TestAckRosterResolver_EmptyRosterAsksNoOne(t *testing.T) {
+	identity := &fakeComplianceIdentityClient{}
+	if _, err := resolvers.AckRosterResolver(ctxWithRoles(t, "u", []string{"compliance-admin"}), log.Nop(),
+		rosterOf(nil, nil), identity, "pv1", nil); err != nil {
+		t.Fatalf("roster: %v", err)
+	}
+	if len(identity.groupCalls) != 0 {
+		t.Fatalf("empty roster must not call identity: %v", identity.groupCalls)
+	}
+}
+
+func TestAckRosterResolver_RefusedCallerAsksNoOne(t *testing.T) {
+	identity := &fakeComplianceIdentityClient{}
+	_, err := resolvers.AckRosterResolver(ctxWithRoles(t, "u", []string{"reader"}), log.Nop(),
+		rosterOf([]string{"u1"}, nil), identity, "pv1", nil)
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("want PermissionDenied, got %v", err)
+	}
+	if len(identity.groupCalls) != 0 {
+		t.Fatalf("refused caller must not reach identity: %v", identity.groupCalls)
 	}
 }
 

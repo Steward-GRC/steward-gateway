@@ -102,7 +102,9 @@ type CompletionReport {
   overdue: [OverdueEntry!]!
 }
 
-type AckRosterEntry { userId: ID! email: String! userName: String ackedAt: String }
+# groups: the person's platform group names, sorted case-insensitively. Empty
+# when the person has none or identity could not answer.
+type AckRosterEntry { userId: ID! email: String! userName: String ackedAt: String groups: [String!]! }
 type AckRoster { acked: [AckRosterEntry!]! pending: [AckRosterEntry!]! }
 type AckActivityDay { date: String! acks: Int! views: Int! }
 

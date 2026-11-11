@@ -148,10 +148,11 @@ type AckRoster struct {
 }
 
 type AckRosterEntry struct {
-	UserID   string  `json:"userId"`
-	Email    string  `json:"email"`
-	UserName *string `json:"userName,omitempty"`
-	AckedAt  *string `json:"ackedAt,omitempty"`
+	UserID   string   `json:"userId"`
+	Email    string   `json:"email"`
+	UserName *string  `json:"userName,omitempty"`
+	AckedAt  *string  `json:"ackedAt,omitempty"`
+	Groups   []string `json:"groups"`
 }
 
 type AckStatus struct {

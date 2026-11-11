@@ -15,6 +15,7 @@ import (
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	obligationsv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/obligations/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
+	"google.golang.org/grpc/status"
 )
 
 func ackFromProto(a *obligationsv1.Acknowledgment) *Acknowledgment {
@@ -275,8 +276,14 @@ func RecordViewResolver(ctx context.Context, client obligationsv1.AckServiceClie
 	return true, nil
 }
 
-func rosterEntryFromProto(ctx context.Context, labels *labelResolver, e *obligationsv1.AckRosterEntry) *AckRosterEntry {
-	out := &AckRosterEntry{UserID: e.GetUserId(), Email: e.GetEmail()}
+// rosterGroupBatch is the most user ids one ListUserGroupNames call accepts.
+const rosterGroupBatch = 1000
+
+func rosterEntryFromProto(ctx context.Context, labels *labelResolver, groups map[string][]string, e *obligationsv1.AckRosterEntry) *AckRosterEntry {
+	out := &AckRosterEntry{UserID: e.GetUserId(), Email: e.GetEmail(), Groups: []string{}}
+	if g := groups[e.GetUserId()]; len(g) > 0 {
+		out.Groups = append(out.Groups, g...)
+	}
 	if name := labels.userName(ctx, e.GetUserId()); name != "" {
 		out.UserName = &name
 	}
@@ -287,11 +294,57 @@ func rosterEntryFromProto(ctx context.Context, labels *labelResolver, e *obligat
 	return out
 }
 
-// AckRosterResolver returns the acked/pending audience split, names enriched.
-func AckRosterResolver(ctx context.Context, client obligationsv1.ReportingServiceClient, identity identityv1.IdentityReadServiceClient, policyVersionID string, groupID *string) (*AckRoster, error) {
+// rosterGroupNames asks identity once for the platform group names of every
+// distinct person on the roster, in chunks of rosterGroupBatch ids. It never
+// fails the roster: when a chunk errors, the people in it (and only them) get
+// no groups and the error is logged with counts, never ids.
+func rosterGroupNames(ctx context.Context, lg log.Logger, identity identityv1.IdentityReadServiceClient, resp *obligationsv1.GetAckRosterResponse) map[string][]string {
+	seen := map[string]struct{}{}
+	var ids []string
+	for _, list := range [][]*obligationsv1.AckRosterEntry{resp.GetAcked(), resp.GetPending()} {
+		for _, e := range list {
+			id := e.GetUserId()
+			if _, dup := seen[id]; dup || id == "" {
+				continue
+			}
+			seen[id] = struct{}{}
+			ids = append(ids, id)
+		}
+	}
+	out := make(map[string][]string, len(ids))
+	if len(ids) == 0 {
+		lg.Debug("ack roster: no people, group lookup skipped")
+		return out
+	}
+	start := time.Now()
+	failed := 0
+	for from := 0; from < len(ids); from += rosterGroupBatch {
+		to := min(from+rosterGroupBatch, len(ids))
+		r, err := identity.ListUserGroupNames(ctx, &identityv1.ListUserGroupNamesRequest{UserIds: ids[from:to]})
+		if err != nil {
+			failed += to - from
+			lg.Warn("ack roster: group lookup failed, showing no groups for this batch",
+				log.F("code", status.Code(err).String()), log.F("batch_people", to-from))
+			continue
+		}
+		for _, u := range r.GetUsers() {
+			out[u.GetUserId()] = u.GetGroupNames()
+		}
+	}
+	lg.Debug("ack roster: group lookup done",
+		log.F("people", len(ids)), log.F("without_groups_after_error", failed),
+		log.F("duration_ms", time.Since(start).Milliseconds()))
+	return out
+}
+
+// AckRosterResolver returns the acked/pending audience split, names and
+// platform groups enriched. Groups come from one batched identity lookup for
+// the whole roster; an identity error leaves them empty rather than failing.
+func AckRosterResolver(ctx context.Context, logger log.Logger, client obligationsv1.ReportingServiceClient, identity identityv1.IdentityReadServiceClient, policyVersionID string, groupID *string) (*AckRoster, error) {
 	if err := authorizeOp(ctx, authz.ComplianceReport); err != nil {
 		return nil, err
 	}
+	lg := logger.Ctx(ctx)
 	resp, err := client.GetAckRoster(ctx, &obligationsv1.GetAckRosterRequest{
 		PolicyVersionId: policyVersionID,
 		GroupId:         derefOrEmpty(groupID),
@@ -299,16 +352,19 @@ func AckRosterResolver(ctx context.Context, client obligationsv1.ReportingServic
 	if err != nil {
 		return nil, fmt.Errorf("compliance get ack roster: %w", err)
 	}
+	lg.Debug("ack roster: obligations answered",
+		log.F("acked", len(resp.GetAcked())), log.F("pending", len(resp.GetPending())))
+	groups := rosterGroupNames(ctx, lg, identity, resp)
 	labels := newLabelResolver(identity, nil, nil, nil)
 	out := &AckRoster{
 		Acked:   make([]*AckRosterEntry, 0, len(resp.GetAcked())),
 		Pending: make([]*AckRosterEntry, 0, len(resp.GetPending())),
 	}
 	for _, e := range resp.GetAcked() {
-		out.Acked = append(out.Acked, rosterEntryFromProto(ctx, labels, e))
+		out.Acked = append(out.Acked, rosterEntryFromProto(ctx, labels, groups, e))
 	}
 	for _, e := range resp.GetPending() {
-		out.Pending = append(out.Pending, rosterEntryFromProto(ctx, labels, e))
+		out.Pending = append(out.Pending, rosterEntryFromProto(ctx, labels, groups, e))
 	}
 	return out, nil
 }

@@ -363,22 +363,23 @@ type ComplexityRoot struct {
 	}
 
 	Category struct {
-		AckEveryone         func(childComplexity int) int
-		AckEveryoneSet      func(childComplexity int) int
-		AckTriggers         func(childComplexity int) int
-		DefaultTemplateID   func(childComplexity int) int
-		DefaultTemplateNone func(childComplexity int) int
-		DefaultWorkflowID   func(childComplexity int) int
-		ExclusionGroupIds   func(childComplexity int) int
-		ID                  func(childComplexity int) int
-		IdpGroupIds         func(childComplexity int) int
-		Name                func(childComplexity int) int
-		Order               func(childComplexity int) int
-		Owners              func(childComplexity int) int
-		ParentID            func(childComplexity int) int
-		ReviewCadence       func(childComplexity int) int
-		ReviewDate          func(childComplexity int) int
-		Slug                func(childComplexity int) int
+		AckEveryone           func(childComplexity int) int
+		AckEveryoneSet        func(childComplexity int) int
+		AckTriggers           func(childComplexity int) int
+		DefaultTemplateID     func(childComplexity int) int
+		DefaultTemplateLocked func(childComplexity int) int
+		DefaultTemplateNone   func(childComplexity int) int
+		DefaultWorkflowID     func(childComplexity int) int
+		ExclusionGroupIds     func(childComplexity int) int
+		ID                    func(childComplexity int) int
+		IdpGroupIds           func(childComplexity int) int
+		Name                  func(childComplexity int) int
+		Order                 func(childComplexity int) int
+		Owners                func(childComplexity int) int
+		ParentID              func(childComplexity int) int
+		ReviewCadence         func(childComplexity int) int
+		ReviewDate            func(childComplexity int) int
+		Slug                  func(childComplexity int) int
 	}
 
 	CategoryApprovers struct {
@@ -637,6 +638,22 @@ type ComplexityRoot struct {
 		Label      func(childComplexity int) int
 	}
 
+	MovePoliciesPreview struct {
+		Items func(childComplexity int) int
+	}
+
+	MovePoliciesResult struct {
+		Moved func(childComplexity int) int
+	}
+
+	MovePolicyItem struct {
+		NewNumber func(childComplexity int) int
+		Number    func(childComplexity int) int
+		PolicyID  func(childComplexity int) int
+		Refusal   func(childComplexity int) int
+		Title     func(childComplexity int) int
+	}
+
 	Mutation struct {
 		AcceptAIDataNotice            func(childComplexity int, noticeVersion string) int
 		ActivateOrganization          func(childComplexity int, domain string) int
@@ -698,6 +715,7 @@ type ComplexityRoot struct {
 		MarkVersionReviewed           func(childComplexity int, policyVersionID string) int
 		MergeAccounts                 func(childComplexity int, sourceUserID string, targetUserID string, confirmPrivileged *bool, idempotencyKey *string) int
 		MoveCategory                  func(childComplexity int, categoryID string, newParentID *string) int
+		MovePolicies                  func(childComplexity int, policyIds []string, homeCategoryID string) int
 		MovePolicy                    func(childComplexity int, policyID string, homeCategoryID string) int
 		PostCaseMessage               func(childComplexity int, caseID string, body string) int
 		PublishAppendix               func(childComplexity int, id string) int
@@ -753,6 +771,7 @@ type ComplexityRoot struct {
 		SetCategoryDefaults           func(childComplexity int, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) int
 		SetCategoryGovernance         func(childComplexity int, id string, owners []string, idpGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) int
 		SetCategoryRuleset            func(childComplexity int, categoryID string, rules []*RaciRuleInput) int
+		SetCategoryTemplateLock       func(childComplexity int, id string, locked bool) int
 		SetContactBlockArchived       func(childComplexity int, id string, archived bool) int
 		SetDefinitionArchived         func(childComplexity int, id string, archived bool) int
 		SetDigestWindow               func(childComplexity int, dailyHour int, weeklyDow int) int
@@ -1050,6 +1069,7 @@ type ComplexityRoot struct {
 		PolicyVersionSummary       func(childComplexity int, versionID string) int
 		PolicyVersions             func(childComplexity int, policyID string) int
 		PreviewAccountMerge        func(childComplexity int, sourceUserID string, targetUserID string) int
+		PreviewMovePolicies        func(childComplexity int, policyIds []string, homeCategoryID string) int
 		PreviewUserDeletion        func(childComplexity int, userID string) int
 		References                 func(childComplexity int, includeArchived *bool) int
 		RelatedPolicies            func(childComplexity int, policyID string) int
@@ -1337,6 +1357,14 @@ type ComplexityRoot struct {
 		StageName  func(childComplexity int) int
 	}
 
+	StageProgress struct {
+		Approvals func(childComplexity int) int
+		DueAt     func(childComplexity int) int
+		Quorum    func(childComplexity int) int
+		QuorumN   func(childComplexity int) int
+		Required  func(childComplexity int) int
+	}
+
 	StageUnitProgress struct {
 		Approvals func(childComplexity int) int
 		GroupID   func(childComplexity int) int
@@ -1534,8 +1562,11 @@ type ComplexityRoot struct {
 		RunID             func(childComplexity int) int
 		StageAssignees    func(childComplexity int) int
 		StageNames        func(childComplexity int) int
+		StageProgress     func(childComplexity int) int
 		StageUnitProgress func(childComplexity int) int
 		Status            func(childComplexity int) int
+		SubmittedAt       func(childComplexity int) int
+		SubmittedBy       func(childComplexity int) int
 	}
 
 	WorkflowSubmitResult struct {
@@ -1570,6 +1601,7 @@ type MutationResolver interface {
 	IssueCollabToken(ctx context.Context, input IssueCollabTokenInput) (*IssueCollabTokenPayload, error)
 	CreateCategory(ctx context.Context, name string, slug string, parentID *string) (*Category, error)
 	SetCategoryDefaults(ctx context.Context, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) (*Category, error)
+	SetCategoryTemplateLock(ctx context.Context, id string, locked bool) (*Category, error)
 	RenameCategory(ctx context.Context, id string, name string, slug string) (*Category, error)
 	DeleteCategory(ctx context.Context, id string) (bool, error)
 	MoveCategory(ctx context.Context, categoryID string, newParentID *string) (*Category, error)
@@ -1672,6 +1704,7 @@ type MutationResolver interface {
 	SetDigestWindow(ctx context.Context, dailyHour int, weeklyDow int) (*NotificationSettings, error)
 	SetNotificationChannels(ctx context.Context, input NotificationPrefInput) (*NotificationSettings, error)
 	RecordView(ctx context.Context, policyVersionID string) (bool, error)
+	MovePolicies(ctx context.Context, policyIds []string, homeCategoryID string) (*MovePoliciesResult, error)
 	SubmitAnonymousReport(ctx context.Context, details ReportDetailsInput, passphrase string, attachments []*ReportAttachmentInput) (*AnonymousReportReceipt, error)
 	CheckReport(ctx context.Context, caseCode string, passphrase string) (*ReporterView, error)
 	ReplyToReport(ctx context.Context, caseCode string, passphrase string, body string) (*ReporterView, error)
@@ -1801,6 +1834,7 @@ type QueryResolver interface {
 	ExportAcks(ctx context.Context, policyVersionID string, format string) (*AckExport, error)
 	AckRoster(ctx context.Context, policyVersionID string, groupID *string) (*AckRoster, error)
 	AckActivity(ctx context.Context, policyVersionID string, groupID *string, days int) ([]*AckActivityDay, error)
+	PreviewMovePolicies(ctx context.Context, policyIds []string, homeCategoryID string) (*MovePoliciesPreview, error)
 	MyReports(ctx context.Context) ([]*MyReport, error)
 	MyReport(ctx context.Context, caseID string) (*ReporterView, error)
 	ReportCases(ctx context.Context, statuses []CaseStatus, assigneeUserID *string) (*CaseQueue, error)
@@ -3055,6 +3089,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Category.DefaultTemplateID(childComplexity), true
+	case "Category.defaultTemplateLocked":
+		if e.ComplexityRoot.Category.DefaultTemplateLocked == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.DefaultTemplateLocked(childComplexity), true
 	case "Category.defaultTemplateNone":
 		if e.ComplexityRoot.Category.DefaultTemplateNone == nil {
 			break
@@ -4052,6 +4092,51 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.MfaFactor.Label(childComplexity), true
 
+	case "MovePoliciesPreview.items":
+		if e.ComplexityRoot.MovePoliciesPreview.Items == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MovePoliciesPreview.Items(childComplexity), true
+
+	case "MovePoliciesResult.moved":
+		if e.ComplexityRoot.MovePoliciesResult.Moved == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MovePoliciesResult.Moved(childComplexity), true
+
+	case "MovePolicyItem.newNumber":
+		if e.ComplexityRoot.MovePolicyItem.NewNumber == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MovePolicyItem.NewNumber(childComplexity), true
+	case "MovePolicyItem.number":
+		if e.ComplexityRoot.MovePolicyItem.Number == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MovePolicyItem.Number(childComplexity), true
+	case "MovePolicyItem.policyId":
+		if e.ComplexityRoot.MovePolicyItem.PolicyID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MovePolicyItem.PolicyID(childComplexity), true
+	case "MovePolicyItem.refusal":
+		if e.ComplexityRoot.MovePolicyItem.Refusal == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MovePolicyItem.Refusal(childComplexity), true
+	case "MovePolicyItem.title":
+		if e.ComplexityRoot.MovePolicyItem.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MovePolicyItem.Title(childComplexity), true
+
 	case "Mutation.acceptAIDataNotice":
 		if e.ComplexityRoot.Mutation.AcceptAIDataNotice == nil {
 			break
@@ -4702,6 +4787,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.MoveCategory(childComplexity, args["categoryId"].(string), args["newParentId"].(*string)), true
+	case "Mutation.movePolicies":
+		if e.ComplexityRoot.Mutation.MovePolicies == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_movePolicies_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.MovePolicies(childComplexity, args["policyIds"].([]string), args["homeCategoryId"].(string)), true
 	case "Mutation.movePolicy":
 		if e.ComplexityRoot.Mutation.MovePolicy == nil {
 			break
@@ -5292,6 +5388,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetCategoryRuleset(childComplexity, args["categoryId"].(string), args["rules"].([]*RaciRuleInput)), true
+	case "Mutation.setCategoryTemplateLock":
+		if e.ComplexityRoot.Mutation.SetCategoryTemplateLock == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setCategoryTemplateLock_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetCategoryTemplateLock(childComplexity, args["id"].(string), args["locked"].(bool)), true
 	case "Mutation.setContactBlockArchived":
 		if e.ComplexityRoot.Mutation.SetContactBlockArchived == nil {
 			break
@@ -7213,6 +7320,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.PreviewAccountMerge(childComplexity, args["sourceUserId"].(string), args["targetUserId"].(string)), true
+	case "Query.previewMovePolicies":
+		if e.ComplexityRoot.Query.PreviewMovePolicies == nil {
+			break
+		}
+
+		args, err := ec.field_Query_previewMovePolicies_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PreviewMovePolicies(childComplexity, args["policyIds"].([]string), args["homeCategoryId"].(string)), true
 	case "Query.previewUserDeletion":
 		if e.ComplexityRoot.Query.PreviewUserDeletion == nil {
 			break
@@ -8534,6 +8652,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.StageEligibleAssignees.StageName(childComplexity), true
 
+	case "StageProgress.approvals":
+		if e.ComplexityRoot.StageProgress.Approvals == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageProgress.Approvals(childComplexity), true
+	case "StageProgress.dueAt":
+		if e.ComplexityRoot.StageProgress.DueAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageProgress.DueAt(childComplexity), true
+	case "StageProgress.quorum":
+		if e.ComplexityRoot.StageProgress.Quorum == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageProgress.Quorum(childComplexity), true
+	case "StageProgress.quorumN":
+		if e.ComplexityRoot.StageProgress.QuorumN == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageProgress.QuorumN(childComplexity), true
+	case "StageProgress.required":
+		if e.ComplexityRoot.StageProgress.Required == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageProgress.Required(childComplexity), true
+
 	case "StageUnitProgress.approvals":
 		if e.ComplexityRoot.StageUnitProgress.Approvals == nil {
 			break
@@ -9312,6 +9461,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkflowStatus.StageNames(childComplexity), true
+	case "WorkflowStatus.stageProgress":
+		if e.ComplexityRoot.WorkflowStatus.StageProgress == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStatus.StageProgress(childComplexity), true
 	case "WorkflowStatus.stageUnitProgress":
 		if e.ComplexityRoot.WorkflowStatus.StageUnitProgress == nil {
 			break
@@ -9324,6 +9479,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkflowStatus.Status(childComplexity), true
+	case "WorkflowStatus.submittedAt":
+		if e.ComplexityRoot.WorkflowStatus.SubmittedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStatus.SubmittedAt(childComplexity), true
+	case "WorkflowStatus.submittedBy":
+		if e.ComplexityRoot.WorkflowStatus.SubmittedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStatus.SubmittedBy(childComplexity), true
 
 	case "WorkflowSubmitResult.runId":
 		if e.ComplexityRoot.WorkflowSubmitResult.RunID == nil {
@@ -10299,6 +10466,14 @@ extend type Mutation {
   # defaultTemplateNone=false with a defaultTemplateId sets that specific
   # template; false with a null id means inherit from the ancestor chain.
   setCategoryDefaults(id: ID!, defaultTemplateId: ID, defaultWorkflowId: ID, defaultTemplateNone: Boolean): Category!
+  # Lock or unlock the category's default template (site admin only). While locked,
+  # a document under the category, or under one that inherits its template, must use
+  # that template: createPolicy and setPolicyTemplate refuse freeform and any other
+  # template, though asking for none (inherit) is still allowed. Locking is refused
+  # (FAILED_PRECONDITION, TEMPLATE_LOCK_NEEDS_DEFAULT) while the category names no
+  # default template. Core's refusals reach the client as extensions code
+  # CATEGORY_TEMPLATE_LOCKED (4004) and TEMPLATE_LOCK_NEEDS_DEFAULT (4005).
+  setCategoryTemplateLock(id: ID!, locked: Boolean!): Category!
   # Rename a category (name + slug). Does NOT renumber existing policies.
   renameCategory(id: ID!, name: String!, slug: String!): Category!
   # Delete a category and its policy-free descendants. Refused
@@ -10446,6 +10621,9 @@ type Category {
   # both unset (none=false, id=null) → inherit from ancestor chain.
   defaultTemplateId: ID
   defaultTemplateNone: Boolean!
+  # True when defaultTemplateId is binding: a document in this category, or in one
+  # that inherits the template, must use it. Never true without a defaultTemplateId.
+  defaultTemplateLocked: Boolean!
   defaultWorkflowId: ID
   owners: [ID!]!
   # Per-category ack-audience IdP group names. Empty list = "no audience"
@@ -11806,6 +11984,39 @@ extend type Mutation {
 
 
 `, BuiltIn: false},
+	{Name: "../../graphql/policy_move.graphqls", Input: `extend type Query {
+  # Site-admin: the dry run of movePolicies. What moving these documents to the
+  # category would do, in the order asked. Nothing changes.
+  previewMovePolicies(policyIds: [ID!]!, homeCategoryId: ID!): MovePoliciesPreview!
+}
+
+extend type Mutation {
+  # Site-admin: move several documents to one category, all or nothing. Each is
+  # renumbered from the target's sequence, in order. Refused whole (MOVE_REFUSED,
+  # naming the first document that cannot move and why) if any would be refused.
+  movePolicies(policyIds: [ID!]!, homeCategoryId: ID!): MovePoliciesResult!
+}
+
+type MovePoliciesPreview {
+  items: [MovePolicyItem!]!
+}
+
+type MovePoliciesResult {
+  moved: [MovePolicyItem!]!
+}
+
+type MovePolicyItem {
+  policyId: ID!
+  title: String!
+  # The document's number before the move.
+  number: String!
+  # The number in the target's sequence; null when it cannot move.
+  newNumber: String
+  # Why it cannot move (CATEGORY_REFUSES_TYPE, RETIRED, not allowed), as core
+  # words it; null when it can.
+  refusal: String
+}
+`, BuiltIn: false},
 	{Name: "../../graphql/reporting.graphqls", Input: `# --- Reporting: concerns from reporters, case work for officers ---
 # Backed by reporting (IntakeService, CaseService). Field for field the
 # reporting API; reporting decides who is an officer.
@@ -12443,6 +12654,16 @@ type StageUnitProgress {
   status: String!    # SATISFIED | PENDING | REJECTED
 }
 
+# One stage's due date and approval rule, with the individual approvals it has
+# and needs. Approve-as-group units keep their own tally in StageUnitProgress.
+type StageProgress {
+  dueAt: String      # RFC3339; null until the stage is entered
+  quorum: String!    # one | majority | all | nofm
+  quorumN: Int!      # approvals an nofm stage needs; 0 on every other rule
+  approvals: Int!    # individual approvals the stage has
+  required: Int!     # individual approvals the stage needs under its rule
+}
+
 type WorkflowStatus {
   status: ApprovalStatus!
   runId: String!
@@ -12456,6 +12677,14 @@ type WorkflowStatus {
   # Per-stage approve-as-group unit progress, index-aligned with stageNames; an
   # empty inner list means the stage has no group units.
   stageUnitProgress: [[StageUnitProgress!]!]!
+  # The effective submitter's user id (during act-as, the account acted as);
+  # null when the run has none.
+  submittedBy: String
+  # RFC3339 time the run was submitted; null when unset.
+  submittedAt: String
+  # Each stage's due date and rule, index-aligned with stageNames; empty when
+  # there is no run.
+  stageProgress: [StageProgress!]!
 }
 
 type PendingTask {
@@ -13453,6 +13682,8 @@ func (ec *executionContext) childFields_Category(ctx context.Context, field grap
 		return ec.fieldContext_Category_defaultTemplateId(ctx, field)
 	case "defaultTemplateNone":
 		return ec.fieldContext_Category_defaultTemplateNone(ctx, field)
+	case "defaultTemplateLocked":
+		return ec.fieldContext_Category_defaultTemplateLocked(ctx, field)
 	case "defaultWorkflowId":
 		return ec.fieldContext_Category_defaultWorkflowId(ctx, field)
 	case "owners":
@@ -13987,6 +14218,38 @@ func (ec *executionContext) childFields_MfaFactor(ctx context.Context, field gra
 		return ec.fieldContext_MfaFactor_label(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type MfaFactor", field.Name)
+}
+
+func (ec *executionContext) childFields_MovePoliciesPreview(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "items":
+		return ec.fieldContext_MovePoliciesPreview_items(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type MovePoliciesPreview", field.Name)
+}
+
+func (ec *executionContext) childFields_MovePoliciesResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "moved":
+		return ec.fieldContext_MovePoliciesResult_moved(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type MovePoliciesResult", field.Name)
+}
+
+func (ec *executionContext) childFields_MovePolicyItem(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "policyId":
+		return ec.fieldContext_MovePolicyItem_policyId(ctx, field)
+	case "title":
+		return ec.fieldContext_MovePolicyItem_title(ctx, field)
+	case "number":
+		return ec.fieldContext_MovePolicyItem_number(ctx, field)
+	case "newNumber":
+		return ec.fieldContext_MovePolicyItem_newNumber(ctx, field)
+	case "refusal":
+		return ec.fieldContext_MovePolicyItem_refusal(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type MovePolicyItem", field.Name)
 }
 
 func (ec *executionContext) childFields_MyReport(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -14837,6 +15100,22 @@ func (ec *executionContext) childFields_StageEligibleAssignees(ctx context.Conte
 	return nil, fmt.Errorf("no field named %q was found under type StageEligibleAssignees", field.Name)
 }
 
+func (ec *executionContext) childFields_StageProgress(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "dueAt":
+		return ec.fieldContext_StageProgress_dueAt(ctx, field)
+	case "quorum":
+		return ec.fieldContext_StageProgress_quorum(ctx, field)
+	case "quorumN":
+		return ec.fieldContext_StageProgress_quorumN(ctx, field)
+	case "approvals":
+		return ec.fieldContext_StageProgress_approvals(ctx, field)
+	case "required":
+		return ec.fieldContext_StageProgress_required(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type StageProgress", field.Name)
+}
+
 func (ec *executionContext) childFields_StageUnitProgress(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "groupId":
@@ -15225,6 +15504,12 @@ func (ec *executionContext) childFields_WorkflowStatus(ctx context.Context, fiel
 		return ec.fieldContext_WorkflowStatus_stageAssignees(ctx, field)
 	case "stageUnitProgress":
 		return ec.fieldContext_WorkflowStatus_stageUnitProgress(ctx, field)
+	case "submittedBy":
+		return ec.fieldContext_WorkflowStatus_submittedBy(ctx, field)
+	case "submittedAt":
+		return ec.fieldContext_WorkflowStatus_submittedAt(ctx, field)
+	case "stageProgress":
+		return ec.fieldContext_WorkflowStatus_stageProgress(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type WorkflowStatus", field.Name)
 }
@@ -16629,6 +16914,28 @@ func (ec *executionContext) field_Mutation_moveCategory_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_movePolicies_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyIds"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "homeCategoryId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["homeCategoryId"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_movePolicy_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -17722,6 +18029,28 @@ func (ec *executionContext) field_Mutation_setCategoryRuleset_args(ctx context.C
 		return nil, err
 	}
 	args["rules"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setCategoryTemplateLock_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "locked",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["locked"] = arg1
 	return args, nil
 }
 
@@ -19762,6 +20091,28 @@ func (ec *executionContext) field_Query_previewAccountMerge_args(ctx context.Con
 		return nil, err
 	}
 	args["targetUserId"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_previewMovePolicies_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyIds"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "homeCategoryId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["homeCategoryId"] = arg1
 	return args, nil
 }
 
@@ -24928,6 +25279,29 @@ func (ec *executionContext) fieldContext_Category_defaultTemplateNone(_ context.
 	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _Category_defaultTemplateLocked(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_defaultTemplateLocked(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DefaultTemplateLocked, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_defaultTemplateLocked(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _Category_defaultWorkflowId(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -28661,6 +29035,185 @@ func (ec *executionContext) fieldContext_MfaFactor_label(_ context.Context, fiel
 	return graphql.NewScalarFieldContext("MfaFactor", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _MovePoliciesPreview_items(ctx context.Context, field graphql.CollectedField, obj *MovePoliciesPreview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MovePoliciesPreview_items(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Items, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*MovePolicyItem) graphql.Marshaler {
+			return ec.marshalNMovePolicyItem2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePolicyItemᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MovePoliciesPreview_items(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MovePoliciesPreview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_MovePolicyItem(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MovePoliciesResult_moved(ctx context.Context, field graphql.CollectedField, obj *MovePoliciesResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MovePoliciesResult_moved(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Moved, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*MovePolicyItem) graphql.Marshaler {
+			return ec.marshalNMovePolicyItem2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePolicyItemᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MovePoliciesResult_moved(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MovePoliciesResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_MovePolicyItem(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MovePolicyItem_policyId(ctx context.Context, field graphql.CollectedField, obj *MovePolicyItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MovePolicyItem_policyId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PolicyID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MovePolicyItem_policyId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MovePolicyItem", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _MovePolicyItem_title(ctx context.Context, field graphql.CollectedField, obj *MovePolicyItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MovePolicyItem_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MovePolicyItem_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MovePolicyItem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MovePolicyItem_number(ctx context.Context, field graphql.CollectedField, obj *MovePolicyItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MovePolicyItem_number(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Number, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MovePolicyItem_number(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MovePolicyItem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MovePolicyItem_newNumber(ctx context.Context, field graphql.CollectedField, obj *MovePolicyItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MovePolicyItem_newNumber(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.NewNumber, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_MovePolicyItem_newNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MovePolicyItem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MovePolicyItem_refusal(ctx context.Context, field graphql.CollectedField, obj *MovePolicyItem) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MovePolicyItem_refusal(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Refusal, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_MovePolicyItem_refusal(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MovePolicyItem", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Mutation_submitDraftGeneration(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -29611,6 +30164,50 @@ func (ec *executionContext) fieldContext_Mutation_setCategoryDefaults(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setCategoryDefaults_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setCategoryTemplateLock(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setCategoryTemplateLock(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetCategoryTemplateLock(ctx, fc.Args["id"].(string), fc.Args["locked"].(bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setCategoryTemplateLock(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Category(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setCategoryTemplateLock_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -33991,6 +34588,50 @@ func (ec *executionContext) fieldContext_Mutation_recordView(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_recordView_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_movePolicies(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_movePolicies(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().MovePolicies(ctx, fc.Args["policyIds"].([]string), fc.Args["homeCategoryId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *MovePoliciesResult) graphql.Marshaler {
+			return ec.marshalNMovePoliciesResult2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePoliciesResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_movePolicies(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_MovePoliciesResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_movePolicies_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -41831,6 +42472,50 @@ func (ec *executionContext) fieldContext_Query_ackActivity(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_previewMovePolicies(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_previewMovePolicies(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PreviewMovePolicies(ctx, fc.Args["policyIds"].([]string), fc.Args["homeCategoryId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *MovePoliciesPreview) graphql.Marshaler {
+			return ec.marshalNMovePoliciesPreview2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePoliciesPreview(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_previewMovePolicies(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_MovePoliciesPreview(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_previewMovePolicies_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_myReports(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -46745,6 +47430,121 @@ func (ec *executionContext) fieldContext_StageEligibleAssignees_assignees(_ cont
 	return fc, nil
 }
 
+func (ec *executionContext) _StageProgress_dueAt(ctx context.Context, field graphql.CollectedField, obj *StageProgress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageProgress_dueAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DueAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_StageProgress_dueAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageProgress", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _StageProgress_quorum(ctx context.Context, field graphql.CollectedField, obj *StageProgress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageProgress_quorum(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Quorum, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StageProgress_quorum(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageProgress", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _StageProgress_quorumN(ctx context.Context, field graphql.CollectedField, obj *StageProgress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageProgress_quorumN(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.QuorumN, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StageProgress_quorumN(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageProgress", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _StageProgress_approvals(ctx context.Context, field graphql.CollectedField, obj *StageProgress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageProgress_approvals(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Approvals, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StageProgress_approvals(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageProgress", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _StageProgress_required(ctx context.Context, field graphql.CollectedField, obj *StageProgress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageProgress_required(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Required, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StageProgress_required(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageProgress", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
 func (ec *executionContext) _StageUnitProgress_groupId(ctx context.Context, field graphql.CollectedField, obj *StageUnitProgress) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49797,6 +50597,84 @@ func (ec *executionContext) fieldContext_WorkflowStatus_stageUnitProgress(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_StageUnitProgress(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkflowStatus_submittedBy(ctx context.Context, field graphql.CollectedField, obj *WorkflowStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStatus_submittedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubmittedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStatus_submittedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _WorkflowStatus_submittedAt(ctx context.Context, field graphql.CollectedField, obj *WorkflowStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStatus_submittedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubmittedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStatus_submittedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _WorkflowStatus_stageProgress(ctx context.Context, field graphql.CollectedField, obj *WorkflowStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStatus_stageProgress(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StageProgress, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*StageProgress) graphql.Marshaler {
+			return ec.marshalNStageProgress2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐStageProgressᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStatus_stageProgress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkflowStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_StageProgress(ctx, field)
 		},
 	}
 	return fc, nil
@@ -55293,6 +56171,11 @@ func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "defaultTemplateLocked":
+			out.Values[i] = ec._Category_defaultTemplateLocked(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "defaultWorkflowId":
 			out.Values[i] = ec._Category_defaultWorkflowId(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
@@ -57292,6 +58175,140 @@ func (ec *executionContext) _MfaFactor(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var movePoliciesPreviewImplementors = []string{"MovePoliciesPreview"}
+
+func (ec *executionContext) _MovePoliciesPreview(ctx context.Context, sel ast.SelectionSet, obj *MovePoliciesPreview) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, movePoliciesPreviewImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MovePoliciesPreview")
+		case "items":
+			out.Values[i] = ec._MovePoliciesPreview_items(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var movePoliciesResultImplementors = []string{"MovePoliciesResult"}
+
+func (ec *executionContext) _MovePoliciesResult(ctx context.Context, sel ast.SelectionSet, obj *MovePoliciesResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, movePoliciesResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MovePoliciesResult")
+		case "moved":
+			out.Values[i] = ec._MovePoliciesResult_moved(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var movePolicyItemImplementors = []string{"MovePolicyItem"}
+
+func (ec *executionContext) _MovePolicyItem(ctx context.Context, sel ast.SelectionSet, obj *MovePolicyItem) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, movePolicyItemImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MovePolicyItem")
+		case "policyId":
+			out.Values[i] = ec._MovePolicyItem_policyId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._MovePolicyItem_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "number":
+			out.Values[i] = ec._MovePolicyItem_number(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "newNumber":
+			out.Values[i] = ec._MovePolicyItem_newNumber(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "refusal":
+			out.Values[i] = ec._MovePolicyItem_refusal(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -57462,6 +58479,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setCategoryDefaults":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setCategoryDefaults(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setCategoryTemplateLock":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setCategoryTemplateLock(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -58176,6 +59200,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "recordView":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_recordView(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "movePolicies":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_movePolicies(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -61527,6 +62558,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "previewMovePolicies":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_previewMovePolicies(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "myReports":
 			field := field
 
@@ -63861,6 +64914,64 @@ func (ec *executionContext) _StageEligibleAssignees(ctx context.Context, sel ast
 	return out
 }
 
+var stageProgressImplementors = []string{"StageProgress"}
+
+func (ec *executionContext) _StageProgress(ctx context.Context, sel ast.SelectionSet, obj *StageProgress) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, stageProgressImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("StageProgress")
+		case "dueAt":
+			out.Values[i] = ec._StageProgress_dueAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "quorum":
+			out.Values[i] = ec._StageProgress_quorum(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "quorumN":
+			out.Values[i] = ec._StageProgress_quorumN(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "approvals":
+			out.Values[i] = ec._StageProgress_approvals(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "required":
+			out.Values[i] = ec._StageProgress_required(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var stageUnitProgressImplementors = []string{"StageUnitProgress"}
 
 func (ec *executionContext) _StageUnitProgress(ctx context.Context, sel ast.SelectionSet, obj *StageUnitProgress) graphql.Marshaler {
@@ -65271,6 +66382,21 @@ func (ec *executionContext) _WorkflowStatus(ctx context.Context, sel ast.Selecti
 			}
 		case "stageUnitProgress":
 			out.Values[i] = ec._WorkflowStatus_stageUnitProgress(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "submittedBy":
+			out.Values[i] = ec._WorkflowStatus_submittedBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "submittedAt":
+			out.Values[i] = ec._WorkflowStatus_submittedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "stageProgress":
+			out.Values[i] = ec._WorkflowStatus_stageProgress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -67675,6 +68801,60 @@ func (ec *executionContext) marshalNMfaFactor2ᚖgithubᚗcomᚋStewardᚑGRCᚋ
 	return ec._MfaFactor(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNMovePoliciesPreview2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePoliciesPreview(ctx context.Context, sel ast.SelectionSet, v MovePoliciesPreview) graphql.Marshaler {
+	return ec._MovePoliciesPreview(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMovePoliciesPreview2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePoliciesPreview(ctx context.Context, sel ast.SelectionSet, v *MovePoliciesPreview) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MovePoliciesPreview(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMovePoliciesResult2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePoliciesResult(ctx context.Context, sel ast.SelectionSet, v MovePoliciesResult) graphql.Marshaler {
+	return ec._MovePoliciesResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMovePoliciesResult2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePoliciesResult(ctx context.Context, sel ast.SelectionSet, v *MovePoliciesResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MovePoliciesResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMovePolicyItem2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePolicyItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*MovePolicyItem) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNMovePolicyItem2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePolicyItem(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMovePolicyItem2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMovePolicyItem(ctx context.Context, sel ast.SelectionSet, v *MovePolicyItem) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MovePolicyItem(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNMyReport2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMyReportᚄ(ctx context.Context, sel ast.SelectionSet, v []*MyReport) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -68965,6 +70145,32 @@ func (ec *executionContext) marshalNStageEligibleAssignees2ᚖgithubᚗcomᚋSte
 		return graphql.Null
 	}
 	return ec._StageEligibleAssignees(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNStageProgress2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐStageProgressᚄ(ctx context.Context, sel ast.SelectionSet, v []*StageProgress) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNStageProgress2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐStageProgress(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNStageProgress2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐStageProgress(ctx context.Context, sel ast.SelectionSet, v *StageProgress) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._StageProgress(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNStageUnitProgress2ᚕᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐStageUnitProgressᚄ(ctx context.Context, sel ast.SelectionSet, v [][]*StageUnitProgress) graphql.Marshaler {

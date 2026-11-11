@@ -82,22 +82,23 @@ func categoryFromProto(g *corev1.Category) *Category {
 		exclusionGroupIds = orEmpty(g.ExclusionGroupIds)
 	}
 	return &Category{
-		ID:                  g.Id,
-		Name:                g.Name,
-		Slug:                g.Slug,
-		ParentID:            nilIfEmpty(g.ParentId),
-		DefaultTemplateID:   nilIfEmpty(g.DefaultTemplateId),
-		DefaultTemplateNone: g.DefaultTemplateNone,
-		DefaultWorkflowID:   nilIfEmpty(g.DefaultWorkflowId),
-		Owners:              owners,
-		IdpGroupIds:         idpGroupIds,
-		AckTriggers:         ackTriggerFromProto(g.AckTriggers),
-		ReviewCadence:       reviewCadenceFromProto(g.ReviewCadence),
-		ReviewDate:          nilIfEmpty(g.ReviewDate),
-		ExclusionGroupIds:   exclusionGroupIds,
-		AckEveryone:         g.GetAckEveryone(),
-		AckEveryoneSet:      g.GetAckEveryoneSet(),
-		Order:               int(g.GetOrderIndex()),
+		ID:                    g.Id,
+		Name:                  g.Name,
+		Slug:                  g.Slug,
+		ParentID:              nilIfEmpty(g.ParentId),
+		DefaultTemplateID:     nilIfEmpty(g.DefaultTemplateId),
+		DefaultTemplateNone:   g.DefaultTemplateNone,
+		DefaultTemplateLocked: g.GetDefaultTemplateLocked(),
+		DefaultWorkflowID:     nilIfEmpty(g.DefaultWorkflowId),
+		Owners:                owners,
+		IdpGroupIds:           idpGroupIds,
+		AckTriggers:           ackTriggerFromProto(g.AckTriggers),
+		ReviewCadence:         reviewCadenceFromProto(g.ReviewCadence),
+		ReviewDate:            nilIfEmpty(g.ReviewDate),
+		ExclusionGroupIds:     exclusionGroupIds,
+		AckEveryone:           g.GetAckEveryone(),
+		AckEveryoneSet:        g.GetAckEveryoneSet(),
+		Order:                 int(g.GetOrderIndex()),
 	}
 }
 
@@ -205,6 +206,29 @@ func SetCategoryDefaults(ctx context.Context, client corev1.CategoryServiceClien
 		DefaultWorkflowId:   derefOrEmpty(defaultWorkflowID),
 		DefaultTemplateNone: derefBool(defaultTemplateNone),
 		ActorUserId:         uid,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return categoryFromProto(resp.Category), nil
+}
+
+// SetCategoryTemplateLock locks or unlocks the category's default template. The
+// lock itself is core's rule: it refuses locking a category with no default
+// template, and enforces the lock on createPolicy and setPolicyTemplate. Only a
+// site admin sets it, as with the other category settings.
+func SetCategoryTemplateLock(ctx context.Context, client corev1.CategoryServiceClient, id string, locked bool) (*Category, error) {
+	if err := authorizeOp(ctx, authz.GroupManage); err != nil {
+		return nil, err
+	}
+	uid, err := claimsUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.SetCategoryTemplateLock(ctx, &corev1.SetCategoryTemplateLockRequest{
+		Id:          id,
+		Locked:      locked,
+		ActorUserId: uid,
 	})
 	if err != nil {
 		return nil, err

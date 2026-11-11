@@ -407,22 +407,23 @@ type CaseSummary struct {
 }
 
 type Category struct {
-	ID                  string        `json:"id"`
-	Name                string        `json:"name"`
-	Slug                string        `json:"slug"`
-	ParentID            *string       `json:"parentId,omitempty"`
-	DefaultTemplateID   *string       `json:"defaultTemplateId,omitempty"`
-	DefaultTemplateNone bool          `json:"defaultTemplateNone"`
-	DefaultWorkflowID   *string       `json:"defaultWorkflowId,omitempty"`
-	Owners              []string      `json:"owners"`
-	IdpGroupIds         []string      `json:"idpGroupIds,omitempty"`
-	AckTriggers         AckTrigger    `json:"ackTriggers"`
-	ReviewCadence       ReviewCadence `json:"reviewCadence"`
-	ReviewDate          *string       `json:"reviewDate,omitempty"`
-	ExclusionGroupIds   []string      `json:"exclusionGroupIds,omitempty"`
-	AckEveryone         bool          `json:"ackEveryone"`
-	AckEveryoneSet      bool          `json:"ackEveryoneSet"`
-	Order               int           `json:"order"`
+	ID                    string        `json:"id"`
+	Name                  string        `json:"name"`
+	Slug                  string        `json:"slug"`
+	ParentID              *string       `json:"parentId,omitempty"`
+	DefaultTemplateID     *string       `json:"defaultTemplateId,omitempty"`
+	DefaultTemplateNone   bool          `json:"defaultTemplateNone"`
+	DefaultTemplateLocked bool          `json:"defaultTemplateLocked"`
+	DefaultWorkflowID     *string       `json:"defaultWorkflowId,omitempty"`
+	Owners                []string      `json:"owners"`
+	IdpGroupIds           []string      `json:"idpGroupIds,omitempty"`
+	AckTriggers           AckTrigger    `json:"ackTriggers"`
+	ReviewCadence         ReviewCadence `json:"reviewCadence"`
+	ReviewDate            *string       `json:"reviewDate,omitempty"`
+	ExclusionGroupIds     []string      `json:"exclusionGroupIds,omitempty"`
+	AckEveryone           bool          `json:"ackEveryone"`
+	AckEveryoneSet        bool          `json:"ackEveryoneSet"`
+	Order                 int           `json:"order"`
 }
 
 type CategoryApprovers struct {
@@ -770,6 +771,22 @@ type MfaFactor struct {
 	Kind       string  `json:"kind"`
 	EnrolledAt *string `json:"enrolledAt,omitempty"`
 	Label      *string `json:"label,omitempty"`
+}
+
+type MovePoliciesPreview struct {
+	Items []*MovePolicyItem `json:"items"`
+}
+
+type MovePoliciesResult struct {
+	Moved []*MovePolicyItem `json:"moved"`
+}
+
+type MovePolicyItem struct {
+	PolicyID  string  `json:"policyId"`
+	Title     string  `json:"title"`
+	Number    string  `json:"number"`
+	NewNumber *string `json:"newNumber,omitempty"`
+	Refusal   *string `json:"refusal,omitempty"`
 }
 
 type Mutation struct {
@@ -1273,6 +1290,14 @@ type StageEligibleAssignees struct {
 	Assignees  []*UserLabel `json:"assignees"`
 }
 
+type StageProgress struct {
+	DueAt     *string `json:"dueAt,omitempty"`
+	Quorum    string  `json:"quorum"`
+	QuorumN   int     `json:"quorumN"`
+	Approvals int     `json:"approvals"`
+	Required  int     `json:"required"`
+}
+
 type StageUnitProgress struct {
 	GroupID   string  `json:"groupId"`
 	GroupName *string `json:"groupName,omitempty"`
@@ -1552,6 +1577,9 @@ type WorkflowStatus struct {
 	StageNames        []string               `json:"stageNames"`
 	StageAssignees    [][]*StageAssignee     `json:"stageAssignees"`
 	StageUnitProgress [][]*StageUnitProgress `json:"stageUnitProgress"`
+	SubmittedBy       *string                `json:"submittedBy,omitempty"`
+	SubmittedAt       *string                `json:"submittedAt,omitempty"`
+	StageProgress     []*StageProgress       `json:"stageProgress"`
 }
 
 type WorkflowSubmitResult struct {

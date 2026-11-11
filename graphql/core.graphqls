@@ -36,6 +36,14 @@ extend type Mutation {
   # defaultTemplateNone=false with a defaultTemplateId sets that specific
   # template; false with a null id means inherit from the ancestor chain.
   setCategoryDefaults(id: ID!, defaultTemplateId: ID, defaultWorkflowId: ID, defaultTemplateNone: Boolean): Category!
+  # Lock or unlock the category's default template (site admin only). While locked,
+  # a document under the category, or under one that inherits its template, must use
+  # that template: createPolicy and setPolicyTemplate refuse freeform and any other
+  # template, though asking for none (inherit) is still allowed. Locking is refused
+  # (FAILED_PRECONDITION, TEMPLATE_LOCK_NEEDS_DEFAULT) while the category names no
+  # default template. Core's refusals reach the client as extensions code
+  # CATEGORY_TEMPLATE_LOCKED (4004) and TEMPLATE_LOCK_NEEDS_DEFAULT (4005).
+  setCategoryTemplateLock(id: ID!, locked: Boolean!): Category!
   # Rename a category (name + slug). Does NOT renumber existing policies.
   renameCategory(id: ID!, name: String!, slug: String!): Category!
   # Delete a category and its policy-free descendants. Refused
@@ -183,6 +191,9 @@ type Category {
   # both unset (none=false, id=null) → inherit from ancestor chain.
   defaultTemplateId: ID
   defaultTemplateNone: Boolean!
+  # True when defaultTemplateId is binding: a document in this category, or in one
+  # that inherits the template, must use it. Never true without a defaultTemplateId.
+  defaultTemplateLocked: Boolean!
   defaultWorkflowId: ID
   owners: [ID!]!
   # Per-category ack-audience IdP group names. Empty list = "no audience"

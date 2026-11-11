@@ -20,7 +20,7 @@ func TestRenamePolicy_EditorNeverPublished(t *testing.T) {
 	pc, gc := coAuthMatrixEnv("creator-u", nil, nil)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "creator-u", RolesValue: []string{"reader"}})
 
-	res, err := resolvers.RenamePolicy(ctx, pc, gc, &fakeWorkflowClient{}, "pol", "Brand New Title")
+	res, err := resolvers.RenamePolicy(ctx, pc, gc, nil, nil, &fakeWorkflowClient{}, "pol", "Brand New Title")
 	if err != nil {
 		t.Fatalf("expected rename allowed, got %v", err)
 	}
@@ -55,7 +55,7 @@ func TestRenamePolicy_EditorPublishedStaged(t *testing.T) {
 	}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "creator-u", RolesValue: []string{"reader"}})
 
-	res, err := resolvers.RenamePolicy(ctx, pc, gc, &fakeWorkflowClient{}, "pol", "Proposed Title")
+	res, err := resolvers.RenamePolicy(ctx, pc, gc, nil, nil, &fakeWorkflowClient{}, "pol", "Proposed Title")
 	if err != nil {
 		t.Fatalf("expected rename allowed, got %v", err)
 	}
@@ -79,7 +79,7 @@ func TestRenamePolicy_PendingApprovalSurfacesError(t *testing.T) {
 	pc.renameErr = status.Error(codes.FailedPrecondition, msg)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "creator-u", RolesValue: []string{"reader"}})
 
-	_, err := resolvers.RenamePolicy(ctx, pc, gc, &fakeWorkflowClient{}, "pol", "Whatever")
+	_, err := resolvers.RenamePolicy(ctx, pc, gc, nil, nil, &fakeWorkflowClient{}, "pol", "Whatever")
 	if err == nil {
 		t.Fatal("expected an error when core returns FailedPrecondition")
 	}
@@ -100,7 +100,7 @@ func TestRenamePolicy_NonEditorDenied(t *testing.T) {
 		[]*corev1.CategoryRule{authorRule("someone-else", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "stranger-u", RolesValue: []string{"reader"}})
 
-	_, err := resolvers.RenamePolicy(ctx, pc, gc, &fakeWorkflowClient{}, "pol", "Nope")
+	_, err := resolvers.RenamePolicy(ctx, pc, gc, nil, nil, &fakeWorkflowClient{}, "pol", "Nope")
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("expected PermissionDenied, got %v", err)
 	}
@@ -123,7 +123,7 @@ func TestRenamePolicy_GatewayBlocksWhenDraftInReview(t *testing.T) {
 	}}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "creator-u", RolesValue: []string{"reader"}})
 
-	_, err := resolvers.RenamePolicy(ctx, pc, gc, wf, "pol", "Whatever")
+	_, err := resolvers.RenamePolicy(ctx, pc, gc, nil, nil, wf, "pol", "Whatever")
 	if err == nil {
 		t.Fatal("expected FailedPrecondition when the draft is in review")
 	}
@@ -152,7 +152,7 @@ func TestRenamePolicy_DraftNotInReviewProceeds(t *testing.T) {
 	}}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "creator-u", RolesValue: []string{"reader"}})
 
-	_, err := resolvers.RenamePolicy(ctx, pc, gc, wf, "pol", "Fresh Title")
+	_, err := resolvers.RenamePolicy(ctx, pc, gc, nil, nil, wf, "pol", "Fresh Title")
 	if err != nil {
 		t.Fatalf("expected rename allowed when draft is not in review, got %v", err)
 	}

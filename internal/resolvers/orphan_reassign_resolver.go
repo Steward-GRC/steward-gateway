@@ -11,11 +11,12 @@ import (
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 )
 
 // ListPoliciesByOwner returns the policies a user owns/authors — the "orphaned set" surfaced to a
 // site-admin before/after deleting the user so ownership can be re-assigned.
-func ListPoliciesByOwner(ctx context.Context, client corev1.PolicyServiceClient, userID string, includeRetired *bool) ([]*Policy, error) {
+func ListPoliciesByOwner(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, userID string, includeRetired *bool) ([]*Policy, error) {
 	if _, err := requireSiteAdmin(ctx); err != nil {
 		return nil, err
 	}
@@ -30,7 +31,7 @@ func ListPoliciesByOwner(ctx context.Context, client corev1.PolicyServiceClient,
 	for _, p := range resp.GetPolicies() {
 		out = append(out, policyFromProto(p))
 	}
-	return out, nil
+	return resolvePolicyReadModel(ctx, out, client, categoryClient, adminClient, identity, workflow)
 }
 
 // MyDrafts is the self-service twin of ListPoliciesByOwner: the signed-in

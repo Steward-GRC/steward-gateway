@@ -123,7 +123,7 @@ func TestGetPolicyRequiresAuthentication(t *testing.T) {
 }
 
 func TestSetPolicyAckRequiresAdmin(t *testing.T) {
-	_, err := resolvers.SetPolicyAck(ctxWithRoles(t, "u", []string{"template-admin"}), nil, "p1", nil, nil)
+	_, err := resolvers.SetPolicyAck(ctxWithRoles(t, "u", []string{"template-admin"}), nil, nil, nil, nil, nil, "p1", nil, nil)
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("SetPolicyAck with template-admin: want PermissionDenied, got %v", err)
 	}

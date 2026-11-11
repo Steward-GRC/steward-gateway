@@ -130,7 +130,7 @@ func TestSetPolicySensitivity_EditGate(t *testing.T) {
 		ctx := ctxWithStubClaims(t, claims)
 
 		// standard -> sensitive
-		got, err := resolvers.SetPolicySensitivity(ctx, pc, gc, "pol", resolvers.SensitivitySensitive)
+		got, err := resolvers.SetPolicySensitivity(ctx, pc, gc, nil, nil, nil, "pol", resolvers.SensitivitySensitive)
 		if err != nil {
 			t.Fatalf("expected flip allowed, got %v", err)
 		}
@@ -145,7 +145,7 @@ func TestSetPolicySensitivity_EditGate(t *testing.T) {
 		}
 
 		// sensitive -> standard (reverse direction)
-		got, err = resolvers.SetPolicySensitivity(ctx, pc, gc, "pol", resolvers.SensitivityStandard)
+		got, err = resolvers.SetPolicySensitivity(ctx, pc, gc, nil, nil, nil, "pol", resolvers.SensitivityStandard)
 		if err != nil {
 			t.Fatalf("expected reverse flip allowed, got %v", err)
 		}
@@ -161,7 +161,7 @@ func TestSetPolicySensitivity_EditGate(t *testing.T) {
 		pc, gc := coAuthMatrixEnv("creator-other", nil, rules)
 		ctx := ctxWithStubClaims(t, claims)
 
-		_, err := resolvers.SetPolicySensitivity(ctx, pc, gc, "pol", resolvers.SensitivitySensitive)
+		_, err := resolvers.SetPolicySensitivity(ctx, pc, gc, nil, nil, nil, "pol", resolvers.SensitivitySensitive)
 		if status.Code(err) != codes.PermissionDenied {
 			t.Fatalf("expected PermissionDenied, got %v", err)
 		}

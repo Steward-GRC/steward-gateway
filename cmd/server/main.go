@@ -200,6 +200,7 @@ func run() error {
 	mux.Handle("POST /documents/validate-url", session(http.HandlerFunc(documents.ValidateURLHandler)))
 	mux.Handle("POST /api/assets", session(http.HandlerFunc(assetsH.Upload)))
 	mux.Handle("GET /api/assets/{id}", auth.AuthenticateSafeRead(auth.ActAs(http.HandlerFunc(assetsH.Serve))))
+	assets.NewAdmin(clients.Asset, logger).Register(mux, session)
 	mux.Handle(collabws.RoutePattern, collabws.New(collabws.Config{
 		Upstream:        cfg.CollabUpstream,
 		AllowedOrigins:  cfg.AllowedOrigins,

@@ -16,6 +16,7 @@ import (
 	obligationsv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/obligations/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func ackFromProto(a *obligationsv1.Acknowledgment) *Acknowledgment {
@@ -131,7 +132,7 @@ func GetCompletionReportResolver(ctx context.Context, client obligationsv1.Repor
 	labels := newLabelResolver(identity, nil, nil, nil)
 	overdue := make([]*OverdueEntry, 0, len(resp.GetOverdue()))
 	for _, o := range resp.GetOverdue() {
-		e := &OverdueEntry{UserID: o.GetUserId(), Email: o.GetEmail()}
+		e := &OverdueEntry{UserID: o.GetUserId(), Email: o.GetEmail(), DueAt: dueAtString(o.GetDueAt())}
 		if name := labels.userName(ctx, o.GetUserId()); name != "" {
 			e.UserName = &name
 		}
@@ -244,6 +245,7 @@ func obligationFromProto(item *obligationsv1.ObligationItem) *Obligation {
 		Title:           item.GetTitle(),
 		Version:         fmt.Sprintf("%d", item.GetVersionNo()),
 		PolicyVersionID: item.GetPolicyVersionId(),
+		DueAt:           dueAtString(item.GetDueAt()),
 	}
 }
 
@@ -291,7 +293,17 @@ func rosterEntryFromProto(ctx context.Context, labels *labelResolver, groups map
 		s := t.AsTime().UTC().Format(time.RFC3339)
 		out.AckedAt = &s
 	}
+	out.DueAt = dueAtString(e.GetDueAt())
 	return out
+}
+
+// dueAtString renders an optional due date as RFC3339 UTC, nil when unset.
+func dueAtString(t *timestamppb.Timestamp) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.AsTime().UTC().Format(time.RFC3339)
+	return &s
 }
 
 // rosterGroupNames asks identity once for the platform group names of every

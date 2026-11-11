@@ -147,6 +147,7 @@ type ComplexityRoot struct {
 
 	AckRosterEntry struct {
 		AckedAt  func(childComplexity int) int
+		DueAt    func(childComplexity int) int
 		Email    func(childComplexity int) int
 		Groups   func(childComplexity int) int
 		UserID   func(childComplexity int) int
@@ -892,6 +893,7 @@ type ComplexityRoot struct {
 	}
 
 	Obligation struct {
+		DueAt           func(childComplexity int) int
 		Number          func(childComplexity int) int
 		PolicyID        func(childComplexity int) int
 		PolicyVersionID func(childComplexity int) int
@@ -915,6 +917,7 @@ type ComplexityRoot struct {
 	}
 
 	OverdueEntry struct {
+		DueAt    func(childComplexity int) int
 		Email    func(childComplexity int) int
 		UserID   func(childComplexity int) int
 		UserName func(childComplexity int) int
@@ -2343,6 +2346,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AckRosterEntry.AckedAt(childComplexity), true
+	case "AckRosterEntry.dueAt":
+		if e.ComplexityRoot.AckRosterEntry.DueAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AckRosterEntry.DueAt(childComplexity), true
 	case "AckRosterEntry.email":
 		if e.ComplexityRoot.AckRosterEntry.Email == nil {
 			break
@@ -6300,6 +6309,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.NotificationSettings.Overrides(childComplexity), true
 
+	case "Obligation.dueAt":
+		if e.ComplexityRoot.Obligation.DueAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Obligation.DueAt(childComplexity), true
 	case "Obligation.number":
 		if e.ComplexityRoot.Obligation.Number == nil {
 			break
@@ -6404,6 +6419,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Organization.Verified(childComplexity), true
 
+	case "OverdueEntry.dueAt":
+		if e.ComplexityRoot.OverdueEntry.DueAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OverdueEntry.DueAt(childComplexity), true
 	case "OverdueEntry.email":
 		if e.ComplexityRoot.OverdueEntry.Email == nil {
 			break
@@ -12319,6 +12340,8 @@ type Obligation {
   title: String!
   version: String!
   policyVersionId: ID!
+  # ISO-8601 time the acknowledgement is due; null when the policy sets none.
+  dueAt: String
 }
 
 type Acknowledgment {
@@ -12402,7 +12425,7 @@ type NotificationSettings {
   digest: DigestWindow!
 }
 
-type OverdueEntry { userId: ID! email: String! userName: String }
+type OverdueEntry { userId: ID! email: String! userName: String dueAt: String }
 type CompletionReport {
   totalAudience: Int!
   totalAcked: Int!
@@ -12414,7 +12437,7 @@ type CompletionReport {
 
 # groups: the person's platform group names, sorted case-insensitively. Empty
 # when the person has none or identity could not answer.
-type AckRosterEntry { userId: ID! email: String! userName: String ackedAt: String groups: [String!]! }
+type AckRosterEntry { userId: ID! email: String! userName: String ackedAt: String dueAt: String groups: [String!]! }
 type AckRoster { acked: [AckRosterEntry!]! pending: [AckRosterEntry!]! }
 type AckActivityDay { date: String! acks: Int! views: Int! }
 
@@ -13813,6 +13836,8 @@ func (ec *executionContext) childFields_AckRosterEntry(ctx context.Context, fiel
 		return ec.fieldContext_AckRosterEntry_userName(ctx, field)
 	case "ackedAt":
 		return ec.fieldContext_AckRosterEntry_ackedAt(ctx, field)
+	case "dueAt":
+		return ec.fieldContext_AckRosterEntry_dueAt(ctx, field)
 	case "groups":
 		return ec.fieldContext_AckRosterEntry_groups(ctx, field)
 	}
@@ -14953,6 +14978,8 @@ func (ec *executionContext) childFields_Obligation(ctx context.Context, field gr
 		return ec.fieldContext_Obligation_version(ctx, field)
 	case "policyVersionId":
 		return ec.fieldContext_Obligation_policyVersionId(ctx, field)
+	case "dueAt":
+		return ec.fieldContext_Obligation_dueAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Obligation", field.Name)
 }
@@ -14995,6 +15022,8 @@ func (ec *executionContext) childFields_OverdueEntry(ctx context.Context, field 
 		return ec.fieldContext_OverdueEntry_email(ctx, field)
 	case "userName":
 		return ec.fieldContext_OverdueEntry_userName(ctx, field)
+	case "dueAt":
+		return ec.fieldContext_OverdueEntry_dueAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type OverdueEntry", field.Name)
 }
@@ -23076,6 +23105,29 @@ func (ec *executionContext) _AckRosterEntry_ackedAt(ctx context.Context, field g
 	)
 }
 func (ec *executionContext) fieldContext_AckRosterEntry_ackedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AckRosterEntry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AckRosterEntry_dueAt(ctx context.Context, field graphql.CollectedField, obj *AckRosterEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AckRosterEntry_dueAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DueAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AckRosterEntry_dueAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("AckRosterEntry", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -38574,6 +38626,29 @@ func (ec *executionContext) fieldContext_Obligation_policyVersionId(_ context.Co
 	return graphql.NewScalarFieldContext("Obligation", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
+func (ec *executionContext) _Obligation_dueAt(ctx context.Context, field graphql.CollectedField, obj *Obligation) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Obligation_dueAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DueAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Obligation_dueAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Obligation", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Organization_domain(ctx context.Context, field graphql.CollectedField, obj *Organization) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -38916,6 +38991,29 @@ func (ec *executionContext) _OverdueEntry_userName(ctx context.Context, field gr
 	)
 }
 func (ec *executionContext) fieldContext_OverdueEntry_userName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("OverdueEntry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _OverdueEntry_dueAt(ctx context.Context, field graphql.CollectedField, obj *OverdueEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_OverdueEntry_dueAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DueAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_OverdueEntry_dueAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("OverdueEntry", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -56703,6 +56801,11 @@ func (ec *executionContext) _AckRosterEntry(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
+		case "dueAt":
+			out.Values[i] = ec._AckRosterEntry_dueAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		case "groups":
 			out.Values[i] = ec._AckRosterEntry_groups(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -62216,6 +62319,11 @@ func (ec *executionContext) _Obligation(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "dueAt":
+			out.Values[i] = ec._Obligation_dueAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -62354,6 +62462,11 @@ func (ec *executionContext) _OverdueEntry(ctx context.Context, sel ast.Selection
 			}
 		case "userName":
 			out.Values[i] = ec._OverdueEntry_userName(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "dueAt":
+			out.Values[i] = ec._OverdueEntry_dueAt(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}

@@ -152,6 +152,7 @@ type AckRosterEntry struct {
 	Email    string   `json:"email"`
 	UserName *string  `json:"userName,omitempty"`
 	AckedAt  *string  `json:"ackedAt,omitempty"`
+	DueAt    *string  `json:"dueAt,omitempty"`
 	Groups   []string `json:"groups"`
 }
 
@@ -861,11 +862,12 @@ type NotificationSettings struct {
 }
 
 type Obligation struct {
-	PolicyID        string `json:"policyId"`
-	Number          string `json:"number"`
-	Title           string `json:"title"`
-	Version         string `json:"version"`
-	PolicyVersionID string `json:"policyVersionId"`
+	PolicyID        string  `json:"policyId"`
+	Number          string  `json:"number"`
+	Title           string  `json:"title"`
+	Version         string  `json:"version"`
+	PolicyVersionID string  `json:"policyVersionId"`
+	DueAt           *string `json:"dueAt,omitempty"`
 }
 
 type Organization struct {
@@ -887,6 +889,7 @@ type OverdueEntry struct {
 	UserID   string  `json:"userId"`
 	Email    string  `json:"email"`
 	UserName *string `json:"userName,omitempty"`
+	DueAt    *string `json:"dueAt,omitempty"`
 }
 
 type PDFDownloadLink struct {

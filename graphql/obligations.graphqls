@@ -9,6 +9,8 @@ type Obligation {
   title: String!
   version: String!
   policyVersionId: ID!
+  # ISO-8601 time the acknowledgement is due; null when the policy sets none.
+  dueAt: String
 }
 
 type Acknowledgment {
@@ -92,7 +94,7 @@ type NotificationSettings {
   digest: DigestWindow!
 }
 
-type OverdueEntry { userId: ID! email: String! userName: String }
+type OverdueEntry { userId: ID! email: String! userName: String dueAt: String }
 type CompletionReport {
   totalAudience: Int!
   totalAcked: Int!
@@ -104,7 +106,7 @@ type CompletionReport {
 
 # groups: the person's platform group names, sorted case-insensitively. Empty
 # when the person has none or identity could not answer.
-type AckRosterEntry { userId: ID! email: String! userName: String ackedAt: String groups: [String!]! }
+type AckRosterEntry { userId: ID! email: String! userName: String ackedAt: String dueAt: String groups: [String!]! }
 type AckRoster { acked: [AckRosterEntry!]! pending: [AckRosterEntry!]! }
 type AckActivityDay { date: String! acks: Int! views: Int! }
 

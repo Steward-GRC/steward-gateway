@@ -469,6 +469,7 @@ type ComplexityRoot struct {
 	EffectiveWorkflow struct {
 		FirstUnstaffedStage func(childComplexity int) int
 		HasWorkflow         func(childComplexity int) int
+		Name                func(childComplexity int) int
 		Usable              func(childComplexity int) int
 		WorkflowDefID       func(childComplexity int) int
 	}
@@ -3320,6 +3321,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.EffectiveWorkflow.HasWorkflow(childComplexity), true
+	case "EffectiveWorkflow.name":
+		if e.ComplexityRoot.EffectiveWorkflow.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EffectiveWorkflow.Name(childComplexity), true
 	case "EffectiveWorkflow.usable":
 		if e.ComplexityRoot.EffectiveWorkflow.Usable == nil {
 			break
@@ -11690,6 +11697,9 @@ type EffectiveWorkflow {
   # When usable=false, the name of the first stage lacking an approver (for a
   # human-readable notice, e.g. "The 'Approval' stage has no approver"); null otherwise.
   firstUnstaffedStage: String
+  # The resolved workflow's name, so an author can see which workflow applies; null
+  # when none resolves. Only people who can author the policy may read this query.
+  name: String
 }
 
 extend type Query {
@@ -12856,6 +12866,8 @@ func (ec *executionContext) childFields_EffectiveWorkflow(ctx context.Context, f
 		return ec.fieldContext_EffectiveWorkflow_usable(ctx, field)
 	case "firstUnstaffedStage":
 		return ec.fieldContext_EffectiveWorkflow_firstUnstaffedStage(ctx, field)
+	case "name":
+		return ec.fieldContext_EffectiveWorkflow_name(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type EffectiveWorkflow", field.Name)
 }
@@ -25137,6 +25149,29 @@ func (ec *executionContext) _EffectiveWorkflow_firstUnstaffedStage(ctx context.C
 	)
 }
 func (ec *executionContext) fieldContext_EffectiveWorkflow_firstUnstaffedStage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("EffectiveWorkflow", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _EffectiveWorkflow_name(ctx context.Context, field graphql.CollectedField, obj *EffectiveWorkflow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_EffectiveWorkflow_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_EffectiveWorkflow_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("EffectiveWorkflow", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -52802,6 +52837,11 @@ func (ec *executionContext) _EffectiveWorkflow(ctx context.Context, sel ast.Sele
 			}
 		case "firstUnstaffedStage":
 			out.Values[i] = ec._EffectiveWorkflow_firstUnstaffedStage(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._EffectiveWorkflow_name(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}

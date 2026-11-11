@@ -545,6 +545,7 @@ type EffectiveWorkflow struct {
 	HasWorkflow         bool    `json:"hasWorkflow"`
 	Usable              bool    `json:"usable"`
 	FirstUnstaffedStage *string `json:"firstUnstaffedStage,omitempty"`
+	Name                *string `json:"name,omitempty"`
 }
 
 type EmailServiceConfigInput struct {

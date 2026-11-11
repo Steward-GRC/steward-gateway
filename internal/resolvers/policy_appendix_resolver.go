@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	authz "github.com/Steward-GRC/steward-authz"
+	collabv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/collab/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 )
@@ -79,32 +80,82 @@ func (r *Resolver) appendixClient() (corev1.PolicyAppendixServiceClient, error) 
 // policy, before any write. Core looks the appendix up (no actor check on a
 // read); an unknown id is NotFound, a caller who cannot edit PermissionDenied.
 func (r *Resolver) editableAppendix(ctx context.Context, op, id string) (corev1.PolicyAppendixServiceClient, appendixAccess, string, error) {
+	client, access, actor, _, err := r.editableAppendixRow(ctx, op, id)
+	return client, access, actor, err
+}
+
+// editableAppendixRow is editableAppendix that also returns the row core
+// found, for the callers that need its policy or its retired state.
+func (r *Resolver) editableAppendixRow(ctx context.Context, op, id string) (corev1.PolicyAppendixServiceClient, appendixAccess, string, *corev1.PolicyAppendix, error) {
 	logger := r.logger()
 	claims, err := signedIn(ctx)
 	if err != nil {
 		logger.Debug("appendix refused: no signed-in user", log.F("op", op))
-		return nil, appendixAccess{}, "", err
+		return nil, appendixAccess{}, "", nil, err
 	}
 	client, err := r.appendixClient()
 	if err != nil {
-		return nil, appendixAccess{}, "", err
+		return nil, appendixAccess{}, "", nil, err
 	}
 	got, err := client.GetPolicyAppendix(ctx, &corev1.GetPolicyAppendixRequest{Id: id})
 	if err != nil {
 		logger.Debug("appendix: lookup failed", log.F("op", op), log.F("appendix_id", id), log.F("code", status.Code(err).String()))
-		return nil, appendixAccess{}, "", err
+		return nil, appendixAccess{}, "", nil, err
 	}
 	policyID := got.GetAppendix().GetPolicyId()
 	access, err := r.appendixAccessFor(ctx, op, policyID)
 	if err != nil {
-		return nil, appendixAccess{}, "", err
+		return nil, appendixAccess{}, "", nil, err
 	}
 	if !access.editor {
 		logger.Info("appendix write refused: the caller may not edit the policy",
 			log.F("op", op), log.F("appendix_id", id), log.F("policy_id", policyID))
-		return nil, appendixAccess{}, "", errAppendixForbidden
+		return nil, appendixAccess{}, "", nil, errAppendixForbidden
 	}
-	return client, access, claims.UserID(), nil
+	return client, access, claims.UserID(), got.GetAppendix(), nil
+}
+
+// appendixRoomKey is the collab room an appendix is co-edited in. Collab names
+// it the same way in IssueAppendixToken (room_key); the publish calls pass it
+// as the draft id.
+func appendixRoomKey(appendixID string) string { return "appendix:" + appendixID }
+
+// IssueAppendixCollabTokenResolver mints a collaboration token for the
+// appendix's own room (#126). The checks run in a fixed order: signed in, the
+// appendix exists (NotFound), the caller may edit its policy
+// (PermissionDenied, so a reader never learns whether it is retired), then the
+// appendix is not retired (FailedPrecondition). Only then is collab asked,
+// which checks the edit right again and mints for the go-grpc-actor actor.
+// Collab's refusals pass through with their code and message. The token is
+// never logged.
+func (r *Resolver) IssueAppendixCollabTokenResolver(ctx context.Context, appendixID string) (*AppendixCollabToken, error) {
+	logger := r.logger()
+	_, _, _, appendix, err := r.editableAppendixRow(ctx, "issueAppendixCollabToken", appendixID)
+	if err != nil {
+		return nil, err
+	}
+	if appendix.GetRetiredAt() != nil {
+		logger.Info("appendix collab token refused: the appendix is retired", log.F("appendix_id", appendixID))
+		return nil, status.Error(codes.FailedPrecondition, "A retired appendix can't be edited; restore it first.")
+	}
+	if r.CollabClient == nil {
+		logger.Warn("appendix collab token: no collab client is wired", log.F("appendix_id", appendixID))
+		return nil, status.Error(codes.Unavailable, "co-editing is not available")
+	}
+	started := time.Now()
+	resp, err := r.CollabClient.IssueAppendixToken(ctx, &collabv1.IssueAppendixTokenRequest{AppendixId: appendixID})
+	if err != nil {
+		logger.Warn("appendix collab token: collab refused", log.F("appendix_id", appendixID),
+			log.F("code", status.Code(err).String()), log.F("duration_ms", time.Since(started).Milliseconds()))
+		return nil, err
+	}
+	expires := ""
+	if resp.GetExpiresAt() != nil {
+		expires = resp.GetExpiresAt().AsTime().UTC().Format(time.RFC3339)
+	}
+	logger.Info("appendix collab token issued", log.F("appendix_id", appendixID),
+		log.F("room_key", resp.GetRoomKey()), log.F("duration_ms", time.Since(started).Milliseconds()))
+	return &AppendixCollabToken{Token: resp.GetToken(), WsURL: resp.GetWsUrl(), ExpiresAt: expires}, nil
 }
 
 // PolicyAppendicesResolver lists a policy's appendices as the caller may see
@@ -227,18 +278,71 @@ func (r *Resolver) SaveAppendixDraftResolver(ctx context.Context, id, title, con
 }
 
 // PublishAppendixResolver promotes the draft to the next published version.
+// With a collab room client wired it also settles the appendix's room, as the
+// policy publish does: flush the live room into core's draft, publish, then
+// freeze the room on the version that went live. Unlike the policy publish,
+// a failed flush is logged and the publish goes ahead, and a failed notify is
+// logged too: neither turns the call into an error. Appendix text is never
+// logged.
 func (r *Resolver) PublishAppendixResolver(ctx context.Context, id string) (*PolicyAppendix, error) {
-	client, access, actor, err := r.editableAppendix(ctx, "publishAppendix", id)
+	client, access, actor, appendix, err := r.editableAppendixRow(ctx, "publishAppendix", id)
 	if err != nil {
 		return nil, err
 	}
+	policyID := appendix.GetPolicyId()
+	r.flushAppendixRoom(ctx, id, policyID)
 	resp, err := client.PublishAppendix(ctx, &corev1.PublishAppendixRequest{Id: id, ActorUserId: actor})
 	if err != nil {
 		r.logger().Error(err, "publish appendix: core failed", log.F("appendix_id", id), log.F("code", status.Code(err).String()))
 		return nil, err
 	}
-	r.logger().Info("appendix published", log.F("appendix_id", id))
+	r.logger().Info("appendix published", log.F("appendix_id", id), log.F("version_no", resp.GetAppendix().GetPublished().GetVersionNo()))
+	r.notifyAppendixRoom(ctx, id, policyID, resp.GetAppendix().GetPublished().GetVersionNo())
 	return shapePolicyAppendix(ctx, newAppendixPeople(r.IdentityClient), resp.GetAppendix(), access), nil
+}
+
+// flushAppendixRoom has collab send the live room's newest checkpoint to core
+// before the publish. A failure is logged and the publish still goes ahead.
+func (r *Resolver) flushAppendixRoom(ctx context.Context, id, policyID string) {
+	if r.CollabRoomClient == nil {
+		return
+	}
+	logger := r.logger()
+	flushCtx, cancel := context.WithTimeout(ctx, collabFlushTimeout)
+	defer cancel()
+	start := time.Now()
+	resp, err := r.CollabRoomClient.FlushDraft(flushCtx, &collabv1.FlushDraftRequest{DraftId: appendixRoomKey(id), PolicyId: policyID})
+	if err != nil {
+		logger.Warn("appendix room flush failed; publishing without it",
+			log.F("appendix_id", id), log.F("policy_id", policyID), log.F("code", status.Code(err).String()),
+			log.F("duration_ms", time.Since(start).Milliseconds()), log.F("error", err.Error()))
+		return
+	}
+	logger.Debug("appendix room flushed", log.F("appendix_id", id), log.F("duration_ms", time.Since(start).Milliseconds()),
+		log.F("room_found", resp.GetRoomFound()), log.F("content_flushed", resp.GetContentFlushed()))
+}
+
+// notifyAppendixRoom drops the appendix's live room to read-only on the version
+// that went live. Core has already committed the publish, so a failure is
+// logged only. It runs on a context that outlives the request.
+func (r *Resolver) notifyAppendixRoom(ctx context.Context, id, policyID string, versionNo int32) {
+	if r.CollabRoomClient == nil {
+		return
+	}
+	logger := r.logger()
+	notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), collabNotifyTimeout)
+	defer cancel()
+	resp, err := r.CollabRoomClient.NotifyDraftPublished(notifyCtx, &collabv1.NotifyDraftPublishedRequest{
+		DraftId: appendixRoomKey(id), PolicyId: policyID, VersionNumber: versionNo,
+	})
+	if err != nil {
+		logger.Warn("could not tell collab the appendix was published; a live editor keeps editing until it reconnects",
+			log.F("appendix_id", id), log.F("version_no", versionNo), log.F("code", status.Code(err).String()), log.F("error", err.Error()))
+		return
+	}
+	if !resp.GetRoomNotified() {
+		logger.Debug("no live collab room for the published appendix", log.F("appendix_id", id))
+	}
 }
 
 // RetireAppendixResolver hides an appendix and keeps it with its history.

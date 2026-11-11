@@ -117,6 +117,22 @@ wins. No backend is asked for content the caller may not read.
 job, read from the signed-in user the gateway passes on every call; anyone else gets `NotFound`, the
 same as for an unknown job.
 
+## Recording a sensitive print or export
+
+A print or export of a SENSITIVE policy is written to the audit log (tier `audit`, action
+`policy.exported`, subject `policy:<id>`). The entry carries the policy id, the version id, the
+kind (`print` or `pdf`), `include_history` and the time, never the content. The actor is the real
+user: during act-as it is the admin, and `acting_as` names the user they act as.
+
+- `requestPDFExport` records a sensitive PDF itself before the render job starts, so a client
+  cannot skip it. If the entry cannot be written, no job starts.
+- A browser print has no server call, so the web calls `recordPolicyExport(policyId, kind,
+  includeHistory)`. It returns `true` when an entry was written and `false` when nothing was owed:
+  the policy is not sensitive, or the caller sees it obfuscated. A caller who cannot read the
+  policy gets `NotFound`. An unwritable entry is an error, not a quiet `false`.
+- A standard policy is never recorded. steward-audit stores any non-empty action name, so no audit
+  change was needed.
+
 ## Changes since the approver last reviewed
 
 `versionChangesSinceReview(policyVersionId)` returns the sections of a version that changed since

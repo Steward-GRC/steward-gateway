@@ -3141,6 +3141,61 @@ func (e OverrideEffect) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type PolicyExportKind string
+
+const (
+	PolicyExportKindPrint PolicyExportKind = "PRINT"
+	PolicyExportKindPDF   PolicyExportKind = "PDF"
+)
+
+var AllPolicyExportKind = []PolicyExportKind{
+	PolicyExportKindPrint,
+	PolicyExportKindPDF,
+}
+
+func (e PolicyExportKind) IsValid() bool {
+	switch e {
+	case PolicyExportKindPrint, PolicyExportKindPDF:
+		return true
+	}
+	return false
+}
+
+func (e PolicyExportKind) String() string {
+	return string(e)
+}
+
+func (e *PolicyExportKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = PolicyExportKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid PolicyExportKind", str)
+	}
+	return nil
+}
+
+func (e PolicyExportKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *PolicyExportKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e PolicyExportKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type RaciGrant string
 
 const (

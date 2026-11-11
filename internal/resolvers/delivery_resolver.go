@@ -82,16 +82,18 @@ func GetPDFDownloadLink(ctx context.Context, client deliveryv1.DeliveryServiceCl
 
 // RequestPDFExport enqueues an async PDF rendering job under the version's read decision. The PDF
 // holds the real content, so an obfuscated reader gets nothing. A pending approver may export the
-// draft they review.
-func RequestPDFExport(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, policyVersionID string) (*PDFExportJob, error) {
+// draft they review. A sensitive policy's export is audited first, so it cannot be skipped.
+func RequestPDFExport(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, emitter AuditEmitter, policyVersionID string) (*PDFExportJob, error) {
 	claims, ok := principal.FromContext(ctx)
 	if !ok || claims.UserID() == "" {
 		return nil, fmt.Errorf("unauthenticated")
 	}
-	if _, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, workflow, policyVersionID); err != nil {
+	if reads, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, workflow, policyVersionID); err != nil {
 		return nil, err
 	} else if effect != authz.EffectAllow {
 		return nil, errObfuscatedContent
+	} else if err := recordPDFExport(ctx, policyClient, emitter, reads[0].version.PolicyID, policyVersionID); err != nil {
+		return nil, err
 	}
 	resp, err := client.RequestPDFExport(ctx, &deliveryv1.RequestPDFExportRequest{
 		PolicyVersionId: policyVersionID,

@@ -76,7 +76,7 @@ func contentReadCases() []readCase {
 			return pd != nil && len(pd.Sections) == 1 && pd.Sections[0].WordDiffHTML != nil, err
 		}},
 		{"requestPDFExport", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, d *countingDeliveryClient, _ *fakeAIClient) (bool, error) {
-			job, err := resolvers.RequestPDFExport(ctx, d, pc, groups, admin, nil, "pol-1-v1")
+			job, err := resolvers.RequestPDFExport(ctx, d, pc, groups, admin, nil, nil, "pol-1-v1")
 			return job != nil, err
 		}},
 		{"createMagicLink", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, d *countingDeliveryClient, _ *fakeAIClient) (bool, error) {

@@ -280,6 +280,11 @@ type AssignmentHistoryEntry struct {
 	NewUserName      *string `json:"newUserName,omitempty"`
 }
 
+type AuditActionInfo struct {
+	Code  string `json:"code"`
+	Label string `json:"label"`
+}
+
 type AuditChainVerification struct {
 	Valid          bool     `json:"valid"`
 	RecordsChecked int      `json:"recordsChecked"`

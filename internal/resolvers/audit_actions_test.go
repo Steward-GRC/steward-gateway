@@ -48,8 +48,12 @@ func TestQueryAuditActionsReturnsTheCodesForAnAuditReader(t *testing.T) {
 	if err != nil {
 		t.Fatalf("QueryAuditActions: %v", err)
 	}
-	if len(got) != 2 || got[0] != "policy.draft_saved" || got[1] != "policy.published" {
-		t.Fatalf("actions=%v, want both codes in order", got)
+	want := []resolvers.AuditActionInfo{
+		{Code: "policy.draft_saved", Label: "Policy draft saved"},
+		{Code: "policy.published", Label: "Policy published"},
+	}
+	if len(got) != 2 || *got[0] != want[0] || *got[1] != want[1] {
+		t.Fatalf("actions=%v, want both codes with labels in order", got)
 	}
 	if client.last.GetRequester().GetUserId() != "auditor-1" {
 		t.Fatalf("requester=%v, want the signed-in caller", client.last.GetRequester())
@@ -66,7 +70,7 @@ func TestQueryAuditActionsIsOpenToAGroupManager(t *testing.T) {
 	if err != nil {
 		t.Fatalf("QueryAuditActions: %v", err)
 	}
-	if len(got) != 1 || got[0] != "policy.published" {
+	if len(got) != 1 || got[0].Code != "policy.published" {
 		t.Fatalf("actions=%v, want the code", got)
 	}
 	if m := client.last.GetRequester().GetManagedGroups(); len(m) != 2 {
@@ -143,5 +147,35 @@ func TestQueryAuditActionsReturnsAnEmptyListNotNull(t *testing.T) {
 	}
 	if got == nil || len(got) != 0 {
 		t.Fatalf("actions=%#v, want a non-nil empty list (the field is non-null)", got)
+	}
+}
+
+func TestQueryAuditActionsSortsByCodeAndSkipsEmptyCodes(t *testing.T) {
+	client := actionsClient("user.created", "", "asset.uploaded")
+
+	got, err := resolvers.QueryAuditActionsResolver(ctxWithRoles(t, "auditor-1", []string{"site-admin"}), log.Nop(), client, nil)
+	if err != nil {
+		t.Fatalf("QueryAuditActions: %v", err)
+	}
+	if len(got) != 2 || got[0].Code != "asset.uploaded" || got[1].Code != "user.created" {
+		t.Fatalf("actions=%v, want the non-empty codes sorted", got)
+	}
+}
+
+func TestAuditActionLabel(t *testing.T) {
+	cases := map[string]string{
+		"policy.published":                               "Policy published",
+		"policy.break_glass_read":                        "Policy break glass read",
+		"workflow.assignment.swapped.out_of_eligibility": "Workflow assignment swapped out of eligibility",
+		"rpc.denied":                                     "Rpc denied",
+		"Policy.Published":                               "Policy published",
+		"single":                                         "Single",
+		"a..b__c":                                        "A b c",
+		"":                                               "",
+	}
+	for code, want := range cases {
+		if got := resolvers.AuditActionLabel(code); got != want {
+			t.Errorf("AuditActionLabel(%q)=%q, want %q", code, got, want)
+		}
 	}
 }

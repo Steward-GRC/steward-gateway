@@ -33,7 +33,7 @@ func (r *queryResolver) AuditLog(ctx context.Context, tier *string, groupID *str
 }
 
 // AuditActions is the resolver for the auditActions field.
-func (r *queryResolver) AuditActions(ctx context.Context) ([]string, error) {
+func (r *queryResolver) AuditActions(ctx context.Context) ([]*AuditActionInfo, error) {
 	return QueryAuditActionsResolver(ctx, r.logger(), r.AuditClient, r.IdentityClient)
 }
 

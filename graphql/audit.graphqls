@@ -26,6 +26,13 @@ type AuditRecord {
   subjectLabel: String
 }
 
+# An action code the log can contain and a readable label for it ("policy.published" is
+# "Policy published"), made from the code by the gateway.
+type AuditActionInfo {
+  code: String!
+  label: String!
+}
+
 type AuditQueryPage {
   records: [AuditRecord!]!
   nextPageToken: String!
@@ -83,9 +90,9 @@ extend type Query {
   # group; a group with no members returns no records. A group manager may only name a group they
   # manage in actorGroupId.
   auditLog(tier: String, groupId: ID, actorUserId: ID, subject: String, actions: [String!], subjectType: String, actorGroupId: ID, pageSize: Int, pageToken: String): AuditQueryPage!
-  # The distinct action codes the log holds, sorted, for the auditLog actions filter. Codes only; the
-  # client supplies the readable labels. Same access as auditLog.
-  auditActions: [String!]!
+  # The distinct action codes the log holds, sorted by code, each with a readable label, for the
+  # auditLog actions filter. Same access as auditLog.
+  auditActions: [AuditActionInfo!]!
   auditSegment(fromRecordId: String!, toRecordId: String!): AuditSegment!
   verifyAuditChain(fromRecordId: String!, toRecordId: String!): AuditChainVerification!
   # Oldest first; released holds only with includeReleased.

@@ -49,9 +49,10 @@ identity and sends their ids, because audit calls no other service; a group with
 no records, and a failed lookup fails the query rather than returning an unfiltered page. A group
 manager may name only a group they manage in `actorGroupId`; any other group is refused with
 `PermissionDenied`.
-`auditActions` lists the distinct action codes the log holds, sorted, so a client can fill the
-`actions` filter; it has the same access as `auditLog`, and returns codes only (the client supplies
-the labels).
+`auditActions` lists the distinct action codes the log holds, sorted by code, each as
+`{ code, label }`, so a client can fill the `actions` filter. The label is made from the code by the
+gateway (`policy.break_glass_read` becomes `Policy break glass read`). It has the same access as
+`auditLog`.
 `auditSegment` (the raw export) needs `audit.read`, because record ids span every group.
 
 **Shred and legal holds:** `shredAuditSubject` (crypto-shred a subject: audit erases its key and

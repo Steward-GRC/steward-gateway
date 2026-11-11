@@ -11,7 +11,7 @@ The gateway is the only service the web apps call. Its contract is the GraphQL s
 |---|---|---|
 | `POST /query` | session and CSRF, except the public operations | GraphQL queries and mutations |
 | `GET /query` | session cookie plus `csrfToken` in `connection_init` | GraphQL subscriptions over websocket |
-| `GET /collab/ws/{draftID}` | session cookie, origin allow-list, collab's own token | the co-editing websocket, relayed to collab |
+| `GET /collab/ws/{draftID}` | session cookie, origin allow-list, collab's own token | the co-editing websocket, relayed to collab; an appendix's room is `appendix:<id>`, and the path reaches collab with the colon escaped (`appendix%3A<id>`), as collab names it |
 | `POST /documents/extract`, `POST /documents/validate-url` | session and CSRF | text from an uploaded file; whether a URL can be read (SSRF-guarded) |
 | `POST /api/assets`, `GET /api/assets/{id}` | session; the GET skips CSRF for `<img src>` | editor images and files through core: any kind the admin setting allows, at most 25 MiB (core caps images at 10 MiB and text at 5 MiB); an image is served inline, any other file only as a download (`Content-Disposition: attachment`, `nosniff`) |
 | `GET /api/admin/assets[?unlinked=true]`, `DELETE /api/admin/assets/{id}` | session and CSRF, site admin only | the stored editor files with where each is used, and delete one at once even when a document links to it; the answer lists the documents it was removed from (core writes the audit entry; reporting attachments never appear) |
@@ -206,7 +206,22 @@ whether the caller may edit the policy:
   `PermissionDenied`, an unknown id is `NotFound`. An obfuscated reader gets the section shape
   without the word diff and with scrambled titles, as for `diffVersions`. The mock's compliance
   reader waits on the access model.
-- Not served yet: deleting for good and the co-editing token.
+- `issueAppendixCollabToken(appendixId)` returns `{token, wsUrl, expiresAt}` for the appendix's own
+  co-editing room (`appendix:<id>`), never the policy's. The checks run in order: signed in
+  (`Unauthenticated`), the appendix exists (`NotFound`, from core's `GetPolicyAppendix`), the caller
+  may edit the policy (`PermissionDenied`; a reader never learns whether it is retired), the
+  appendix is not retired (`FailedPrecondition`, before collab is asked). Then collab's
+  `IssueAppendixToken` mints it for the signed-in user; its refusals (`APPENDIX_NOT_FOUND`,
+  `DRAFT_EDIT_FORBIDDEN`, `APPENDIX_RETIRED`, `POLICY_NOT_FOUND`, `EDIT_CHECK_UNAVAILABLE`,
+  `ACTOR_REQUIRED`, `APPENDIX_ID_REQUIRED`) reach the caller with collab's gRPC code and message.
+  Without a collab client it is `Unavailable`. The token is never logged.
+- `publishAppendix` also settles the appendix's room when collab is wired: collab's `FlushDraft`
+  (draft id `appendix:<id>`), then core's `PublishAppendix`, then `NotifyDraftPublished` with the
+  version that went live. As for `publishDraft`, a failed flush fails closed with the same coded
+  error (`COLLAB_FLUSH_UNAVAILABLE`, `COLLAB_FLUSH_REJECTED` or `COLLAB_FLUSH_FAILED`): core is not
+  called and no notify is sent. A failed notify is only logged and never turns a successful publish
+  into an error. With no collab client the publish is core's alone.
+- Not served yet: deleting for good.
 
 ## Library links per policy version
 
@@ -273,7 +288,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - identity IdentityReadService: GetUser, GetUserByEmail, JitProvisionByEmail, ListUsersInGroup, GetGroup, ListGroups, ListUsersByEmail, ListAllUsers, ListUserIdpGroups, RevokeMySessions, GetSetupState, BootstrapRoot, GetAuthConfig, RequestPasswordReset, ResetPasswordWithCode, RequestLoginOtp, VerifyLoginOtp, MarkEmailVerified, EnrollTotpBegin, EnrollTotpConfirm, VerifyTotp, SendEmailOtp, VerifyEmailOtp, ListUserFactors, RemoveFactor, WebauthnRegisterBegin, WebauthnRegisterFinish, WebauthnAssertBegin, WebauthnAssertFinish, ListWebauthnCredentials, RemoveWebauthnCredential, RenameMFAMethod, Discover, CheckBreakGlassEligibility
 - identity IdentitySSOAdminService: AddOrganization, ListOrganizations, GetOrganization, UpdateIdPConnection, ChangeOrgProtocol, DeleteOrganization, StartDomainVerification, VerifyDomain, RecordIdPTestResult, ActivateOrganization, DisableOrganization, AddGroupMapping, ListGroupMappings, DeleteGroupMapping, GetSPCertificate, ListSPCertificates, ForceRotateSPCertificate, RecordBreakGlassLogin
 - workflow WorkflowService: Submit, Signal, GetStatus, ListPendingTasks, ListUpcomingTasks, SwapAssignee, BulkDecide, GetAssignmentHistory, GetStageEligiblePool, ListWorkflowDefs, GetWorkflowDef, CreateWorkflowDef, UpdateWorkflowDef, ArchiveWorkflowDef, SetWorkflowVetoEnabled, ResolveWorkflow
-- collab CollabTokenService: IssueToken
+- collab CollabTokenService: IssueToken, IssueAppendixToken
 - collab CollabRoomService: FlushDraft, NotifyDraftPublished
 - core TemplateService: CreateTemplate, CreateTemplateVersion, PublishTemplateVersion, GetLatestTemplateVersion, UpdateTemplateVersionSections, ListTemplateVersions, DeleteTemplateVersion, ListTemplates, RetireTemplate, DeleteTemplate, RenameTemplate
 - core AssetService: UploadAsset, GetAsset, GetAssetSettings, SetAssetSettings, ListAssets, DeleteAsset

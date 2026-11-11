@@ -38,6 +38,7 @@ const testDraftID = "0f8e1d2c-3b4a-5967-8899-aabbccddeeff"
 type upstreamCall struct {
 	mu           sync.Mutex
 	path         string
+	escapedPath  string
 	rawQuery     string
 	authHeader   string
 	hasOrigin    bool
@@ -52,6 +53,7 @@ func (u *upstreamCall) record(r *http.Request) {
 	defer u.mu.Unlock()
 	u.seen = true
 	u.path = r.URL.Path
+	u.escapedPath = r.URL.EscapedPath()
 	u.rawQuery = r.URL.RawQuery
 	u.authHeader = r.Header.Get("Authorization")
 	u.origin = r.Header.Get("Origin")
@@ -64,7 +66,7 @@ func (u *upstreamCall) snapshot() upstreamCall {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	return upstreamCall{
-		path: u.path, rawQuery: u.rawQuery, authHeader: u.authHeader,
+		path: u.path, escapedPath: u.escapedPath, rawQuery: u.rawQuery, authHeader: u.authHeader,
 		hasOrigin: u.hasOrigin, origin: u.origin, xff: u.xff,
 		subprotocols: u.subprotocols, seen: u.seen,
 	}
@@ -967,5 +969,27 @@ func TestProxy_NilSessionCheckRefusesEveryUpgrade(t *testing.T) {
 	}
 	if call.snapshot().seen {
 		t.Fatal("upstream was dialled without a session check")
+	}
+}
+
+// An appendix has its own room, "appendix:<id>", and collab hands the browser
+// its path escaped ("/collab/ws/appendix%3A<id>"). The proxy must reach collab's
+// listener at the same escaped path, so the room key arrives as collab named it
+// (gateway #126; mock "is issued ... for the appendix's own path").
+func TestProxy_AppendixRoomPathPassesThroughEscaped(t *testing.T) {
+	const room = "appendix%3A0f8e1d2c-3b4a-5967-8899-aabbccddeeff"
+
+	host, call := newFakeCollab(t, fakeCollabOpts{onConn: echoBinary})
+	srv := newProxyServer(t, testConfig(host), staticSession(true))
+	if _, _, err := dialProxy(t, srv, room, "tok", nil); err != nil {
+		t.Fatalf("dial proxy: %v", err)
+	}
+
+	c := call.snapshot()
+	if got, want := c.escapedPath, "/ws/"+room; got != want {
+		t.Fatalf("upstream escaped path:\n got %q\nwant %q", got, want)
+	}
+	if got, want := c.path, "/ws/appendix:0f8e1d2c-3b4a-5967-8899-aabbccddeeff"; got != want {
+		t.Fatalf("upstream decoded path = %q, want %q", got, want)
 	}
 }

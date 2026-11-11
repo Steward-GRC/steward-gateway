@@ -5,6 +5,14 @@ extend type Mutation {
   the edit grant again before minting).
   """
   issueCollabToken(input: IssueCollabTokenInput!): IssueCollabTokenPayload!
+
+  """
+  Issue a short-lived websocket token for one appendix's own co-editing room
+  (appendix:<id>), away from the policy's draft room. The caller must be able
+  to edit the policy the appendix belongs to; a retired appendix has no draft
+  to edit and is refused.
+  """
+  issueAppendixCollabToken(appendixId: ID!): AppendixCollabToken!
 }
 
 input IssueCollabTokenInput {
@@ -22,4 +30,8 @@ type IssueCollabTokenPayload {
   expiresAt: String!  # ISO-8601
 }
 
-
+type AppendixCollabToken {
+  token:     String!
+  wsUrl:     String!
+  expiresAt: String!  # ISO-8601
+}

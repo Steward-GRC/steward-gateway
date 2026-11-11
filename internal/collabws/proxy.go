@@ -172,6 +172,13 @@ func (p *Proxy) dial(target string, hdr http.Header, subprotocols []string) (*we
 
 func (p *Proxy) upstreamURL(r *http.Request, draftID string) string {
 	u := url.URL{Scheme: "ws", Host: p.cfg.Upstream, Path: "/ws/" + draftID}
+	// Keep the room key as the browser sent it. An appendix room is
+	// "appendix:<id>" and collab names its path with the colon escaped; the
+	// decoded path alone would reach collab with a bare colon. URL ignores a
+	// RawPath that does not decode to Path, so an odd request falls back to Path.
+	if rest, ok := strings.CutPrefix(r.URL.EscapedPath(), "/collab/ws/"); ok && rest != "" {
+		u.RawPath = "/ws/" + rest
+	}
 	q := r.URL.Query()
 	q.Del("token")
 	u.RawQuery = q.Encode()

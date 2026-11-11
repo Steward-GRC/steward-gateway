@@ -194,6 +194,12 @@ type ComplexityRoot struct {
 		Title           func(childComplexity int) int
 	}
 
+	AppendixCollabToken struct {
+		ExpiresAt func(childComplexity int) int
+		Token     func(childComplexity int) int
+		WsURL     func(childComplexity int) int
+	}
+
 	AppendixContributor struct {
 		Active func(childComplexity int) int
 		Name   func(childComplexity int) int
@@ -727,6 +733,7 @@ type ComplexityRoot struct {
 		GrantGroupManager             func(childComplexity int, userID string, groupID string) int
 		GrantRole                     func(childComplexity int, userID string, role string, category *string) int
 		GrantRoot                     func(childComplexity int, userID string, otp string) int
+		IssueAppendixCollabToken      func(childComplexity int, appendixID string) int
 		IssueCollabToken              func(childComplexity int, input IssueCollabTokenInput) int
 		MarkVersionReviewed           func(childComplexity int, policyVersionID string) int
 		MergeAccounts                 func(childComplexity int, sourceUserID string, targetUserID string, confirmPrivileged *bool, idempotencyKey *string) int
@@ -1621,6 +1628,7 @@ type MutationResolver interface {
 	CreateAuditLegalHold(ctx context.Context, subjectFilter *string, groupFilter *string, reason string) (*AuditLegalHold, error)
 	ReleaseAuditLegalHold(ctx context.Context, holdUUID string) (*AuditLegalHold, error)
 	IssueCollabToken(ctx context.Context, input IssueCollabTokenInput) (*IssueCollabTokenPayload, error)
+	IssueAppendixCollabToken(ctx context.Context, appendixID string) (*AppendixCollabToken, error)
 	CreateCategory(ctx context.Context, name string, slug string, parentID *string) (*Category, error)
 	SetCategoryDefaults(ctx context.Context, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) (*Category, error)
 	SetCategoryTemplateLock(ctx context.Context, id string, locked bool) (*Category, error)
@@ -2439,6 +2447,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Appendix.Title(childComplexity), true
+
+	case "AppendixCollabToken.expiresAt":
+		if e.ComplexityRoot.AppendixCollabToken.ExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixCollabToken.ExpiresAt(childComplexity), true
+	case "AppendixCollabToken.token":
+		if e.ComplexityRoot.AppendixCollabToken.Token == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixCollabToken.Token(childComplexity), true
+	case "AppendixCollabToken.wsUrl":
+		if e.ComplexityRoot.AppendixCollabToken.WsURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixCollabToken.WsURL(childComplexity), true
 
 	case "AppendixContributor.active":
 		if e.ComplexityRoot.AppendixContributor.Active == nil {
@@ -4831,6 +4858,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.GrantRoot(childComplexity, args["userId"].(string), args["otp"].(string)), true
+	case "Mutation.issueAppendixCollabToken":
+		if e.ComplexityRoot.Mutation.IssueAppendixCollabToken == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_issueAppendixCollabToken_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.IssueAppendixCollabToken(childComplexity, args["appendixId"].(string)), true
 	case "Mutation.issueCollabToken":
 		if e.ComplexityRoot.Mutation.IssueCollabToken == nil {
 			break
@@ -10557,6 +10595,14 @@ extend type Mutation {
   the edit grant again before minting).
   """
   issueCollabToken(input: IssueCollabTokenInput!): IssueCollabTokenPayload!
+
+  """
+  Issue a short-lived websocket token for one appendix's own co-editing room
+  (appendix:<id>), away from the policy's draft room. The caller must be able
+  to edit the policy the appendix belongs to; a retired appendix has no draft
+  to edit and is refused.
+  """
+  issueAppendixCollabToken(appendixId: ID!): AppendixCollabToken!
 }
 
 input IssueCollabTokenInput {
@@ -10574,7 +10620,11 @@ type IssueCollabTokenPayload {
   expiresAt: String!  # ISO-8601
 }
 
-
+type AppendixCollabToken {
+  token:     String!
+  wsUrl:     String!
+  expiresAt: String!  # ISO-8601
+}
 `, BuiltIn: false},
 	{Name: "../../graphql/core.graphqls", Input: `extend type Query {
 
@@ -13527,6 +13577,18 @@ func (ec *executionContext) childFields_Appendix(ctx context.Context, field grap
 		return ec.fieldContext_Appendix_letter(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Appendix", field.Name)
+}
+
+func (ec *executionContext) childFields_AppendixCollabToken(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "token":
+		return ec.fieldContext_AppendixCollabToken_token(ctx, field)
+	case "wsUrl":
+		return ec.fieldContext_AppendixCollabToken_wsUrl(ctx, field)
+	case "expiresAt":
+		return ec.fieldContext_AppendixCollabToken_expiresAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AppendixCollabToken", field.Name)
 }
 
 func (ec *executionContext) childFields_AppendixContributor(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -17052,6 +17114,20 @@ func (ec *executionContext) field_Mutation_grantRoot_args(ctx context.Context, r
 		return nil, err
 	}
 	args["otp"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_issueAppendixCollabToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "appendixId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["appendixId"] = arg0
 	return args, nil
 }
 
@@ -22961,6 +23037,75 @@ func (ec *executionContext) _Appendix_letter(ctx context.Context, field graphql.
 }
 func (ec *executionContext) fieldContext_Appendix_letter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Appendix", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixCollabToken_token(ctx context.Context, field graphql.CollectedField, obj *AppendixCollabToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixCollabToken_token(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Token, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixCollabToken_token(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixCollabToken", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixCollabToken_wsUrl(ctx context.Context, field graphql.CollectedField, obj *AppendixCollabToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixCollabToken_wsUrl(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.WsURL, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixCollabToken_wsUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixCollabToken", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixCollabToken_expiresAt(ctx context.Context, field graphql.CollectedField, obj *AppendixCollabToken) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixCollabToken_expiresAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixCollabToken_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixCollabToken", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _AppendixContributor_userId(ctx context.Context, field graphql.CollectedField, obj *AppendixContributor) (ret graphql.Marshaler) {
@@ -30659,6 +30804,50 @@ func (ec *executionContext) fieldContext_Mutation_issueCollabToken(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_issueCollabToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_issueAppendixCollabToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_issueAppendixCollabToken(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().IssueAppendixCollabToken(ctx, fc.Args["appendixId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *AppendixCollabToken) graphql.Marshaler {
+			return ec.marshalNAppendixCollabToken2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixCollabToken(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_issueAppendixCollabToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AppendixCollabToken(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_issueAppendixCollabToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -55658,6 +55847,54 @@ func (ec *executionContext) _Appendix(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var appendixCollabTokenImplementors = []string{"AppendixCollabToken"}
+
+func (ec *executionContext) _AppendixCollabToken(ctx context.Context, sel ast.SelectionSet, obj *AppendixCollabToken) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, appendixCollabTokenImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AppendixCollabToken")
+		case "token":
+			out.Values[i] = ec._AppendixCollabToken_token(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "wsUrl":
+			out.Values[i] = ec._AppendixCollabToken_wsUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expiresAt":
+			out.Values[i] = ec._AppendixCollabToken_expiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var appendixContributorImplementors = []string{"AppendixContributor"}
 
 func (ec *executionContext) _AppendixContributor(ctx context.Context, sel ast.SelectionSet, obj *AppendixContributor) graphql.Marshaler {
@@ -59335,6 +59572,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "issueCollabToken":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_issueCollabToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "issueAppendixCollabToken":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_issueAppendixCollabToken(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -68219,6 +68463,20 @@ func (ec *executionContext) marshalNAppendix2ᚖgithubᚗcomᚋStewardᚑGRCᚋs
 		return graphql.Null
 	}
 	return ec._Appendix(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAppendixCollabToken2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixCollabToken(ctx context.Context, sel ast.SelectionSet, v AppendixCollabToken) graphql.Marshaler {
+	return ec._AppendixCollabToken(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAppendixCollabToken2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixCollabToken(ctx context.Context, sel ast.SelectionSet, v *AppendixCollabToken) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AppendixCollabToken(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNAppendixContributor2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixContributorᚄ(ctx context.Context, sel ast.SelectionSet, v []*AppendixContributor) graphql.Marshaler {

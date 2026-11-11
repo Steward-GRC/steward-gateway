@@ -15,3 +15,8 @@ import (
 func (r *mutationResolver) IssueCollabToken(ctx context.Context, input IssueCollabTokenInput) (*IssueCollabTokenPayload, error) {
 	return IssueCollabToken(ctx, r.CollabClient, r.PolicyClient, r.CategoryClient, input)
 }
+
+// IssueAppendixCollabToken is the resolver for the issueAppendixCollabToken field.
+func (r *mutationResolver) IssueAppendixCollabToken(ctx context.Context, appendixID string) (*AppendixCollabToken, error) {
+	return r.IssueAppendixCollabTokenResolver(ctx, appendixID)
+}

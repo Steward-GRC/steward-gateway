@@ -210,6 +210,12 @@ type Appendix struct {
 	Letter          string `json:"letter"`
 }
 
+type AppendixCollabToken struct {
+	Token     string `json:"token"`
+	WsURL     string `json:"wsUrl"`
+	ExpiresAt string `json:"expiresAt"`
+}
+
 type AppendixContributor struct {
 	UserID string `json:"userId"`
 	Name   string `json:"name"`

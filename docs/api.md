@@ -172,7 +172,8 @@ the document, the gateway never edits content.
 
 An appendix belongs to a policy, not to one of its versions, and has a version table of its own.
 `policyAppendices(policyId, includeRetired)`, `policyAppendix(id)`, `createPolicyAppendix`,
-`saveAppendixDraft`, `publishAppendix`, `retireAppendix` and `restoreAppendix` serve it from core's
+`saveAppendixDraft`, `publishAppendix`, `retireAppendix`, `restoreAppendix` and
+`reorderPolicyAppendices` serve it from core's
 `PolicyAppendixService`. Core returns the published row and the draft side by side and applies no
 reader filtering; the gateway shapes the answer per caller. Each call applies the policy read
 decision first (a denied read is `NotFound`; an obfuscating one scrambles the text), then asks
@@ -191,7 +192,13 @@ whether the caller may edit the policy:
 - `createdAt` and `createdBy` are read off the first row; `retiredBy` is always null because core does
   not record it. `PolicyVersion.appendices` keeps the older `Appendix` shape, filled from the latest
   published row of each live appendix of the policy on every version.
-- Not served yet: reordering, deleting for good, the draft diff and the co-editing token.
+- `reorderPolicyAppendices(policyId, orderedIds)` sets the order of the live appendices (editors
+  only, decided as for `createPolicyAppendix`; a reader is `PermissionDenied` and core is never
+  asked). It sends the caller as the actor and returns the live appendices in the new order, shaped
+  for an editor, with the new letters. A list that misses, repeats, or adds a foreign or retired
+  appendix is core's `InvalidArgument` and leaves the order as it was. It makes no draft. The older
+  `reorderAppendices` (by policy version) is unchanged.
+- Not served yet: deleting for good, the draft diff and the co-editing token.
 
 ## Library links per policy version
 
@@ -265,7 +272,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - core RelationService: ListRelatedPolicies, SetRelatedPolicies
 - core DefinitionLibraryService: ListDefinitionEntries, ListPolicyDefinitionCandidates, CreateDefinitionEntry, UpdateDefinitionEntry, DeleteDefinitionEntry, SetDefinitionEntryArchived, ListPolicyDefinitionEntries, SetPolicyDefinitionEntries
 - core AppendixService: ListAppendices, AddAppendix, UpdateAppendix, ReorderAppendices, DeleteAppendix
-- core PolicyAppendixService: ListPolicyAppendices, GetPolicyAppendix, CreatePolicyAppendix, SaveAppendixDraft, PublishAppendix, RetireAppendix, RestoreAppendix
+- core PolicyAppendixService: ListPolicyAppendices, GetPolicyAppendix, CreatePolicyAppendix, SaveAppendixDraft, PublishAppendix, RetireAppendix, RestoreAppendix, ReorderPolicyAppendices
 - core ContactService: ListContactBlocks, CreateContactBlock, UpdateContactBlock, DeleteContactBlock, SetContactBlockArchived, ListPolicyContactBlocks, SetPolicyContactBlocks
 - core SettingsService: GetGlobalSettings, SetGlobalSettings, SetEmailServiceConfig, EmailServiceConfigStatus
 - core ReferenceService: ListReferences, CreateReference, UpdateReference, DeleteReference, SetReferenceArchived, ListPolicyReferences, SetPolicyReferences

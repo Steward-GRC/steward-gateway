@@ -36,6 +36,11 @@ func (r *mutationResolver) RestoreAppendix(ctx context.Context, id string) (*Pol
 	return r.RestoreAppendixResolver(ctx, id)
 }
 
+// ReorderPolicyAppendices is the resolver for the reorderPolicyAppendices field.
+func (r *mutationResolver) ReorderPolicyAppendices(ctx context.Context, policyID string, orderedIds []string) ([]*PolicyAppendix, error) {
+	return r.ReorderPolicyAppendicesResolver(ctx, policyID, orderedIds)
+}
+
 // PolicyAppendices is the resolver for the policyAppendices field.
 func (r *queryResolver) PolicyAppendices(ctx context.Context, policyID string, includeRetired *bool) ([]*PolicyAppendix, error) {
 	return r.PolicyAppendicesResolver(ctx, policyID, includeRetired)

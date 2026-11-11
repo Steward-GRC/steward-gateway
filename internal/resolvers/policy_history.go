@@ -131,7 +131,12 @@ func PolicyHistoryResolver(
 	records := make([]*AuditRecord, 0, len(merged))
 	for _, r := range merged {
 		rec := auditRecordFromProto(r)
-		enrichAuditRecord(ctx, labels, rec)
+		// The history view shows who did what, when and to which version. The
+		// chain hashes, the record uuid, the group and the legal-basis flag are
+		// for audit readers, so an ordinary reader's records leave them empty.
+		rec.RecordUUID, rec.PrevHash, rec.RecordHash, rec.GroupID, rec.LegalBasisExempt = "", "", "", "", false
+		rec.ActorName = nilIfEmpty(labels.userName(ctx, rec.ActorUserID))
+		rec.SubjectLabel = nilIfEmpty(labels.subjectLabel(ctx, rec.Subject))
 		records = append(records, rec)
 	}
 	logger.Debug("policy history served",

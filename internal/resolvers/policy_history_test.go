@@ -316,3 +316,42 @@ func TestPolicyHistory_AuditFailureFailsTheQuery(t *testing.T) {
 		t.Fatalf("got %+v, %v; want an error and no partial timeline", page, err)
 	}
 }
+
+// OPS terms for asking audit as compliance-admin: only after the policy read
+// passes (the NotFound test above), only the fixed subjects with no caller
+// filter reaching audit, and only the fields the history view shows.
+func TestPolicyHistory_AuditRequestCarriesOnlyTheFixedSubjectAndPaging(t *testing.T) {
+	pc, gc := editorEnv()
+	au := historyAudit()
+	if _, err := readHistory(authorCtx(t), au, pc, gc, nil, nil, nil); err != nil {
+		t.Fatalf("PolicyHistoryResolver: %v", err)
+	}
+	for _, r := range au.requests {
+		if r.GetTier() != "" || r.GetGroupId() != "" || r.GetActorUserId() != "" || r.GetVersionNumber() != 0 ||
+			len(r.GetRequester().GetManagedGroups()) != 0 || len(r.GetRequester().GetManagedCategories()) != 0 {
+			t.Fatalf("audit request carries a filter beyond the subject: %+v", r)
+		}
+	}
+}
+
+func TestPolicyHistory_ExposesOnlyTheFieldsTheHistoryViewShows(t *testing.T) {
+	pc, gc := editorEnv()
+	au := historyAudit()
+	for _, recs := range au.bySubject {
+		for _, r := range recs {
+			r.RecordHash, r.PrevHash, r.RecordUuid, r.LegalBasisExempt = "hash", "prev", "uuid", true
+		}
+	}
+	page, err := readHistory(authorCtx(t), au, pc, gc, nil, nil, nil)
+	if err != nil || len(page.Records) == 0 {
+		t.Fatalf("PolicyHistoryResolver: %v", err)
+	}
+	for _, r := range page.Records {
+		if r.RecordHash != "" || r.PrevHash != "" || r.RecordUUID != "" || r.GroupID != "" || r.LegalBasisExempt || r.GroupName != nil {
+			t.Fatalf("record %s exposes chain or group fields: %+v", r.ID, r)
+		}
+		if r.Action == "" || r.Subject == "" || r.OccurredAt == "" || r.ActorUserID == "" {
+			t.Fatalf("record %s lost a field the view shows: %+v", r.ID, r)
+		}
+	}
+}

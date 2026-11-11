@@ -98,7 +98,7 @@ func (r *queryResolver) RelatedPolicySuggestions(ctx context.Context, policyID s
 
 // AiJobResultContent is the resolver for the aiJobResultContent field.
 func (r *queryResolver) AiJobResultContent(ctx context.Context, resultRef string) (*AIJobResultContent, error) {
-	return AIJobResultContentResolver(ctx, r.AIJobContentReader, resultRef)
+	return AIJobResultContentResolver(ctx, r.logger(), r.AIJobContentReader, resultRef)
 }
 
 // AiHealth is the resolver for the aiHealth field.

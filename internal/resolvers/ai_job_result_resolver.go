@@ -5,7 +5,12 @@ package resolvers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	log "github.com/Bugs5382/go-log"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/Steward-GRC/steward-gateway/internal/aijobs"
 
@@ -102,21 +107,49 @@ func phaseFromCompletion(phase string) AIJobPhase {
 	}
 }
 
+// errJobResultNotFound is the one refusal for a result ref that does not resolve and one that
+// belongs to someone else, so a ref reveals nothing about another user's job.
+var errJobResultNotFound = status.Error(codes.NotFound, "job result not found")
+
 // AIJobResultContentResolver fetches a completed async AI job's generated content by resultRef
-// content-fetch — the fetch-by-resultRef path the AIJobStatus/AIJobResult doc comments describe;
-// that tag collides with the unrelated two-tier semantic-cache, not renumbered).
-func AIJobResultContentResolver(ctx context.Context, reader *aijobs.ContentReader, resultRef string) (*AIJobResultContent, error) {
+// (the fetch-by-resultRef path the AIJobStatus/AIJobResult doc comments describe), and only for the
+// user who submitted the job. The ref is an opaque key: ownership comes from the owner_user_id the
+// ai service stores in the result envelope, compared with the caller's user id. A missing result, a
+// different owner, an envelope with no owner and a caller with no id are all refused the same way.
+func AIJobResultContentResolver(ctx context.Context, logger log.Logger, reader *aijobs.ContentReader, resultRef string) (*AIJobResultContent, error) {
+	lg := logger.Ctx(ctx)
 	claims, ok := principal.FromContext(ctx)
-	if !ok || claims == nil || claims.UserID() == "" {
+	if !ok || claims == nil {
+		lg.Debug("ai job result content refused", log.F("reason", "unauthenticated"))
 		return nil, fmt.Errorf("unauthenticated")
 	}
 	if reader == nil {
 		return nil, fmt.Errorf("ai job result content fetch unavailable")
 	}
+	callerID := claims.UserID()
+	if callerID == "" {
+		lg.Debug("ai job result content refused", log.F("reason", "caller_has_no_user"))
+		return nil, errJobResultNotFound
+	}
+	lg.Debug("ai job result content fetch")
 	content, err := reader.Fetch(ctx, resultRef)
 	if err != nil {
+		if errors.Is(err, aijobs.ErrResultNotFound) {
+			lg.Debug("ai job result content refused", log.F("reason", "no_such_result"))
+			return nil, errJobResultNotFound
+		}
+		lg.Error(err, "ai job result content read failed")
 		return nil, fmt.Errorf("ai job result content: %w", err)
 	}
+	if !content.OwnedBy(callerID) {
+		reason := "owner_mismatch"
+		if content.OwnerUserID == "" {
+			reason = "result_has_no_owner"
+		}
+		lg.Debug("ai job result content refused", log.F("reason", reason))
+		return nil, errJobResultNotFound
+	}
+	lg.Debug("ai job result content served", log.F("operation", content.Operation))
 	return &AIJobResultContent{
 		Operation:  content.Operation,
 		ResultJSON: content.ResultJSON,

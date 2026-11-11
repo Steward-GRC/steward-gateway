@@ -77,3 +77,21 @@ func TestContentReader_Fetch_NotFound(t *testing.T) {
 		t.Fatalf("expected ErrResultNotFound, got %v", err)
 	}
 }
+
+func TestContentReader_Fetch_Owner(t *testing.T) {
+	reader, rdb := newTestContentReader(t)
+	ctx := context.Background()
+	if err := rdb.Set(ctx, "k", `{"operation":"REWRITE","owner_user_id":"u-1","result":{}}`, 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := reader.Fetch(ctx, "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.OwnedBy("u-1") || got.OwnedBy("u-2") || got.OwnedBy("") {
+		t.Fatalf("OwnedBy wrong for owner %q", got.OwnerUserID)
+	}
+	if (&Content{}).OwnedBy("") || (&Content{}).OwnedBy("u-1") {
+		t.Fatal("an ownerless result must belong to nobody")
+	}
+}

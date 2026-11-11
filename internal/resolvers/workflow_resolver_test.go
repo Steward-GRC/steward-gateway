@@ -661,3 +661,19 @@ func statusJSON(v any) string {
 	b, _ := json.Marshal(v)
 	return string(b)
 }
+
+// A seat that holds a veto is marked on the status so the client can show it.
+func TestWorkflowStatusResolver_ShowsWhichSeatsHoldAVeto(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	wf := statusRun()
+	wf.statusResp.StageAssignees[0].Assignees[1].Veto = true
+
+	out, err := workflowStatus(readerCtx(t), wf, pc, groups, noGrant(), "pol-1-v1")
+	if err != nil {
+		t.Fatalf("WorkflowStatusResolver: %v", err)
+	}
+	row := out.StageAssignees[0]
+	if row[0].Veto || !row[1].Veto {
+		t.Fatalf("veto marks = [%v %v], want [false true]", row[0].Veto, row[1].Veto)
+	}
+}

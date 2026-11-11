@@ -7,6 +7,8 @@ import (
 	"context"
 	"testing"
 
+	log "github.com/Bugs5382/go-log"
+
 	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
 	"google.golang.org/grpc/codes"
@@ -408,5 +410,106 @@ func TestCreateWorkflowDefResolver_QuorumPassthrough(t *testing.T) {
 	}
 	if !stage.GetRejectOnSlaBreach() {
 		t.Fatal("reject_on_sla_breach should be true")
+	}
+}
+
+// --- veto seat: opting a workflow in ---
+
+func TestSetWorkflowVetoEnabledResolver_OffByDefaultOnTheDefinition(t *testing.T) {
+	c := &fakeWorkflowClient{listDefsResp: &workflowv1.ListWorkflowDefsResponse{
+		Defs: []*workflowv1.WorkflowDef{{Id: "d1", Name: "Standard", Version: 1}},
+	}}
+	out, err := resolvers.WorkflowDefsResolver(context.Background(), c)
+	if err != nil {
+		t.Fatalf("WorkflowDefsResolver: %v", err)
+	}
+	if out[0].VetoEnabled {
+		t.Fatal("a definition the workflow has not opted in must read as vetoEnabled=false")
+	}
+}
+
+func TestSetWorkflowVetoEnabledResolver_TemplateAdminSetsAndForwardsActor(t *testing.T) {
+	c := &fakeWorkflowClient{}
+	out, err := resolvers.SetWorkflowVetoEnabledResolver(
+		ctxWithRoles(t, "u1", []string{"template-admin"}), log.Nop(), c, "def-1", true,
+	)
+	if err != nil {
+		t.Fatalf("SetWorkflowVetoEnabledResolver: %v", err)
+	}
+	if out.ID != "def-1" || !out.VetoEnabled {
+		t.Fatalf("want def-1 with vetoEnabled=true, got %+v", out)
+	}
+	if c.lastVeto == nil || c.lastVeto.GetId() != "def-1" || !c.lastVeto.GetEnabled() || c.lastVeto.GetActorUserId() != "u1" {
+		t.Fatalf("forwarded request: %+v", c.lastVeto)
+	}
+}
+
+func TestSetWorkflowVetoEnabledResolver_AuthorDeniedWithoutACall(t *testing.T) {
+	c := &fakeWorkflowClient{}
+	_, err := resolvers.SetWorkflowVetoEnabledResolver(
+		ctxWithRoles(t, "u1", []string{"author"}), log.Nop(), c, "def-1", true,
+	)
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected PermissionDenied; got %v", err)
+	}
+	if c.lastVeto != nil {
+		t.Fatalf("workflow must not be called for a refused caller: %+v", c.lastVeto)
+	}
+}
+
+func TestSetWorkflowVetoEnabledResolver_Unauthenticated(t *testing.T) {
+	_, err := resolvers.SetWorkflowVetoEnabledResolver(context.Background(), log.Nop(), &fakeWorkflowClient{}, "def-1", true)
+	if status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("expected Unauthenticated; got %v", err)
+	}
+}
+
+func TestSetWorkflowVetoEnabledResolver_WorkflowDenialPassesThrough(t *testing.T) {
+	c := &fakeWorkflowClient{vetoErr: status.Error(codes.PermissionDenied, "admin only")}
+	_, err := resolvers.SetWorkflowVetoEnabledResolver(
+		ctxWithRoles(t, "u1", []string{"template-admin"}), log.Nop(), c, "def-1", true,
+	)
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected PermissionDenied from workflow; got %v", err)
+	}
+}
+
+// --- veto seat: marking users and group seats on a stage ---
+
+func TestWorkflowDefResolvers_VetoMarksRoundTrip(t *testing.T) {
+	c := &fakeWorkflowClient{}
+	out, err := resolvers.UpdateWorkflowDefResolver(
+		ctxWithRoles(t, "u1", []string{"template-admin"}), c, "def-1", "Finance", nil,
+		[]*resolvers.WorkflowStageInput{{
+			Name: "Finance sign-off", Approvers: []string{"u3"}, Quorum: "one",
+			VetoApproverIds: []string{"u3"}, VetoGroupIds: []string{"group-finance"},
+		}},
+	)
+	if err != nil {
+		t.Fatalf("UpdateWorkflowDefResolver: %v", err)
+	}
+	sent := c.lastUpdateDef.GetStages()[0]
+	if got := sent.GetVetoApproverIds(); len(got) != 1 || got[0] != "u3" {
+		t.Fatalf("forwarded veto_approver_ids: %v", got)
+	}
+	if got := sent.GetVetoGroupIds(); len(got) != 1 || got[0] != "group-finance" {
+		t.Fatalf("forwarded veto_group_ids: %v", got)
+	}
+	st := out.Stages[0]
+	if len(st.VetoApproverIds) != 1 || st.VetoApproverIds[0] != "u3" || len(st.VetoGroupIds) != 1 || st.VetoGroupIds[0] != "group-finance" {
+		t.Fatalf("stage veto marks: %+v", st)
+	}
+}
+
+func TestWorkflowStageDefFromProto_NoVetoMarksAreEmptyLists(t *testing.T) {
+	c := &fakeWorkflowClient{getDefResp: &workflowv1.GetWorkflowDefResponse{
+		Def: &workflowv1.WorkflowDef{Id: "d1", Stages: []*workflowv1.WorkflowStage{{Id: "s1", Name: "A"}}},
+	}}
+	out, err := resolvers.WorkflowDefResolver(context.Background(), c, "d1")
+	if err != nil {
+		t.Fatalf("WorkflowDefResolver: %v", err)
+	}
+	if out.Stages[0].VetoApproverIds == nil || out.Stages[0].VetoGroupIds == nil {
+		t.Fatalf("non-null lists required by the schema: %+v", out.Stages[0])
 	}
 }

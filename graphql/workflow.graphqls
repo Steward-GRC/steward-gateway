@@ -55,6 +55,8 @@ type StageAssignee {
   changesRequested: String
   # ISO-8601 time of that request.
   changesRequestedAt: String
+  # The seat holds a veto on its stage.
+  veto: Boolean!
 }
 
 # One approve-as-group unit's live tally on a stage. groupName is
@@ -362,12 +364,18 @@ type WorkflowStageDef {
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
+  # Veto seats: users and group seats whose single reject ends the version as rejected, when the
+  # workflow has opted in (WorkflowDef.vetoEnabled).
+  vetoApproverIds: [ID!]!
+  vetoGroupIds: [ID!]!
 }
 type WorkflowDef {
   id: ID!
   name: String!
   description: String
   version: Int!
+  # Off by default; set only through setWorkflowVetoEnabled.
+  vetoEnabled: Boolean!
   stages: [WorkflowStageDef!]!
 }
 input CategoryApproversInput {
@@ -389,6 +397,8 @@ input WorkflowStageInput {
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
+  vetoApproverIds: [ID!]
+  vetoGroupIds: [ID!]
 }
 extend type Query {
   workflowDefs: [WorkflowDef!]!
@@ -398,6 +408,8 @@ extend type Mutation {
   createWorkflowDef(name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
   updateWorkflowDef(id: ID!, name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
   archiveWorkflowDef(id: ID!): Boolean!
+  # Template admins and above: opts a workflow in or out of veto seats.
+  setWorkflowVetoEnabled(id: ID!, enabled: Boolean!): WorkflowDef!
 }
 
 

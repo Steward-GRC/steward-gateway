@@ -46,6 +46,11 @@ func (r *mutationResolver) ArchiveWorkflowDef(ctx context.Context, id string) (b
 	return ArchiveWorkflowDefResolver(ctx, r.WorkflowClient, id)
 }
 
+// SetWorkflowVetoEnabled is the resolver for the setWorkflowVetoEnabled field.
+func (r *mutationResolver) SetWorkflowVetoEnabled(ctx context.Context, id string, enabled bool) (*WorkflowDef, error) {
+	return SetWorkflowVetoEnabledResolver(ctx, r.logger().Ctx(ctx), r.WorkflowClient, id, enabled)
+}
+
 // WorkflowStatus is the resolver for the workflowStatus field.
 func (r *queryResolver) WorkflowStatus(ctx context.Context, policyVersionID string) (*WorkflowStatus, error) {
 	return WorkflowStatusResolver(ctx, r.logger(), r.WorkflowClient, r.IdentityClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, policyVersionID)

@@ -399,6 +399,7 @@ func WorkflowStatusResolver(
 				State:   a.GetState(),
 				Name:    nilIfEmpty(labels.userName(ctx, a.GetUserId())),
 				GroupID: nilIfEmpty(a.GetGroupId()),
+				Veto:    a.GetVeto(),
 			}
 			if c := a.GetComment(); c != "" && !hideComments {
 				s := c

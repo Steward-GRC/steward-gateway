@@ -119,6 +119,11 @@ type fakeWorkflowClient struct {
 	lastUpdateDef  *workflowv1.UpdateWorkflowDefRequest
 	archiveDefErr  error
 	lastArchiveDef *workflowv1.ArchiveWorkflowDefRequest
+
+	// Veto opt-in stubs
+	vetoResp *workflowv1.SetWorkflowVetoEnabledResponse
+	vetoErr  error
+	lastVeto *workflowv1.SetWorkflowVetoEnabledRequest
 }
 
 func (f *fakeWorkflowClient) Submit(_ context.Context, _ *workflowv1.SubmitRequest, _ ...grpc.CallOption) (*workflowv1.SubmitResponse, error) {
@@ -249,6 +254,17 @@ func (f *fakeWorkflowClient) ArchiveWorkflowDef(_ context.Context, in *workflowv
 		return nil, f.archiveDefErr
 	}
 	return &workflowv1.ArchiveWorkflowDefResponse{}, nil
+}
+
+func (f *fakeWorkflowClient) SetWorkflowVetoEnabled(_ context.Context, in *workflowv1.SetWorkflowVetoEnabledRequest, _ ...grpc.CallOption) (*workflowv1.SetWorkflowVetoEnabledResponse, error) {
+	f.lastVeto = in
+	if f.vetoErr != nil {
+		return nil, f.vetoErr
+	}
+	if f.vetoResp == nil {
+		return &workflowv1.SetWorkflowVetoEnabledResponse{Def: &workflowv1.WorkflowDef{Id: in.GetId(), Name: "Standard", Version: 1, VetoEnabled: in.GetEnabled()}}, nil
+	}
+	return f.vetoResp, nil
 }
 
 func (f *fakeWorkflowClient) GetStageEligiblePool(_ context.Context, in *workflowv1.GetStageEligiblePoolRequest, _ ...grpc.CallOption) (*workflowv1.GetStageEligiblePoolResponse, error) {

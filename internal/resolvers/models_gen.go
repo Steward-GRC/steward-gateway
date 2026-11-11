@@ -1171,6 +1171,7 @@ type StageAssignee struct {
 	GroupID            *string `json:"groupId,omitempty"`
 	ChangesRequested   *string `json:"changesRequested,omitempty"`
 	ChangesRequestedAt *string `json:"changesRequestedAt,omitempty"`
+	Veto               bool    `json:"veto"`
 }
 
 type StageEligibleAssignees struct {
@@ -1419,6 +1420,7 @@ type WorkflowDef struct {
 	Name        string              `json:"name"`
 	Description *string             `json:"description,omitempty"`
 	Version     int                 `json:"version"`
+	VetoEnabled bool                `json:"vetoEnabled"`
 	Stages      []*WorkflowStageDef `json:"stages"`
 }
 
@@ -1432,6 +1434,8 @@ type WorkflowStageDef struct {
 	SLADays             *int                 `json:"slaDays,omitempty"`
 	RejectOnSLABreach   *bool                `json:"rejectOnSlaBreach,omitempty"`
 	PinnedLast          *bool                `json:"pinnedLast,omitempty"`
+	VetoApproverIds     []string             `json:"vetoApproverIds"`
+	VetoGroupIds        []string             `json:"vetoGroupIds"`
 }
 
 type WorkflowStageInput struct {
@@ -1444,6 +1448,8 @@ type WorkflowStageInput struct {
 	SLADays             *int                      `json:"slaDays,omitempty"`
 	RejectOnSLABreach   *bool                     `json:"rejectOnSlaBreach,omitempty"`
 	PinnedLast          *bool                     `json:"pinnedLast,omitempty"`
+	VetoApproverIds     []string                  `json:"vetoApproverIds,omitempty"`
+	VetoGroupIds        []string                  `json:"vetoGroupIds,omitempty"`
 }
 
 type WorkflowStatus struct {

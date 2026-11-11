@@ -56,24 +56,6 @@ func (f *fakeAppendixClient) DeleteAppendix(_ context.Context, in *corev1.Delete
 	return &corev1.DeleteAppendixResponse{}, nil
 }
 
-// TestAppendicesForVersion_DerivesLetter verifies that orderIndex 0→"A" and 1→"B".
-func TestAppendicesForVersion_DerivesLetter(t *testing.T) {
-	c := &fakeAppendixClient{list: []*corev1.Appendix{
-		{Id: "a", Title: "Intake", OrderIndex: 0},
-		{Id: "b", Title: "Matrix", OrderIndex: 1},
-	}}
-	out, err := resolvers.AppendicesForVersion(context.Background(), c, "pv1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(out) != 2 {
-		t.Fatalf("expected 2 appendices; got %d", len(out))
-	}
-	if out[0].Letter != "A" || out[1].Letter != "B" {
-		t.Fatalf("letters: %q %q", out[0].Letter, out[1].Letter)
-	}
-}
-
 // TestAddAppendixResolver_ForwardsArgs verifies the mutation forwards args to core.
 func TestAddAppendixResolver_ForwardsArgs(t *testing.T) {
 	c := &fakeAppendixClient{}
@@ -93,30 +75,6 @@ func TestAddAppendixResolver_ForwardsArgs(t *testing.T) {
 	}
 	if got.Letter != "A" {
 		t.Fatalf("letter for orderIndex=0 should be A; got %q", got.Letter)
-	}
-}
-
-// TestPolicyVersionResolver_Appendices verifies that the PolicyVersion field
-// resolver calls AppendicesForVersion (via AppendixClient) and returns the
-// correct slice — proving the resolver path rather than the stale model field.
-func TestPolicyVersionResolver_Appendices(t *testing.T) {
-	c := &fakeAppendixClient{list: []*corev1.Appendix{
-		{Id: "x1", PolicyVersionId: "pv1", Title: "Scope", OrderIndex: 0},
-		{Id: "x2", PolicyVersionId: "pv1", Title: "Glossary", OrderIndex: 1},
-	}}
-	r := &resolvers.Resolver{AppendixClient: c}
-	got, err := r.PolicyVersion().Appendices(context.Background(), &resolvers.PolicyVersion{ID: "pv1"})
-	if err != nil {
-		t.Fatalf("Appendices: %v", err)
-	}
-	if len(got) != 2 {
-		t.Fatalf("expected 2 appendices from field resolver; got %d", len(got))
-	}
-	if got[0].ID != "x1" || got[1].ID != "x2" {
-		t.Fatalf("unexpected IDs: %q %q", got[0].ID, got[1].ID)
-	}
-	if got[0].Letter != "A" || got[1].Letter != "B" {
-		t.Fatalf("letters: %q %q", got[0].Letter, got[1].Letter)
 	}
 }
 

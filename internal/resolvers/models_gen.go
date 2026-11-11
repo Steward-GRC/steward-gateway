@@ -210,6 +210,27 @@ type Appendix struct {
 	Letter          string `json:"letter"`
 }
 
+type AppendixContributor struct {
+	UserID string `json:"userId"`
+	Name   string `json:"name"`
+	Active bool   `json:"active"`
+}
+
+type AppendixVersion struct {
+	Contributors []*AppendixContributor `json:"contributors"`
+	ID           string                 `json:"id"`
+	VersionNo    int                    `json:"versionNo"`
+	State        AppendixState          `json:"state"`
+	Title        string                 `json:"title"`
+	ContentJSON  string                 `json:"contentJson"`
+	CreatedAt    string                 `json:"createdAt"`
+	CreatedBy    string                 `json:"createdBy"`
+	UpdatedAt    string                 `json:"updatedAt"`
+	UpdatedBy    string                 `json:"updatedBy"`
+	PublishedAt  *string                `json:"publishedAt,omitempty"`
+	PublishedBy  *string                `json:"publishedBy,omitempty"`
+}
+
 type AssignmentHistoryEntry struct {
 	ID               string  `json:"id"`
 	AssignmentID     string  `json:"assignmentId"`
@@ -840,6 +861,22 @@ type Policy struct {
 	AckAudienceOverride       []string         `json:"ackAudienceOverride,omitempty"`
 	ViewerCan                 *PolicyViewerCan `json:"viewerCan"`
 	RetiredAt                 *string          `json:"retiredAt,omitempty"`
+}
+
+type PolicyAppendix struct {
+	ID                string                 `json:"id"`
+	PolicyID          string                 `json:"policyId"`
+	Letter            *string                `json:"letter,omitempty"`
+	OrderIndex        int                    `json:"orderIndex"`
+	CreatedAt         string                 `json:"createdAt"`
+	CreatedBy         string                 `json:"createdBy"`
+	RetiredAt         *string                `json:"retiredAt,omitempty"`
+	RetiredBy         *string                `json:"retiredBy,omitempty"`
+	Published         *AppendixVersion       `json:"published,omitempty"`
+	Draft             *AppendixVersion       `json:"draft,omitempty"`
+	Versions          []*AppendixVersion     `json:"versions"`
+	PublishedVersions []*AppendixVersion     `json:"publishedVersions"`
+	Contributors      []*AppendixContributor `json:"contributors"`
 }
 
 type PolicyDiff struct {
@@ -1639,6 +1676,61 @@ func (e *AckTrigger) UnmarshalJSON(b []byte) error {
 }
 
 func (e AckTrigger) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type AppendixState string
+
+const (
+	AppendixStateDraft     AppendixState = "DRAFT"
+	AppendixStatePublished AppendixState = "PUBLISHED"
+)
+
+var AllAppendixState = []AppendixState{
+	AppendixStateDraft,
+	AppendixStatePublished,
+}
+
+func (e AppendixState) IsValid() bool {
+	switch e {
+	case AppendixStateDraft, AppendixStatePublished:
+		return true
+	}
+	return false
+}
+
+func (e AppendixState) String() string {
+	return string(e)
+}
+
+func (e *AppendixState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AppendixState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AppendixState", str)
+	}
+	return nil
+}
+
+func (e AppendixState) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AppendixState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AppendixState) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

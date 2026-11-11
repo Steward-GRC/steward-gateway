@@ -45,6 +45,7 @@ type Resolver struct {
 	PolicyClient            corev1.PolicyServiceClient
 	SettingsClient          corev1.SettingsServiceClient
 	AppendixClient          corev1.AppendixServiceClient
+	PolicyAppendixClient    corev1.PolicyAppendixServiceClient
 	RelationClient          corev1.RelationServiceClient
 	ContactClient           corev1.ContactServiceClient
 	ReferenceClient         corev1.ReferenceServiceClient
@@ -134,6 +135,7 @@ func (r *Resolver) FromClients(c *backend.Clients) *Resolver {
 	r.AppendixClient, r.RelationClient, r.ContactClient = c.Appendix, c.Relation, c.Contact
 	r.ReferenceClient, r.DefinitionLibraryClient, r.AssetClient = c.Reference, c.DefinitionLibrary, c.Asset
 	r.ReviewSnapshotClient, r.ReviewClient = c.ReviewSnapshot, c.Review
+	r.PolicyAppendixClient = c.PolicyAppendix
 	r.WorkflowClient = c.Workflow
 	r.AckClient, r.NotifPrefClient, r.ReportingClient, r.ObligationClient, r.WelcomeClient = c.Ack, c.NotifPref, c.Reporting, c.Obligation, c.Welcome
 	r.AuditClient = c.Audit

@@ -54,6 +54,7 @@ type Clients struct {
 	Policy            corev1.PolicyServiceClient
 	Settings          corev1.SettingsServiceClient
 	Appendix          corev1.AppendixServiceClient
+	PolicyAppendix    corev1.PolicyAppendixServiceClient
 	Relation          corev1.RelationServiceClient
 	Contact           corev1.ContactServiceClient
 	Reference         corev1.ReferenceServiceClient
@@ -115,6 +116,7 @@ func NewClients(conns Conns) (*Clients, error) {
 		Policy:            corev1.NewPolicyServiceClient(core),
 		Settings:          corev1.NewSettingsServiceClient(core),
 		Appendix:          corev1.NewAppendixServiceClient(core),
+		PolicyAppendix:    corev1.NewPolicyAppendixServiceClient(core),
 		Relation:          corev1.NewRelationServiceClient(core),
 		Contact:           corev1.NewContactServiceClient(core),
 		Reference:         corev1.NewReferenceServiceClient(core),

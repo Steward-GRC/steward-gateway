@@ -32,19 +32,6 @@ func appendixFromProto(a *corev1.Appendix) *Appendix {
 	}
 }
 
-// AppendicesForVersion lists a version's appendices with derived letters.
-func AppendicesForVersion(ctx context.Context, client corev1.AppendixServiceClient, policyVersionID string) ([]*Appendix, error) {
-	resp, err := client.ListAppendices(ctx, &corev1.ListAppendicesRequest{PolicyVersionId: policyVersionID})
-	if err != nil {
-		return nil, fmt.Errorf("list appendices: %w", err)
-	}
-	out := make([]*Appendix, 0, len(resp.GetAppendices()))
-	for _, a := range resp.GetAppendices() {
-		out = append(out, appendixFromProto(a))
-	}
-	return out, nil
-}
-
 // AddAppendixResolver adds an appendix to a policy version.
 func AddAppendixResolver(ctx context.Context, client corev1.AppendixServiceClient, policyVersionID, title, contentJSON string) (*Appendix, error) {
 	if _, err := claimsUserID(ctx); err != nil {

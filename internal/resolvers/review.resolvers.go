@@ -31,6 +31,16 @@ func (r *mutationResolver) DeleteReviewThread(ctx context.Context, threadID stri
 	return r.DeleteReviewThreadResolver(ctx, threadID)
 }
 
+// CounterReviewSuggestion is the resolver for the counterReviewSuggestion field.
+func (r *mutationResolver) CounterReviewSuggestion(ctx context.Context, threadID string, text string) (*ReviewThread, error) {
+	return r.CounterReviewSuggestionResolver(ctx, threadID, text)
+}
+
+// CloseReviewSuggestion is the resolver for the closeReviewSuggestion field.
+func (r *mutationResolver) CloseReviewSuggestion(ctx context.Context, threadID string, outcome SuggestionOutcome, reason *string) (*ReviewThread, error) {
+	return r.CloseReviewSuggestionResolver(ctx, threadID, outcome, reason)
+}
+
 // ReviewThreads is the resolver for the reviewThreads field.
 func (r *queryResolver) ReviewThreads(ctx context.Context, policyVersionID string) ([]*ReviewThread, error) {
 	return r.ReviewThreadsResolver(ctx, policyVersionID)

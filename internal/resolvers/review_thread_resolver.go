@@ -192,10 +192,6 @@ func (r *Resolver) AddReviewThreadResolver(ctx context.Context, versionID, quote
 	if strings.TrimSpace(body) == "" {
 		return nil, status.Error(codes.InvalidArgument, "A comment can't be empty.")
 	}
-	if proposed := strings.TrimSpace(derefOrEmpty(suggestedText)); proposed != "" && proposed != strings.TrimSpace(quote) {
-		logger.Debug("add review thread refused: suggestions are not served yet", log.F("policy_version_id", versionID))
-		return nil, status.Error(codes.Unimplemented, "Suggested text is not available yet.")
-	}
 	approver := access.userID
 	if access.side == corev1.ReviewSide_REVIEW_SIDE_AUTHOR {
 		approver = strings.TrimSpace(derefOrEmpty(toUserID))
@@ -208,7 +204,7 @@ func (r *Resolver) AddReviewThreadResolver(ctx context.Context, versionID, quote
 	started := time.Now()
 	resp, err := r.ReviewClient.AddReviewThread(ctx, &corev1.AddReviewThreadRequest{
 		ActorUserId: access.userID, ActorSide: access.side, PolicyVersionId: versionID,
-		Quote: quote, Occurrence: toInt32(occurrence), Body: body, ApproverUserId: approver,
+		Quote: quote, Occurrence: toInt32(occurrence), Body: body, ApproverUserId: approver, SuggestedText: derefOrEmpty(suggestedText),
 	})
 	if err != nil {
 		logger.Error(err, "add review thread: core write failed",
@@ -217,7 +213,7 @@ func (r *Resolver) AddReviewThreadResolver(ctx context.Context, versionID, quote
 	}
 	logger.Info("review thread added",
 		log.F("thread_id", resp.GetThread().GetId()), log.F("policy_version_id", versionID), log.F("side", access.side.String()),
-		log.F("approver", approver), log.F("duration_ms", time.Since(started).Milliseconds()))
+		log.F("approver", approver), log.F("has_suggestion", resp.GetThread().GetSuggestion() != nil), log.F("duration_ms", time.Since(started).Milliseconds()))
 	return reviewThreadFromProto(ctx, newLabelResolver(r.IdentityClient, nil, nil, nil), resp.GetThread(), access.effect), nil
 }
 
@@ -281,12 +277,13 @@ func (r *Resolver) DeleteReviewThreadResolver(ctx context.Context, threadID stri
 
 // reviewThreadFromProto maps a core thread to the GraphQL type: author names
 // from identity (best effort; an unknown author has none), and no message body
-// for a reader whose view of the policy is obfuscated.
+// or suggested text for a reader whose view of the policy is obfuscated.
 func reviewThreadFromProto(ctx context.Context, labels *labelResolver, t *corev1.ReviewThread, effect authz.Effect) *ReviewThread {
 	out := &ReviewThread{
 		ID: t.GetId(), PolicyVersionID: t.GetPolicyVersionId(), Quote: t.GetQuote(), Occurrence: int(t.GetOccurrence()),
 		Resolved: t.GetResolved(), CreatedAt: t.GetCreatedAt().AsTime(), ApproverUserID: t.GetApproverUserId(),
-		Messages: make([]*ReviewMessage, 0, len(t.GetMessages())),
+		Messages:   make([]*ReviewMessage, 0, len(t.GetMessages())),
+		Suggestion: reviewSuggestionFromProto(t.GetSuggestion(), effect),
 	}
 	for _, m := range t.GetMessages() {
 		body := m.GetBody()

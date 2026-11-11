@@ -45,13 +45,15 @@ const (
 // the thread's approver, and only the starter deletes.
 type reviewCore struct {
 	corev1.ReviewServiceClient
-	threads  []*corev1.ReviewThread
-	calls    []string // one entry per call core received: "<rpc> <actor>/<side>"
-	lastAdd  *corev1.AddReviewThreadRequest
-	lastList *corev1.ListReviewThreadsRequest
-	next     int
-	reads    []string // thread ids core was asked to read
-	getErr   error
+	threads     []*corev1.ReviewThread
+	calls       []string // one entry per call core received: "<rpc> <actor>/<side>"
+	lastAdd     *corev1.AddReviewThreadRequest
+	lastList    *corev1.ListReviewThreadsRequest
+	lastCounter *corev1.CounterReviewSuggestionRequest
+	lastClose   *corev1.CloseReviewSuggestionRequest
+	next        int
+	reads       []string // thread ids core was asked to read
+	getErr      error
 }
 
 func (c *reviewCore) thread(id string) *corev1.ReviewThread {
@@ -95,6 +97,10 @@ func (c *reviewCore) AddReviewThread(_ context.Context, in *corev1.AddReviewThre
 		Id: fmt.Sprintf("thread-%d", c.next), PolicyVersionId: in.GetPolicyVersionId(), Quote: in.GetQuote(), Occurrence: in.GetOccurrence(),
 		CreatedAt: timestamppb.New(time.Date(2026, 11, 11, 9, 0, 0, 0, time.UTC)), ApproverUserId: in.GetApproverUserId(), CreatedBy: in.GetActorUserId(),
 		Messages: []*corev1.ReviewMessage{{Id: "m-1", AuthorUserId: in.GetActorUserId(), Body: in.GetBody(), CreatedAt: timestamppb.New(time.Date(2026, 11, 11, 9, 0, 0, 0, time.UTC))}},
+	}
+	if text := strings.TrimSpace(in.GetSuggestedText()); text != "" && text != strings.TrimSpace(in.GetQuote()) {
+		t.Suggestion = &corev1.ReviewSuggestion{Rounds: []*corev1.SuggestionRound{{Seq: 1, Side: in.GetActorSide(), UserId: in.GetActorUserId(), Text: text, CreatedAt: timestamppb.Now()}}}
+		syncSuggestion(t.Suggestion)
 	}
 	c.threads = append(c.threads, t)
 	return &corev1.AddReviewThreadResponse{Thread: t}, nil
@@ -626,19 +632,5 @@ func TestReviewThreads_AnObfuscatedReaderGetsNoMessageBodies(t *testing.T) {
 		if msg.Body != "" {
 			t.Fatalf("reply returned body %q to an obfuscated reader", msg.Body)
 		}
-	}
-}
-
-func TestReviewThreads_SuggestedTextIsRefusedUntilSuggestionsAreServed(t *testing.T) {
-	e := newThrEnv(t)
-	same, other := "seven years", "five years"
-	ctx := thrCtx(t, thrCharlie)
-	if _, err := e.r.AddReviewThreadResolver(ctx, thrVersion, "seven years", 1, "Why?", &same, nil); err != nil {
-		t.Fatalf("suggested text equal to the quote is a plain comment: %v", err)
-	}
-	_, err := e.r.AddReviewThreadResolver(ctx, thrVersion, "seven years", 1, "Why?", &other, nil)
-	wantCode(t, "a real suggestion", err, codes.Unimplemented)
-	if len(e.core.threads) != 1 {
-		t.Fatalf("core stored %d threads, want only the plain comment", len(e.core.threads))
 	}
 }

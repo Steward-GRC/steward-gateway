@@ -60,7 +60,7 @@ func userIsSiteAdmin(u *identityv1.User) bool {
 
 // impersonationToGraphQL projects a BFF ImpersonationState (+ a resolved target name) onto the
 // GraphQL model.
-func impersonationToGraphQL(st *bff.ImpersonationState, targetName string) *ImpersonationSession {
+func impersonationToGraphQL(st *bff.ImpersonationState, targetName, adminName string) *ImpersonationSession {
 	if st == nil {
 		return nil
 	}
@@ -68,9 +68,28 @@ func impersonationToGraphQL(st *bff.ImpersonationState, targetName string) *Impe
 		TargetUserID: st.TargetUserID,
 		TargetName:   targetName,
 		Reason:       st.Reason,
+		ActorUserID:  st.AdminUserID,
+		ActorName:    adminName,
 		StartedAt:    st.StartedAt.UTC().Format(time.RFC3339),
 		ExpiresAt:    st.ExpiresAt.UTC().Format(time.RFC3339),
 	}
+}
+
+// lookupDisplayName reads a user's display name from identity, falling back to the id when the
+// read fails, finds no one, or identity is unavailable. It never fails the caller: the name is for
+// the banner, not a gate.
+func lookupDisplayName(ctx context.Context, users userGetter, id string) string {
+	if users == nil {
+		return id
+	}
+	resp, err := users.GetUser(ctx, &identityv1.GetUserRequest{UserId: id})
+	if err != nil {
+		return id
+	}
+	if n := userDisplayName(resp.GetUser()); n != "" {
+		return n
+	}
+	return id
 }
 
 // StartImpersonationResolver backs the startImpersonation mutation.
@@ -136,10 +155,12 @@ func StartImpersonationResolver(
 		return nil, errcodes.New(errcodes.CodeImpersonationAlreadyActive)
 	}
 
+	adminName := lookupDisplayName(ctx, users, caller)
 	started := now().UTC()
 	st := &bff.ImpersonationState{
 		TargetUserID: userID,
 		AdminUserID:  caller,
+		AdminName:    adminName,
 		Reason:       reason,
 		StartedAt:    started,
 		ExpiresAt:    started.Add(impersonationTTL),
@@ -161,7 +182,7 @@ func StartImpersonationResolver(
 		},
 	})
 
-	return impersonationToGraphQL(st, userDisplayName(u)), nil
+	return impersonationToGraphQL(st, userDisplayName(u), adminName), nil
 }
 
 // StopImpersonationResolver backs the stopImpersonation mutation: it clears any impersonation
@@ -240,7 +261,11 @@ func ImpersonationStatusResolver(
 			}
 		}
 	}
-	return impersonationToGraphQL(st, name), nil
+	adminName := st.AdminName
+	if adminName == "" {
+		adminName = lookupDisplayName(ctx, users, st.AdminUserID)
+	}
+	return impersonationToGraphQL(st, name, adminName), nil
 }
 
 // emitImpersonationEvent emits a lifecycle audit event best-effort: a nil emitter (dev/offline) or

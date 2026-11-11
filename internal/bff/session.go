@@ -61,11 +61,14 @@ type PasskeyRegState struct {
 // admin; Reason is the required justification; StartedAt/ExpiresAt bound the
 // 30-minute window enforced by Active.
 type ImpersonationState struct {
-	TargetUserID string    `json:"target_user_id"`
-	AdminUserID  string    `json:"admin_user_id"`
-	Reason       string    `json:"reason"`
-	StartedAt    time.Time `json:"started_at"`
-	ExpiresAt    time.Time `json:"expires_at"`
+	TargetUserID string `json:"target_user_id"`
+	AdminUserID  string `json:"admin_user_id"`
+	// AdminName is the admin's display name, kept at start so the acting-as
+	// banner can name who is acting. Records saved before it was kept omit it.
+	AdminName string    `json:"admin_name,omitempty"`
+	Reason    string    `json:"reason"`
+	StartedAt time.Time `json:"started_at"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 // Active reports whether the impersonation record is present and not yet

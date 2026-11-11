@@ -453,3 +453,98 @@ func TestStartImpersonation_StoreGetError(t *testing.T) {
 		t.Fatal("expected the store error to surface")
 	}
 }
+
+// ---- the acting administrator ----------------------------------------------
+
+func TestStartImpersonation_NamesTheActingAdmin(t *testing.T) {
+	now := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
+	store := newFakeImpStore()
+	store.sessions[testAdminSID] = bff.Session{UserID: "u-admin"}
+	id := &fakeImpIdentity{users: map[string]*identityv1.User{
+		"u-admin":  enabledUser("u-admin", "Alice Admin", []string{"site-admin"}, false),
+		"u-target": enabledUser("u-target", "Erin Target", []string{"author"}, false),
+	}}
+	ctx := impAdminCtx("u-admin", "site-admin")
+
+	out, err := resolvers.StartImpersonationResolver(ctx, store, testAdminSID, id, &fakeAuditSink{}, fixedNow(now), "u-target", "reproduce")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out.ActorUserID != "u-admin" || out.ActorName != "Alice Admin" {
+		t.Fatalf("actor = %q/%q, want u-admin/Alice Admin", out.ActorUserID, out.ActorName)
+	}
+	if got := store.sessions[testAdminSID].Impersonation.AdminName; got != "Alice Admin" {
+		t.Fatalf("session record AdminName = %q, want Alice Admin", got)
+	}
+}
+
+func TestStartImpersonation_ActorNameFallsBackToID(t *testing.T) {
+	now := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
+	store := newFakeImpStore()
+	store.sessions[testAdminSID] = bff.Session{UserID: "u-admin"}
+	id := &fakeImpIdentity{users: map[string]*identityv1.User{
+		"u-target": enabledUser("u-target", "Erin Target", []string{"author"}, false),
+	}}
+	ctx := impAdminCtx("u-admin", "site-admin")
+
+	out, err := resolvers.StartImpersonationResolver(ctx, store, testAdminSID, id, &fakeAuditSink{}, fixedNow(now), "u-target", "reproduce")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if out.ActorUserID != "u-admin" || out.ActorName != "u-admin" {
+		t.Fatalf("actor = %q/%q, want the id as the name", out.ActorUserID, out.ActorName)
+	}
+}
+
+func TestImpersonationStatus_NamesTheActingAdmin(t *testing.T) {
+	now := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
+	store := newFakeImpStore()
+	store.sessions[testAdminSID] = bff.Session{
+		UserID: "u-admin",
+		Impersonation: &bff.ImpersonationState{
+			TargetUserID: "u-target", AdminUserID: "u-admin", AdminName: "Alice Admin",
+			Reason: "reproduce", StartedAt: now, ExpiresAt: now.Add(30 * time.Minute),
+		},
+	}
+	id := &fakeImpIdentity{users: map[string]*identityv1.User{
+		"u-target": enabledUser("u-target", "Erin Target", []string{"author"}, false),
+	}}
+
+	out, err := resolvers.ImpersonationStatusResolver(context.Background(), store, testAdminSID, id, fixedNow(now.Add(time.Minute)))
+	if err != nil || out == nil {
+		t.Fatalf("status: out=%v err=%v", out, err)
+	}
+	if out.ActorUserID != "u-admin" || out.ActorName != "Alice Admin" {
+		t.Fatalf("actor = %q/%q, want u-admin/Alice Admin", out.ActorUserID, out.ActorName)
+	}
+}
+
+// A record saved before the name was kept still shows who is acting: the name is read from
+// identity, and falls back to the id when that read fails.
+func TestImpersonationStatus_OlderRecordResolvesAdminName(t *testing.T) {
+	now := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
+	mk := func() *fakeImpStore {
+		s := newFakeImpStore()
+		s.sessions[testAdminSID] = bff.Session{
+			UserID: "u-admin",
+			Impersonation: &bff.ImpersonationState{
+				TargetUserID: "u-target", AdminUserID: "u-admin",
+				Reason: "reproduce", StartedAt: now, ExpiresAt: now.Add(30 * time.Minute),
+			},
+		}
+		return s
+	}
+	id := &fakeImpIdentity{users: map[string]*identityv1.User{
+		"u-admin":  enabledUser("u-admin", "Alice Admin", []string{"site-admin"}, false),
+		"u-target": enabledUser("u-target", "Erin Target", []string{"author"}, false),
+	}}
+	out, err := resolvers.ImpersonationStatusResolver(context.Background(), mk(), testAdminSID, id, fixedNow(now))
+	if err != nil || out == nil || out.ActorName != "Alice Admin" {
+		t.Fatalf("resolved: out=%+v err=%v", out, err)
+	}
+
+	out, err = resolvers.ImpersonationStatusResolver(context.Background(), mk(), testAdminSID, nil, fixedNow(now))
+	if err != nil || out == nil || out.ActorName != "u-admin" || out.ActorUserID != "u-admin" {
+		t.Fatalf("fallback: out=%+v err=%v", out, err)
+	}
+}

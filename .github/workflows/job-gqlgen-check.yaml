@@ -3,7 +3,8 @@ name: GraphQL codegen
 # scripts/gqlgen-generate.sh runs gqlgen and puts the licence header back,
 # and any change it makes fails the check.
 #
-# Pull requests only, and not while the PR is a draft.
+# Limited CI mode (org variable CI_MODE=limited, issue #101): skipped on PRs. Pull
+# requests only otherwise, and not while the PR is a draft.
 on:
   pull_request:
     branches: [main]
@@ -16,7 +17,7 @@ permissions:
 jobs:
   gqlgen:
     name: 🧬 GraphQL codegen
-    if: github.event.pull_request.draft == false
+    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false && vars.CI_MODE != 'limited')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

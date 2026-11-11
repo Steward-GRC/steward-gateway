@@ -56,6 +56,11 @@ func (r *mutationResolver) AcceptAIDataNotice(ctx context.Context, noticeVersion
 	return AcceptAIDataNoticeResolver(ctx, r.AIClient, noticeVersion)
 }
 
+// SetAIMonthlyLimit is the resolver for the setAIMonthlyLimit field.
+func (r *mutationResolver) SetAIMonthlyLimit(ctx context.Context, limit int) (int, error) {
+	return SetAIMonthlyLimitResolver(ctx, r.AIClient, limit)
+}
+
 // SetAIRetrievalConfig is the resolver for the setAIRetrievalConfig field.
 func (r *mutationResolver) SetAIRetrievalConfig(ctx context.Context, topK int) (*AIRetrievalConfig, error) {
 	return SetAIRetrievalConfigResolver(ctx, r.AIClient, topK)

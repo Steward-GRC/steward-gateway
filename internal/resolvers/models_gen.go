@@ -24,16 +24,18 @@ type AICitation struct {
 }
 
 type AIConfig struct {
-	Enabled         bool          `json:"enabled"`
-	Provider        *AIProvider   `json:"provider,omitempty"`
-	Model           string        `json:"model"`
-	BaseURL         string        `json:"baseUrl"`
-	Region          string        `json:"region"`
-	Deployment      string        `json:"deployment"`
-	CredentialSet   bool          `json:"credentialSet"`
-	CredentialLast4 string        `json:"credentialLast4"`
-	TopK            int           `json:"topK"`
-	DataNotice      *AIDataNotice `json:"dataNotice"`
+	Enabled         bool        `json:"enabled"`
+	Provider        *AIProvider `json:"provider,omitempty"`
+	Model           string      `json:"model"`
+	BaseURL         string      `json:"baseUrl"`
+	Region          string      `json:"region"`
+	Deployment      string      `json:"deployment"`
+	CredentialSet   bool        `json:"credentialSet"`
+	CredentialLast4 string      `json:"credentialLast4"`
+	TopK            int         `json:"topK"`
+	// Provider requests allowed per calendar month (UTC); 0 means no limit.
+	MonthlyLimit int           `json:"monthlyLimit"`
+	DataNotice   *AIDataNotice `json:"dataNotice"`
 }
 
 type AICredentialStatus struct {

@@ -423,6 +423,8 @@ type AIConfig {
   credentialSet: Boolean!
   credentialLast4: String!
   topK: Int!
+  "Provider requests allowed per calendar month (UTC); 0 means no limit."
+  monthlyLimit: Int!
   dataNotice: AIDataNotice!
 }
 
@@ -528,6 +530,13 @@ extend type Mutation {
   turning the module on is refused until it is accepted.
   """
   acceptAIDataNotice(noticeVersion: String!): AIDataNotice!
+  """
+  Site-admin only. Sets the organisation's monthly limit on provider requests
+  (calendar month, UTC). Pass 0 to remove the limit; a negative value is
+  refused. Returns the limit now in force. The web locks this card on an
+  appliance (diagnostics.appliance), which configures AI on its own box.
+  """
+  setAIMonthlyLimit(limit: Int!): Int!
   """
   Site-admin only. Sets the retrieval candidate count (top_k) the ai service
   pulls before ranking when answering over policy content, in the DB-backed

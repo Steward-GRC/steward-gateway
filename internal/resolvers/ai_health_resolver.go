@@ -7,6 +7,8 @@ import (
 	"context"
 
 	authz "github.com/Steward-GRC/steward-authz"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
 )
@@ -107,6 +109,7 @@ func aiConfigFromProto(c *aiv1.AIConfig) *AIConfig {
 		CredentialSet:   c.GetCredentialSet(),
 		CredentialLast4: c.GetCredentialLast4(),
 		TopK:            int(c.GetTopK()),
+		MonthlyLimit:    int(c.GetMonthlyLimit()),
 		DataNotice:      aiDataNoticeFromProto(c.GetDataNotice()),
 	}
 	if p, ok := aiProviders[c.GetProvider()]; ok {
@@ -183,6 +186,23 @@ func AcceptAIDataNoticeResolver(ctx context.Context, client aiv1.AiServiceClient
 		return nil, err
 	}
 	return aiDataNoticeFromProto(resp.GetDataNotice()), nil
+}
+
+// SetAIMonthlyLimitResolver sets the organisation's monthly limit on provider
+// requests (site admin). Zero removes the limit; a negative value is refused
+// here, before ai is called. It returns the limit ai now holds.
+func SetAIMonthlyLimitResolver(ctx context.Context, client aiv1.AiServiceClient, limit int) (int, error) {
+	if err := requireRole(ctx, string(authz.RoleSiteAdmin)); err != nil {
+		return 0, err
+	}
+	if limit < 0 {
+		return 0, status.Error(codes.InvalidArgument, "the monthly limit cannot be negative; use 0 for no limit")
+	}
+	resp, err := client.SetMonthlyLimit(ctx, &aiv1.SetMonthlyLimitRequest{Limit: int64(limit)})
+	if err != nil {
+		return 0, err
+	}
+	return int(resp.GetLimit()), nil
 }
 
 // AIRetrievalConfigResolver reads the effective retrieval candidate count.

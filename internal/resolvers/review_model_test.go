@@ -255,6 +255,24 @@ func TestReviewParity_EmptySubmitIsFailedPrecondition(t *testing.T) {
 			t.Fatalf("extensions.code = %q, want FailedPrecondition", got)
 		}
 	})
+	t.Run("core's FailedPrecondition passes straight through", func(t *testing.T) {
+		wf := newReviewWorkflow(calls)
+		wf.submitErr = status.Error(codes.FailedPrecondition, "submit refused: the document holds no text")
+		r := &resolvers.Resolver{WorkflowClient: wf, PolicyClient: pc, CategoryClient: gc}
+		_, errs := reviewGQL(t, userCtx(t, reviewAuthor), r, submitMutation)
+		if got := errCodeOf(t, errs); got != "FailedPrecondition" {
+			t.Fatalf("extensions.code = %q, want FailedPrecondition", got)
+		}
+	})
+	t.Run("another failed precondition keeps its code", func(t *testing.T) {
+		wf := newReviewWorkflow(calls)
+		wf.submitErr = status.Error(codes.FailedPrecondition, "version is not a draft")
+		r := &resolvers.Resolver{WorkflowClient: wf, PolicyClient: pc, CategoryClient: gc}
+		_, errs := reviewGQL(t, userCtx(t, reviewAuthor), r, submitMutation)
+		if got := errCodeOf(t, errs); got != "FailedPrecondition" {
+			t.Fatalf("extensions.code = %q, want FailedPrecondition", got)
+		}
+	})
 	t.Run("another invalid argument stays InvalidArgument", func(t *testing.T) {
 		wf := newReviewWorkflow(calls)
 		wf.submitErr = status.Error(codes.InvalidArgument, "policy_version_id is not a uuid")

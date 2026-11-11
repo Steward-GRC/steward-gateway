@@ -13,7 +13,7 @@ The gateway is the only service the web apps call. Its contract is the GraphQL s
 | `GET /query` | session cookie plus `csrfToken` in `connection_init` | GraphQL subscriptions over websocket |
 | `GET /collab/ws/{draftID}` | session cookie, origin allow-list, collab's own token | the co-editing websocket, relayed to collab |
 | `POST /documents/extract`, `POST /documents/validate-url` | session and CSRF | text from an uploaded file; whether a URL can be read (SSRF-guarded) |
-| `POST /api/assets`, `GET /api/assets/{id}` | session; the GET skips CSRF for `<img src>` | editor images through core |
+| `POST /api/assets`, `GET /api/assets/{id}` | session; the GET skips CSRF for `<img src>` | editor images and files through core: any kind the admin setting allows, at most 25 MiB (core caps images at 10 MiB and text at 5 MiB); an image is served inline, any other file only as a download (`Content-Disposition: attachment`, `nosniff`) |
 | `/auth/*`, `/setup/*`, `/maintenance`, `/notify/*` | see [auth.md](auth.md) | sign-in, first-run setup, maintenance state, notification links |
 | `GET /livez`, `GET /readyz` | none | probes ([runbook.md](runbook.md)) |
 
@@ -227,7 +227,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - collab CollabTokenService: IssueToken
 - collab CollabRoomService: FlushDraft, NotifyDraftPublished
 - core TemplateService: CreateTemplate, CreateTemplateVersion, PublishTemplateVersion, GetLatestTemplateVersion, UpdateTemplateVersionSections, ListTemplateVersions, DeleteTemplateVersion, ListTemplates, RetireTemplate, DeleteTemplate, RenameTemplate
-- core AssetService: UploadAsset, GetAsset
+- core AssetService: UploadAsset, GetAsset, GetAssetSettings, SetAssetSettings
 - core RelationService: ListRelatedPolicies, SetRelatedPolicies
 - core DefinitionLibraryService: ListDefinitionEntries, ListPolicyDefinitionCandidates, CreateDefinitionEntry, UpdateDefinitionEntry, DeleteDefinitionEntry, SetDefinitionEntryArchived, ListPolicyDefinitionEntries, SetPolicyDefinitionEntries
 - core AppendixService: ListAppendices, AddAppendix, UpdateAppendix, ReorderAppendices, DeleteAppendix

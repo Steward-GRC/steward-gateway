@@ -25,6 +25,8 @@ import (
 
 // fakeAssetClient is a stub AssetServiceClient.
 type fakeAssetClient struct {
+	// The embedded client answers any call the test does not stub (it is nil, so a call panics).
+	corev1.AssetServiceClient
 	uploadResp *corev1.UploadAssetResponse
 	uploadErr  error
 	getResp    *corev1.GetAssetResponse

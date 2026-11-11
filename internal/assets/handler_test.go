@@ -25,6 +25,7 @@ import (
 
 // fakeAssetClient is a stub AssetServiceClient.
 type fakeAssetClient struct {
+	corev1.AssetServiceClient
 	uploadResp *corev1.UploadAssetResponse
 	uploadErr  error
 	getResp    *corev1.GetAssetResponse

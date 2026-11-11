@@ -14,6 +14,7 @@ The gateway is the only service the web apps call. Its contract is the GraphQL s
 | `GET /collab/ws/{draftID}` | session cookie, origin allow-list, collab's own token | the co-editing websocket, relayed to collab |
 | `POST /documents/extract`, `POST /documents/validate-url` | session and CSRF | text from an uploaded file; whether a URL can be read (SSRF-guarded) |
 | `POST /api/assets`, `GET /api/assets/{id}` | session; the GET skips CSRF for `<img src>` | editor images through core |
+| `GET /api/admin/assets[?unlinked=true]`, `DELETE /api/admin/assets/{id}` | session and CSRF, site admin only | the stored editor files with where each is used, and delete one at once even when a document links to it; the answer lists the documents it was removed from (core writes the audit entry; reporting attachments never appear) |
 | `/auth/*`, `/setup/*`, `/maintenance`, `/notify/*` | see [auth.md](auth.md) | sign-in, first-run setup, maintenance state, notification links |
 | `GET /livez`, `GET /readyz` | none | probes ([runbook.md](runbook.md)) |
 
@@ -192,7 +193,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - collab CollabTokenService: IssueToken
 - collab CollabRoomService: FlushDraft, NotifyDraftPublished
 - core TemplateService: CreateTemplate, CreateTemplateVersion, PublishTemplateVersion, GetLatestTemplateVersion, UpdateTemplateVersionSections, ListTemplateVersions, DeleteTemplateVersion, ListTemplates, RetireTemplate, DeleteTemplate, RenameTemplate
-- core AssetService: UploadAsset, GetAsset
+- core AssetService: UploadAsset, GetAsset, ListAssets, DeleteAsset
 - core RelationService: ListRelatedPolicies, SetRelatedPolicies
 - core DefinitionLibraryService: ListDefinitionEntries, ListPolicyDefinitionCandidates, CreateDefinitionEntry, UpdateDefinitionEntry, DeleteDefinitionEntry, SetDefinitionEntryArchived, ListPolicyDefinitionEntries, SetPolicyDefinitionEntries
 - core AppendixService: ListAppendices, AddAppendix, UpdateAppendix, ReorderAppendices, DeleteAppendix

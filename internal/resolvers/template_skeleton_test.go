@@ -112,7 +112,7 @@ func bobCtx(t *testing.T) context.Context {
 func TestCreatePolicy_StartsFromCategoryDefaultTemplate(t *testing.T) {
 	pc, gc := skeletonEnv("{}", &corev1.GetEffectiveTemplateResponse{TemplateId: "tmpl-1", TemplateVersionId: "tv-1"})
 
-	got, err := resolvers.CreatePolicyWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), "g-cat", "Hello", resolvers.SensitivityStandard, nil, nil)
+	got, err := resolvers.CreatePolicyWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), nil, nil, nil, "g-cat", "Hello", resolvers.SensitivityStandard, nil, nil)
 	if err != nil {
 		t.Fatalf("CreatePolicyWithSkeleton: %v", err)
 	}
@@ -202,7 +202,7 @@ func TestSetPolicyTemplate_FreeformIsForAuthorsOnly(t *testing.T) {
 func TestCreatePolicy_SkeletonFailureKeepsThePolicy(t *testing.T) {
 	pc, gc := skeletonEnv("{}", &corev1.GetEffectiveTemplateResponse{TemplateId: "tmpl-9", TemplateVersionId: "tv-9"})
 
-	got, err := resolvers.CreatePolicyWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), "g-cat", "Hello", resolvers.SensitivityStandard, nil, nil)
+	got, err := resolvers.CreatePolicyWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), nil, nil, nil, "g-cat", "Hello", resolvers.SensitivityStandard, nil, nil)
 	if err != nil || got == nil || got.ID != "new-pol" {
 		t.Fatalf("got %+v, %v", got, err)
 	}

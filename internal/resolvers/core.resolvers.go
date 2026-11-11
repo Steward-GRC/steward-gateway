@@ -100,7 +100,7 @@ func (r *mutationResolver) RenameTemplate(ctx context.Context, id string, name s
 
 // CreatePolicy is the resolver for the createPolicy field.
 func (r *mutationResolver) CreatePolicy(ctx context.Context, homeCategoryID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) (*Policy, error) {
-	return CreatePolicyWithSkeleton(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.TemplateClient, homeCategoryID, title, sensitivity, templateID, documentType)
+	return CreatePolicyWithSkeleton(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.TemplateClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, homeCategoryID, title, sensitivity, templateID, documentType)
 }
 
 // SaveDraft is the resolver for the saveDraft field.

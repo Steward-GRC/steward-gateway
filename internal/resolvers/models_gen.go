@@ -382,22 +382,23 @@ type CaseSummary struct {
 }
 
 type Category struct {
-	ID                  string        `json:"id"`
-	Name                string        `json:"name"`
-	Slug                string        `json:"slug"`
-	ParentID            *string       `json:"parentId,omitempty"`
-	DefaultTemplateID   *string       `json:"defaultTemplateId,omitempty"`
-	DefaultTemplateNone bool          `json:"defaultTemplateNone"`
-	DefaultWorkflowID   *string       `json:"defaultWorkflowId,omitempty"`
-	Owners              []string      `json:"owners"`
-	IdpGroupIds         []string      `json:"idpGroupIds,omitempty"`
-	AckTriggers         AckTrigger    `json:"ackTriggers"`
-	ReviewCadence       ReviewCadence `json:"reviewCadence"`
-	ReviewDate          *string       `json:"reviewDate,omitempty"`
-	ExclusionGroupIds   []string      `json:"exclusionGroupIds,omitempty"`
-	AckEveryone         bool          `json:"ackEveryone"`
-	AckEveryoneSet      bool          `json:"ackEveryoneSet"`
-	Order               int           `json:"order"`
+	ID                    string        `json:"id"`
+	Name                  string        `json:"name"`
+	Slug                  string        `json:"slug"`
+	ParentID              *string       `json:"parentId,omitempty"`
+	DefaultTemplateID     *string       `json:"defaultTemplateId,omitempty"`
+	DefaultTemplateNone   bool          `json:"defaultTemplateNone"`
+	DefaultTemplateLocked bool          `json:"defaultTemplateLocked"`
+	DefaultWorkflowID     *string       `json:"defaultWorkflowId,omitempty"`
+	Owners                []string      `json:"owners"`
+	IdpGroupIds           []string      `json:"idpGroupIds,omitempty"`
+	AckTriggers           AckTrigger    `json:"ackTriggers"`
+	ReviewCadence         ReviewCadence `json:"reviewCadence"`
+	ReviewDate            *string       `json:"reviewDate,omitempty"`
+	ExclusionGroupIds     []string      `json:"exclusionGroupIds,omitempty"`
+	AckEveryone           bool          `json:"ackEveryone"`
+	AckEveryoneSet        bool          `json:"ackEveryoneSet"`
+	Order                 int           `json:"order"`
 }
 
 type CategoryApprovers struct {

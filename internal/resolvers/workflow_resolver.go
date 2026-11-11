@@ -123,17 +123,18 @@ func SubmitWorkflowResolver(
 }
 
 // emptySubmitMarker is what core's refusal of an empty submit says. Core answers
-// InvalidArgument; the mock server answers FailedPrecondition ("A document with
-// no content can't be submitted."), and steward-web is built against the mock.
+// FailedPrecondition (it answered InvalidArgument before steward-core#66), the same code the
+// mock server gives ("A document with no content can't be submitted."), and steward-web is
+// built against the mock.
 const emptySubmitMarker = "holds no text"
 
-// emptySubmitRefusal turns core's refusal of an empty-document submit, as it
-// comes back through workflow, into the FailedPrecondition the mock gives. Any
-// other error, including another InvalidArgument, is nil here and relayed as it
-// is.
+// emptySubmitRefusal turns core's refusal of an empty-document submit, as it comes back through
+// workflow, into the mock's FailedPrecondition. The older InvalidArgument spelling is mapped
+// too. Any other error, including another InvalidArgument or FailedPrecondition, is nil here
+// and relayed as it is.
 func emptySubmitRefusal(err error) error {
 	st, ok := status.FromError(err)
-	if !ok || st.Code() != codes.InvalidArgument || !strings.Contains(st.Message(), emptySubmitMarker) {
+	if !ok || (st.Code() != codes.FailedPrecondition && st.Code() != codes.InvalidArgument) || !strings.Contains(st.Message(), emptySubmitMarker) {
 		return nil
 	}
 	return status.Error(codes.FailedPrecondition, "A document with no content can't be submitted.")

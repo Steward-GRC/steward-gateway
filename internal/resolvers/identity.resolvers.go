@@ -243,7 +243,7 @@ func (r *queryResolver) SearchUsers(ctx context.Context, query string, limit *in
 
 // PoliciesByOwner is the resolver for the policiesByOwner field.
 func (r *queryResolver) PoliciesByOwner(ctx context.Context, userID string, includeRetired *bool) ([]*Policy, error) {
-	return ListPoliciesByOwner(ctx, r.PolicyClient, userID, includeRetired)
+	return ListPoliciesByOwner(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, userID, includeRetired)
 }
 
 // MyDrafts is the resolver for the myDrafts field.

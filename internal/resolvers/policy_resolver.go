@@ -182,6 +182,10 @@ func viewerCanFor(subj authz.Subject, res authz.Resource, readD authz.Effect, ra
 func SetPolicyAck(
 	ctx context.Context,
 	client corev1.PolicyServiceClient,
+	categoryClient corev1.CategoryServiceClient,
+	adminClient identityv1.IdentityAdminServiceClient,
+	identity identityv1.IdentityReadServiceClient,
+	workflow workflowv1.WorkflowServiceClient,
 	policyID string,
 	ackTriggers *AckTrigger,
 	ackAudienceOverride []string,
@@ -201,7 +205,21 @@ func SetPolicyAck(
 	if err != nil {
 		return nil, err
 	}
-	return policyFromProto(resp.Policy), nil
+	p := policyFromProto(resp.Policy)
+	if p == nil {
+		return nil, status.Error(codes.Internal, "core returned no policy")
+	}
+	// Compliance manage is a role, not a read grant, so unlike the edit-gated acts this does not
+	// answer with a policy the caller may not read: its title would leak. The write has already
+	// happened, so say so rather than return an empty success.
+	visible, err := resolvePolicyReadModel(ctx, []*Policy{p}, client, categoryClient, adminClient, identity, workflow)
+	if err != nil {
+		return nil, err
+	}
+	if len(visible) == 0 {
+		return nil, status.Error(codes.Internal, "the changed policy is not visible to the caller")
+	}
+	return visible[0], nil
 }
 
 // versionStatusPrefix is what core's enum names start with; steward-web and the
@@ -357,6 +375,34 @@ func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClien
 		}
 	}
 	return policies, nil
+}
+
+// policyAfterAct is the policy a mutation answers with, through the same read model as the
+// queries. Policy.viewerCan is non-null in the schema, so the bare core projection fails the
+// response with INTERNAL after the write has happened (#149, #152).
+//
+// The caller passed the edit gate to act, but the act can take their access away (a flip to
+// SENSITIVE, or a retire or move out of their sight). The mock server answers an act with the
+// policy and the caller's own viewerCan whatever it now says, so this does too: the read model
+// drops what the caller cannot see, and that case comes back with viewerCan as it stands (read
+// false when the read is denied) and the draft hidden, never as an error.
+func policyAfterAct(ctx context.Context, p *Policy, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient) (*Policy, error) {
+	if p == nil {
+		return nil, status.Error(codes.Internal, "core returned no policy")
+	}
+	visible, err := resolvePolicyReadModel(ctx, []*Policy{p}, client, categoryClient, adminClient, identity, workflow)
+	if err != nil {
+		return nil, err
+	}
+	if len(visible) > 0 {
+		return visible[0], nil
+	}
+	if p.ViewerCan == nil {
+		// Denied before viewerCan was worked out: the caller can do nothing on it.
+		p.ViewerCan = &PolicyViewerCan{}
+	}
+	p.CurrentDraftVersionID = nil
+	return p, nil
 }
 
 // GetPolicy returns one policy. A policy the caller may not see is NotFound,
@@ -657,7 +703,7 @@ func GetEffectiveTemplate(ctx context.Context, client corev1.PolicyServiceClient
 // SetPolicyTemplate sets the policy's template override: none=true is
 // freeform, a template id pins it, neither inherits. Choosing the template is
 // authoring, so it takes the effective-author gate.
-func SetPolicyTemplate(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, policyID string, templateID *string, none bool) (*Policy, error) {
+func SetPolicyTemplate(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, policyID string, templateID *string, none bool) (*Policy, error) {
 	actor, err := authorizeEffectiveAuthor(ctx, client, categoryClient, policyID)
 	if err != nil {
 		return nil, err
@@ -671,12 +717,12 @@ func SetPolicyTemplate(ctx context.Context, client corev1.PolicyServiceClient, c
 	if err != nil {
 		return nil, err
 	}
-	return policyFromProto(resp.GetPolicy()), nil
+	return policyAfterAct(ctx, policyFromProto(resp.GetPolicy()), client, categoryClient, adminClient, identity, workflow)
 }
 
 // SetPolicySensitivity flips a policy's classification in place: no new
 // version and no approval. Anyone who can edit the policy may.
-func SetPolicySensitivity(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, policyID string, sensitivity Sensitivity) (*Policy, error) {
+func SetPolicySensitivity(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, policyID string, sensitivity Sensitivity) (*Policy, error) {
 	actor, err := authorizeEffectiveAuthor(ctx, client, categoryClient, policyID)
 	if err != nil {
 		return nil, err
@@ -689,7 +735,7 @@ func SetPolicySensitivity(ctx context.Context, client corev1.PolicyServiceClient
 	if err != nil {
 		return nil, err
 	}
-	return policyFromProto(resp.GetPolicy()), nil
+	return policyAfterAct(ctx, policyFromProto(resp.GetPolicy()), client, categoryClient, adminClient, identity, workflow)
 }
 
 // CreatePolicy creates a policy in homeCategoryID, owned by the caller. A nil
@@ -832,7 +878,7 @@ const renamePendingApprovalMsg = "A change is pending approval. Resolve or withd
 // place and stages the rename on a draft otherwise. Core can't see a pending
 // approval (workflow holds it), so the gateway refuses the rename while the
 // current draft is in review.
-func RenamePolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, workflowClient workflowv1.WorkflowServiceClient, policyID, newTitle string) (*RenamePolicyResult, error) {
+func RenamePolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflowClient workflowv1.WorkflowServiceClient, policyID, newTitle string) (*RenamePolicyResult, error) {
 	uid, err := authorizeEffectiveAuthor(ctx, client, categoryClient, policyID)
 	if err != nil {
 		return nil, err
@@ -854,8 +900,12 @@ func RenamePolicy(ctx context.Context, client corev1.PolicyServiceClient, catego
 	if err != nil {
 		return nil, err
 	}
+	policy, err := policyAfterAct(ctx, policyFromProto(resp.GetPolicy()), client, categoryClient, adminClient, identity, workflowClient)
+	if err != nil {
+		return nil, err
+	}
 	return &RenamePolicyResult{
-		Policy:         policyFromProto(resp.GetPolicy()),
+		Policy:         policy,
 		Staged:         resp.GetStaged(),
 		DraftVersionID: nilIfEmpty(resp.GetDraftVersionId()),
 	}, nil
@@ -947,7 +997,7 @@ func DeletePolicy(ctx context.Context, client corev1.PolicyServiceClient, catego
 }
 
 // RetirePolicy retires a policy: hidden from listings, history kept.
-func RetirePolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, policyID string) (*Policy, error) {
+func RetirePolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, policyID string) (*Policy, error) {
 	uid, err := authorizeEffectiveAuthor(ctx, client, categoryClient, policyID)
 	if err != nil {
 		return nil, err
@@ -956,11 +1006,11 @@ func RetirePolicy(ctx context.Context, client corev1.PolicyServiceClient, catego
 	if err != nil {
 		return nil, err
 	}
-	return policyFromProto(resp.GetPolicy()), nil
+	return policyAfterAct(ctx, policyFromProto(resp.GetPolicy()), client, categoryClient, adminClient, identity, workflow)
 }
 
 // SetPolicyOwner reassigns a policy's owner. Site admin only.
-func SetPolicyOwner(ctx context.Context, client corev1.PolicyServiceClient, policyID, ownerUserID string) (*Policy, error) {
+func SetPolicyOwner(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, policyID, ownerUserID string) (*Policy, error) {
 	actor, err := requireSiteAdmin(ctx)
 	if err != nil {
 		return nil, err
@@ -971,12 +1021,12 @@ func SetPolicyOwner(ctx context.Context, client corev1.PolicyServiceClient, poli
 	if err != nil {
 		return nil, err
 	}
-	return policyFromProto(resp.GetPolicy()), nil
+	return policyAfterAct(ctx, policyFromProto(resp.GetPolicy()), client, categoryClient, adminClient, identity, workflow)
 }
 
 // MovePolicy moves a policy to another category and renumbers it there. Site
 // admin only.
-func MovePolicy(ctx context.Context, client corev1.PolicyServiceClient, policyID, homeCategoryID string) (*Policy, error) {
+func MovePolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, policyID, homeCategoryID string) (*Policy, error) {
 	actor, err := requireSiteAdmin(ctx)
 	if err != nil {
 		return nil, err
@@ -987,7 +1037,7 @@ func MovePolicy(ctx context.Context, client corev1.PolicyServiceClient, policyID
 	if err != nil {
 		return nil, err
 	}
-	return policyFromProto(resp.GetPolicy()), nil
+	return policyAfterAct(ctx, policyFromProto(resp.GetPolicy()), client, categoryClient, adminClient, identity, workflow)
 }
 
 // ReindexPolicy re-sends the policy's published version to the AI indexer

@@ -51,8 +51,8 @@ func CreatePolicyWithSkeleton(ctx context.Context, lg log.Logger, client corev1.
 
 // SetPolicyTemplateWithSkeleton is SetPolicyTemplate plus the starting headings when core
 // repinned an untouched draft to a template. Freeform (none) writes nothing: core blanks it.
-func SetPolicyTemplateWithSkeleton(ctx context.Context, lg log.Logger, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, templates corev1.TemplateServiceClient, policyID string, templateID *string, none bool) (*Policy, error) {
-	policy, err := SetPolicyTemplate(ctx, client, categoryClient, policyID, templateID, none)
+func SetPolicyTemplateWithSkeleton(ctx context.Context, lg log.Logger, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, templates corev1.TemplateServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, policyID string, templateID *string, none bool) (*Policy, error) {
+	policy, err := SetPolicyTemplate(ctx, client, categoryClient, adminClient, identity, workflow, policyID, templateID, none)
 	if err != nil {
 		return nil, err
 	}

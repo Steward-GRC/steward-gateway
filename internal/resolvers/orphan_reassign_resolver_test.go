@@ -16,7 +16,7 @@ import (
 func TestListPoliciesByOwner_RequiresSiteAdmin(t *testing.T) {
 	client := &fakePolicyClient{}
 	ctx := ctxWithRoles(t, "u-1", []string{"policy-author"})
-	if _, err := resolvers.ListPoliciesByOwner(ctx, client, "victim", nil); status.Code(err) != codes.PermissionDenied {
+	if _, err := resolvers.ListPoliciesByOwner(ctx, client, nil, nil, nil, nil, "victim", nil); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("want PermissionDenied, got %v", err)
 	}
 	if client.lastListByOwner != nil {
@@ -32,7 +32,7 @@ func TestListPoliciesByOwner_MapsRows(t *testing.T) {
 		},
 	}}
 	ctx := ctxWithRoles(t, "admin-1", []string{"site-admin"})
-	out, err := resolvers.ListPoliciesByOwner(ctx, client, "victim", new(true))
+	out, err := resolvers.ListPoliciesByOwner(ctx, client, nil, nil, nil, nil, "victim", new(true))
 	if err != nil {
 		t.Fatalf("ListPoliciesByOwner: %v", err)
 	}

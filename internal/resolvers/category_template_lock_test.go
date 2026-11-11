@@ -241,7 +241,7 @@ func TestSetPolicyTemplate_LockedCategory(t *testing.T) {
 			if tc.refused {
 				lp.setErr = errTemplateLocked(t)
 			}
-			_, err := resolvers.SetPolicyTemplate(ctxWithRoles(t, "bob", []string{"site-admin"}), lp, gc, "pol", tc.tmpl, tc.none)
+			_, err := resolvers.SetPolicyTemplate(ctxWithRoles(t, "bob", []string{"site-admin"}), lp, gc, nil, nil, nil, "pol", tc.tmpl, tc.none)
 			if tc.refused && status.Code(err) != codes.FailedPrecondition {
 				t.Fatalf("want FailedPrecondition, got %v", err)
 			}
@@ -260,7 +260,7 @@ func TestSetPolicyTemplate_LockedCategory(t *testing.T) {
 func TestSetPolicyTemplate_LockedCategory_InheritIsForwarded(t *testing.T) {
 	pc, gc := draftPointerEnv(nil)
 	lp := &lockPolicyClient{fakePolicyClient: pc}
-	if _, err := resolvers.SetPolicyTemplate(ctxWithRoles(t, "bob", []string{"site-admin"}), lp, gc, "pol", nil, false); err != nil {
+	if _, err := resolvers.SetPolicyTemplate(ctxWithRoles(t, "bob", []string{"site-admin"}), lp, gc, nil, nil, nil, "pol", nil, false); err != nil {
 		t.Fatalf("SetPolicyTemplate: %v", err)
 	}
 	if pc.lastSetTmpl.GetNone() || pc.lastSetTmpl.GetTemplateId() != "" {

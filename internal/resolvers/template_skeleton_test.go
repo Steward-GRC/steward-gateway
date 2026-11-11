@@ -135,7 +135,7 @@ func TestCreatePolicy_StartsFromCategoryDefaultTemplate(t *testing.T) {
 func TestSetPolicyTemplate_FreeformWritesNoSkeleton(t *testing.T) {
 	pc, gc := skeletonEnv("{}", &corev1.GetEffectiveTemplateResponse{None: true})
 
-	got, err := resolvers.SetPolicyTemplateWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), "pol", nil, true)
+	got, err := resolvers.SetPolicyTemplateWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), nil, nil, nil, "pol", nil, true)
 	if err != nil {
 		t.Fatalf("freeform: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestSetPolicyTemplate_WrittenDraftKeepsItsText(t *testing.T) {
 	pc, gc := skeletonEnv(written, &corev1.GetEffectiveTemplateResponse{TemplateId: "tmpl-3", TemplateVersionId: "tv-3"})
 	tmpl := "tmpl-3"
 
-	if _, err := resolvers.SetPolicyTemplateWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), "pol", &tmpl, false); err != nil {
+	if _, err := resolvers.SetPolicyTemplateWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), nil, nil, nil, "pol", &tmpl, false); err != nil {
 		t.Fatalf("SetPolicyTemplateWithSkeleton: %v", err)
 	}
 	if len(pc.saves) != 0 {
@@ -169,7 +169,7 @@ func TestSetPolicyTemplate_UntouchedDraftStartsFromChosenTemplate(t *testing.T) 
 	pc, gc := skeletonEnv("{}", &corev1.GetEffectiveTemplateResponse{TemplateId: "tmpl-3", TemplateVersionId: "tv-3"})
 	tmpl := "tmpl-3"
 
-	got, err := resolvers.SetPolicyTemplateWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), "pol", &tmpl, false)
+	got, err := resolvers.SetPolicyTemplateWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), nil, nil, nil, "pol", &tmpl, false)
 	if err != nil {
 		t.Fatalf("SetPolicyTemplateWithSkeleton: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestSetPolicyTemplate_FreeformIsForAuthorsOnly(t *testing.T) {
 	pc, gc := skeletonEnv("{}", &corev1.GetEffectiveTemplateResponse{None: true})
 	erin := ctxWithStubClaims(t, principal.Static{UserIDValue: "erin", RolesValue: []string{"reader"}})
 
-	_, err := resolvers.SetPolicyTemplateWithSkeleton(erin, log.Nop(), pc, gc, skeletonTemplates(), "pol", nil, true)
+	_, err := resolvers.SetPolicyTemplateWithSkeleton(erin, log.Nop(), pc, gc, skeletonTemplates(), nil, nil, nil, "pol", nil, true)
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("want PermissionDenied, got %v", err)
 	}

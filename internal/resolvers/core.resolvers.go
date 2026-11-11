@@ -110,7 +110,7 @@ func (r *mutationResolver) SaveDraft(ctx context.Context, policyID string, conte
 
 // SetPolicyTemplate is the resolver for the setPolicyTemplate field.
 func (r *mutationResolver) SetPolicyTemplate(ctx context.Context, policyID string, templateID *string, none bool) (*Policy, error) {
-	return SetPolicyTemplateWithSkeleton(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.TemplateClient, policyID, templateID, none)
+	return SetPolicyTemplateWithSkeleton(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.TemplateClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, policyID, templateID, none)
 }
 
 // PublishDraft is the resolver for the publishDraft field.
@@ -130,27 +130,27 @@ func (r *mutationResolver) DeletePolicy(ctx context.Context, id string) (bool, e
 
 // RetirePolicy is the resolver for the retirePolicy field.
 func (r *mutationResolver) RetirePolicy(ctx context.Context, id string) (*Policy, error) {
-	return RetirePolicy(ctx, r.PolicyClient, r.CategoryClient, id)
+	return RetirePolicy(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, id)
 }
 
 // SetPolicyOwner is the resolver for the setPolicyOwner field.
 func (r *mutationResolver) SetPolicyOwner(ctx context.Context, policyID string, ownerUserID string) (*Policy, error) {
-	return SetPolicyOwner(ctx, r.PolicyClient, policyID, ownerUserID)
+	return SetPolicyOwner(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, policyID, ownerUserID)
 }
 
 // MovePolicy is the resolver for the movePolicy field.
 func (r *mutationResolver) MovePolicy(ctx context.Context, policyID string, homeCategoryID string) (*Policy, error) {
-	return MovePolicy(ctx, r.PolicyClient, policyID, homeCategoryID)
+	return MovePolicy(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, policyID, homeCategoryID)
 }
 
 // SetPolicySensitivity is the resolver for the setPolicySensitivity field.
 func (r *mutationResolver) SetPolicySensitivity(ctx context.Context, policyID string, sensitivity Sensitivity) (*Policy, error) {
-	return SetPolicySensitivity(ctx, r.PolicyClient, r.CategoryClient, policyID, sensitivity)
+	return SetPolicySensitivity(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, policyID, sensitivity)
 }
 
 // RenamePolicy is the resolver for the renamePolicy field.
 func (r *mutationResolver) RenamePolicy(ctx context.Context, policyID string, newTitle string) (*RenamePolicyResult, error) {
-	return RenamePolicy(ctx, r.PolicyClient, r.CategoryClient, r.WorkflowClient, policyID, newTitle)
+	return RenamePolicy(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, policyID, newTitle)
 }
 
 // BreakGlassReveal is the resolver for the breakGlassReveal field.
@@ -175,7 +175,7 @@ func (r *mutationResolver) SetCategoryGovernance(ctx context.Context, id string,
 
 // SetPolicyAck is the resolver for the setPolicyAck field.
 func (r *mutationResolver) SetPolicyAck(ctx context.Context, policyID string, ackTriggers *AckTrigger, ackAudienceOverride []string) (*Policy, error) {
-	return SetPolicyAck(ctx, r.PolicyClient, policyID, ackTriggers, ackAudienceOverride)
+	return SetPolicyAck(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, policyID, ackTriggers, ackAudienceOverride)
 }
 
 // SetGlobalSettings is the resolver for the setGlobalSettings field.

@@ -163,6 +163,11 @@ func (f *fakePolicyClient) RetirePolicy(_ context.Context, in *corev1.RetirePoli
 	if f.retireResp != nil {
 		return f.retireResp, nil
 	}
+	if p, ok := f.policies[in.PolicyId]; ok {
+		// Core answers with the whole stored policy, category and number included.
+		p.RetiredAt = "2026-08-25T00:00:00Z"
+		return &corev1.RetirePolicyResponse{Policy: p}, nil
+	}
 	return &corev1.RetirePolicyResponse{Policy: &corev1.Policy{Id: in.PolicyId, RetiredAt: "2026-08-25T00:00:00Z"}}, nil
 }
 
@@ -171,12 +176,20 @@ func (f *fakePolicyClient) SetPolicyOwner(_ context.Context, in *corev1.SetPolic
 	if f.setOwnerResp != nil {
 		return f.setOwnerResp, nil
 	}
+	if p, ok := f.policies[in.PolicyId]; ok {
+		p.OwnerUserId = in.OwnerUserId
+		return &corev1.SetPolicyOwnerResponse{Policy: p}, nil
+	}
 	return &corev1.SetPolicyOwnerResponse{Policy: &corev1.Policy{Id: in.PolicyId, OwnerUserId: in.OwnerUserId}}, nil
 }
 
 func (f *fakePolicyClient) SetPolicySensitivity(_ context.Context, in *corev1.SetPolicySensitivityRequest, _ ...grpc.CallOption) (*corev1.SetPolicySensitivityResponse, error) {
 	f.lastSetSens = in
 	// Echo the flipped classification back the same way core does.
+	if p, ok := f.policies[in.PolicyId]; ok {
+		p.Sensitivity = in.Sensitivity
+		return &corev1.SetPolicySensitivityResponse{Policy: p}, nil
+	}
 	return &corev1.SetPolicySensitivityResponse{
 		Policy: &corev1.Policy{Id: in.PolicyId, Sensitivity: in.Sensitivity},
 	}, nil
@@ -184,6 +197,10 @@ func (f *fakePolicyClient) SetPolicySensitivity(_ context.Context, in *corev1.Se
 
 func (f *fakePolicyClient) SetPolicyTemplate(_ context.Context, in *corev1.SetPolicyTemplateRequest, _ ...grpc.CallOption) (*corev1.SetPolicyTemplateResponse, error) {
 	f.lastSetTmpl = in
+	if p, ok := f.policies[in.PolicyId]; ok {
+		p.TemplateId, p.TemplateNone = in.TemplateId, in.None
+		return &corev1.SetPolicyTemplateResponse{Policy: p}, nil
+	}
 	return &corev1.SetPolicyTemplateResponse{Policy: &corev1.Policy{
 		Id:           in.PolicyId,
 		TemplateId:   in.TemplateId,
@@ -195,6 +212,10 @@ func (f *fakePolicyClient) MovePolicy(_ context.Context, in *corev1.MovePolicyRe
 	f.lastMove = in
 	if f.moveResp != nil {
 		return f.moveResp, nil
+	}
+	if p, ok := f.policies[in.PolicyId]; ok {
+		p.HomeCategoryId = in.HomeCategoryId
+		return &corev1.MovePolicyResponse{Policy: p}, nil
 	}
 	return &corev1.MovePolicyResponse{Policy: &corev1.Policy{Id: in.PolicyId, HomeCategoryId: in.HomeCategoryId, Number: "POL-FIN-000001"}}, nil
 }
@@ -222,6 +243,10 @@ func (f *fakePolicyClient) RenamePolicy(_ context.Context, in *corev1.RenamePoli
 		return f.renameResp, nil
 	}
 	// Default: echo the policy with the new title, in-place (staged=false).
+	if p, ok := f.policies[in.PolicyId]; ok {
+		p.Title = in.NewTitle
+		return &corev1.RenamePolicyResponse{Policy: p}, nil
+	}
 	return &corev1.RenamePolicyResponse{
 		Policy: &corev1.Policy{Id: in.PolicyId, Title: in.NewTitle},
 		Staged: false,
@@ -253,15 +278,21 @@ func TestSetPolicyAck_WithAckTrigger(t *testing.T) {
 	client := &fakePolicyClient{
 		policies: map[string]*corev1.Policy{
 			"pol-1": {
-				Id:             "pol-1",
-				HomeCategoryId: "g1",
-				Number:         "POL-001",
-				Title:          "Test Policy",
+				Id:                        "pol-1",
+				HomeCategoryId:            "g1",
+				Number:                    "POL-001",
+				Title:                     "Test Policy",
+				CurrentPublishedVersionId: "ver-1",
 			},
 		},
 	}
+	// A compliance manager is not a reader by role; the category lets everyone read.
+	gc := newRaciReadClient(
+		map[string]*corev1.Category{"g1": {Id: "g1", Name: "G1"}},
+		map[string][]*corev1.CategoryRule{"g1": {allowEveryoneRule()}},
+	)
 
-	p, err := resolvers.SetPolicyAck(ctxWithRoles(t, "u", []string{"compliance-admin"}), client, "pol-1", new(resolvers.AckTriggerOnPublish), nil)
+	p, err := resolvers.SetPolicyAck(ctxWithRoles(t, "u", []string{"compliance-admin"}), client, gc, nil, nil, nil, "pol-1", new(resolvers.AckTriggerOnPublish), nil)
 	if err != nil {
 		t.Fatalf("SetPolicyAck: %v", err)
 	}
@@ -309,7 +340,7 @@ func TestSetPolicyAck_NilAckTrigger(t *testing.T) {
 	}
 
 	override := []string{"grp-a", "grp-b"}
-	p, err := resolvers.SetPolicyAck(ctxWithRoles(t, "u", []string{"site-admin"}), client, "pol-2", nil, override)
+	p, err := resolvers.SetPolicyAck(ctxWithRoles(t, "u", []string{"site-admin"}), client, nil, nil, nil, nil, "pol-2", nil, override)
 	if err != nil {
 		t.Fatalf("SetPolicyAck: %v", err)
 	}
@@ -823,7 +854,7 @@ func TestRetirePolicy_NoAuthorGrantDenied(t *testing.T) {
 	pc, gc := coAuthMatrixEnv("creator-other", nil,
 		[]*corev1.CategoryRule{authorRule("someone-else", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-1", RolesValue: []string{"policy-author"}})
-	_, err := resolvers.RetirePolicy(ctx, pc, gc, "pol")
+	_, err := resolvers.RetirePolicy(ctx, pc, gc, nil, nil, nil, "pol")
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("want PermissionDenied, got %v", err)
 	}
@@ -840,7 +871,7 @@ func TestRetirePolicy_CategoryAuthorAllowed(t *testing.T) {
 	pc, gc := coAuthMatrixEnv("creator-other", nil,
 		[]*corev1.CategoryRule{authorRule("coauthor-u", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "coauthor-u", RolesValue: []string{"reader"}})
-	p, err := resolvers.RetirePolicy(ctx, pc, gc, "pol")
+	p, err := resolvers.RetirePolicy(ctx, pc, gc, nil, nil, nil, "pol")
 	if err != nil {
 		t.Fatalf("expected category author to be allowed to retire, got %v", err)
 	}
@@ -866,7 +897,7 @@ func TestRetirePolicy_PrimaryAuthorAllowed(t *testing.T) {
 	client := &fakePolicyClient{policies: map[string]*corev1.Policy{
 		"pol-9": {Id: "pol-9", OwnerUserId: "user-42"},
 	}}
-	p, err := resolvers.RetirePolicy(ctxWithRoles(t, "user-42", []string{"policy-author"}), client, nil, "pol-9")
+	p, err := resolvers.RetirePolicy(ctxWithRoles(t, "user-42", []string{"policy-author"}), client, nil, nil, nil, nil, "pol-9")
 	if err != nil {
 		t.Fatalf("RetirePolicy: %v", err)
 	}
@@ -891,7 +922,7 @@ func TestRetirePolicy_SiteAdminAllowed(t *testing.T) {
 	client := &fakePolicyClient{policies: map[string]*corev1.Policy{
 		"pol-9": {Id: "pol-9"},
 	}}
-	p, err := resolvers.RetirePolicy(ctxWithRoles(t, "admin-42", []string{"site-admin"}), client, nil, "pol-9")
+	p, err := resolvers.RetirePolicy(ctxWithRoles(t, "admin-42", []string{"site-admin"}), client, nil, nil, nil, nil, "pol-9")
 	if err != nil {
 		t.Fatalf("RetirePolicy: %v", err)
 	}
@@ -910,7 +941,7 @@ func TestRetirePolicy_SiteAdminAllowed(t *testing.T) {
 // never reaches core.
 func TestRetirePolicy_Unauthenticated(t *testing.T) {
 	client := &fakePolicyClient{}
-	if _, err := resolvers.RetirePolicy(context.Background(), client, nil, "pol-9"); err == nil {
+	if _, err := resolvers.RetirePolicy(context.Background(), client, nil, nil, nil, nil, "pol-9"); err == nil {
 		t.Fatal("expected error with no authenticated user")
 	}
 	if client.lastRetire != nil {
@@ -923,7 +954,7 @@ func TestRetirePolicy_Unauthenticated(t *testing.T) {
 func TestSetPolicyOwner_RequiresSiteAdmin(t *testing.T) {
 	client := &fakePolicyClient{}
 	ctx := ctxWithRoles(t, "u-1", []string{"policy-author"})
-	_, err := resolvers.SetPolicyOwner(ctx, client, "pol-1", "owner-1")
+	_, err := resolvers.SetPolicyOwner(ctx, client, nil, nil, nil, nil, "pol-1", "owner-1")
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("want PermissionDenied, got %v", err)
 	}
@@ -939,7 +970,7 @@ func TestSetPolicyOwner_HappyPath(t *testing.T) {
 		setOwnerResp: &corev1.SetPolicyOwnerResponse{Policy: &corev1.Policy{Id: "pol-1", OwnerUserId: "new-owner"}},
 	}
 	ctx := ctxWithRoles(t, "admin-1", []string{"site-admin"})
-	out, err := resolvers.SetPolicyOwner(ctx, client, "pol-1", "new-owner")
+	out, err := resolvers.SetPolicyOwner(ctx, client, nil, nil, nil, nil, "pol-1", "new-owner")
 	if err != nil {
 		t.Fatalf("SetPolicyOwner: %v", err)
 	}
@@ -955,7 +986,7 @@ func TestSetPolicyOwner_HappyPath(t *testing.T) {
 func TestMovePolicy_RequiresSiteAdmin(t *testing.T) {
 	client := &fakePolicyClient{}
 	ctx := ctxWithRoles(t, "u-1", []string{"policy-author"})
-	_, err := resolvers.MovePolicy(ctx, client, "pol-1", "grp-1")
+	_, err := resolvers.MovePolicy(ctx, client, nil, nil, nil, nil, "pol-1", "grp-1")
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("want PermissionDenied, got %v", err)
 	}
@@ -971,7 +1002,7 @@ func TestMovePolicy_HappyPath(t *testing.T) {
 		moveResp: &corev1.MovePolicyResponse{Policy: &corev1.Policy{Id: "pol-1", HomeCategoryId: "grp-2", Number: "POL-FIN-000004"}},
 	}
 	ctx := ctxWithRoles(t, "admin-1", []string{"site-admin"})
-	out, err := resolvers.MovePolicy(ctx, client, "pol-1", "grp-2")
+	out, err := resolvers.MovePolicy(ctx, client, nil, nil, nil, nil, "pol-1", "grp-2")
 	if err != nil {
 		t.Fatalf("MovePolicy: %v", err)
 	}
@@ -1123,7 +1154,7 @@ func TestSetPolicyTemplate_EditGate(t *testing.T) {
 		ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "stranger-u", RolesValue: []string{"reader"}})
 
 		tmpl := "tmpl-9"
-		_, err := resolvers.SetPolicyTemplate(ctx, pc, gc, "pol", &tmpl, false)
+		_, err := resolvers.SetPolicyTemplate(ctx, pc, gc, nil, nil, nil, "pol", &tmpl, false)
 		if status.Code(err) != codes.PermissionDenied {
 			t.Fatalf("non-editor must be denied; want PermissionDenied, got %v", err)
 		}
@@ -1137,7 +1168,7 @@ func TestSetPolicyTemplate_EditGate(t *testing.T) {
 		ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "editor-u", RolesValue: []string{"reader"}})
 
 		tmpl := "tmpl-9"
-		got, err := resolvers.SetPolicyTemplate(ctx, pc, gc, "pol", &tmpl, false)
+		got, err := resolvers.SetPolicyTemplate(ctx, pc, gc, nil, nil, nil, "pol", &tmpl, false)
 		if err != nil {
 			t.Fatalf("editor SetPolicyTemplate: %v", err)
 		}

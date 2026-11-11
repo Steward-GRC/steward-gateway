@@ -6,6 +6,7 @@ package resolvers
 import (
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/Bugs5382/go-apperr/apperrgrpc"
@@ -95,7 +96,7 @@ func policyFromProto(p *corev1.Policy) *Policy {
 	}
 	if p.CurrentVersionStatus != corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_UNSPECIFIED {
 		no := int(p.CurrentVersionNo)
-		status := p.CurrentVersionStatus.String()
+		status := versionStatusName(p.CurrentVersionStatus)
 		gql.CurrentVersionNo = &no
 		gql.CurrentVersionStatus = &status
 	}
@@ -203,9 +204,26 @@ func SetPolicyAck(
 	return policyFromProto(resp.Policy), nil
 }
 
-// draftPolicyVersionStatus is PolicyVersion.status for a draft: only an editor
-// (or the holder of a pending approval seat on it, #44) may see a draft version.
-var draftPolicyVersionStatus = corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_DRAFT.String()
+// versionStatusPrefix is what core's enum names start with; steward-web and the
+// mock server spell a version's status without it (DRAFT, IN_REVIEW, REJECTED,
+// PUBLISHED, SUPERSEDED, ARCHIVED).
+const versionStatusPrefix = "POLICY_VERSION_STATUS_"
+
+// versionStatusName is a version's status as the GraphQL contract spells it.
+func versionStatusName(s corev1.PolicyVersionStatus) string {
+	return strings.TrimPrefix(s.String(), versionStatusPrefix)
+}
+
+// unpublishedVersionStatuses are the PolicyVersion.status values of a version
+// that was never published: a draft, one submitted for approval (the same text,
+// still the draft slot's) and one the approvers turned down. Only an editor (or
+// the holder of a pending approval seat on it, #44) may see such a version, so
+// submitting a draft does not open its text to every reader (#104).
+var unpublishedVersionStatuses = map[string]bool{
+	versionStatusName(corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_DRAFT):     true,
+	versionStatusName(corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_IN_REVIEW): true,
+	versionStatusName(corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_REJECTED):  true,
+}
 
 func policyVersionFromProto(v *corev1.PolicyVersion) *PolicyVersion {
 	if v == nil {
@@ -215,7 +233,7 @@ func policyVersionFromProto(v *corev1.PolicyVersion) *PolicyVersion {
 		ID:                v.Id,
 		PolicyID:          v.PolicyId,
 		VersionNo:         int(v.VersionNo),
-		Status:            v.Status.String(),
+		Status:            versionStatusName(v.Status),
 		TemplateVersionID: v.TemplateVersionId,
 		ContentJSON:       v.ContentJson,
 	}
@@ -487,7 +505,8 @@ type versionRead struct {
 }
 
 // resolveVersionRead loads a version and its policy's read decision. It fails
-// closed: an unknown version, a draft for anyone but an editor or a holder of
+// closed: an unknown version, a draft (or a version in review or rejected) for
+// anyone but an editor or a holder of
 // a pending approval seat on it (#44), or a denied read is NotFound, so the
 // caller serves nothing and asks no backend for it.
 func resolveVersionRead(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, seats *pendingSeats, id string) (versionRead, error) {
@@ -500,7 +519,7 @@ func resolveVersionRead(ctx context.Context, client corev1.PolicyServiceClient, 
 	if v == nil {
 		return versionRead{}, notFound
 	}
-	if v.Status == draftPolicyVersionStatus {
+	if unpublishedVersionStatuses[v.Status] {
 		if _, aerr := authorizeEffectiveAuthor(ctx, client, categoryClient, v.PolicyID); aerr != nil && !seats.holds(ctx, v.ID) {
 			return versionRead{}, notFound
 		}
@@ -863,16 +882,55 @@ func approvalPending(ctx context.Context, client workflowv1.WorkflowServiceClien
 	return resp.GetStatus() == workflowv1.ApprovalStatus_APPROVAL_STATUS_IN_REVIEW
 }
 
-// DiscardDraft deletes the policy's working draft; published versions stay.
-func DiscardDraft(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, policyID string) (bool, error) {
+// DiscardDraft deletes the policy's working draft; published versions stay. A
+// draft that is in review has an open run with approvers holding tasks on it, so
+// the run is withdrawn first, as the mock server's discardDraft ends it (#104).
+// When the run cannot be withdrawn the draft is kept, so no task is left on a
+// version that no longer exists. A policy without a workflow client, a draft
+// with no run and a run that has ended are discarded as before.
+func DiscardDraft(ctx context.Context, lg log.Logger, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, workflowClient workflowv1.WorkflowServiceClient, policyID string) (bool, error) {
 	uid, err := authorizeEffectiveAuthor(ctx, client, categoryClient, policyID)
 	if err != nil {
 		return false, err
+	}
+	if workflowClient != nil {
+		if draftID := currentDraftVersionID(ctx, client, policyID); draftID != "" {
+			open, serr := openRunOf(ctx, workflowClient, draftID)
+			if serr != nil {
+				lg.Error(serr, "discard draft: could not read the draft's run, keeping the draft", log.F("policy_id", policyID), log.F("policy_version_id", draftID))
+				return false, serr
+			}
+			if open {
+				lg.Info("discard draft: withdrawing the open run first", log.F("policy_id", policyID), log.F("policy_version_id", draftID))
+				if _, werr := workflowClient.Signal(ctx, &workflowv1.SignalRequest{
+					PolicyVersionId: draftID,
+					Signal:          workflowv1.SignalType_SIGNAL_TYPE_WITHDRAW,
+					ActorUserId:     uid,
+				}); werr != nil {
+					lg.Error(werr, "discard draft: withdraw failed, keeping the draft", log.F("policy_id", policyID), log.F("policy_version_id", draftID))
+					return false, werr
+				}
+			}
+		}
 	}
 	if _, err := client.DiscardDraft(ctx, &corev1.DiscardDraftRequest{PolicyId: policyID, ActorUserId: uid}); err != nil {
 		return false, err
 	}
 	return true, nil
+}
+
+// openRunOf reports whether the version has a run that is in review. A version
+// workflow has no run for is not in review; any other failure is returned, so a
+// discard does not go ahead blind on a run it could not see.
+func openRunOf(ctx context.Context, client workflowv1.WorkflowServiceClient, policyVersionID string) (bool, error) {
+	resp, err := client.GetStatus(ctx, &workflowv1.GetStatusRequest{PolicyVersionId: policyVersionID})
+	if err != nil {
+		if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return resp.GetStatus() == workflowv1.ApprovalStatus_APPROVAL_STATUS_IN_REVIEW, nil
 }
 
 // DeletePolicy hard-deletes a never-published policy; core refuses once it has

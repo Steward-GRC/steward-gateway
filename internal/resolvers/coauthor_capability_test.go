@@ -7,6 +7,7 @@ import (
 	"context"
 	"testing"
 
+	log "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
@@ -320,7 +321,7 @@ func TestDiscardDraft_PrimaryCoAuthorAllowed(t *testing.T) {
 	pc, gc := coAuthMatrixEnv(bobID, nil, nil) // Bob is the primary author
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: bobID})
 
-	ok, err := resolvers.DiscardDraft(ctx, pc, gc, "pol")
+	ok, err := resolvers.DiscardDraft(ctx, log.Nop(), pc, gc, nil, "pol")
 	if err != nil || !ok {
 		t.Fatalf("primary-author co-author must discard their own draft; ok=%v err=%v", ok, err)
 	}

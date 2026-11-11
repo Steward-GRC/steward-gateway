@@ -115,7 +115,7 @@ func (r *mutationResolver) PublishDraft(ctx context.Context, policyID string) (*
 
 // DiscardDraft is the resolver for the discardDraft field.
 func (r *mutationResolver) DiscardDraft(ctx context.Context, policyID string) (bool, error) {
-	return DiscardDraft(ctx, r.PolicyClient, r.CategoryClient, policyID)
+	return DiscardDraft(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.WorkflowClient, policyID)
 }
 
 // DeletePolicy is the resolver for the deletePolicy field.

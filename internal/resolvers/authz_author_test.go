@@ -6,6 +6,7 @@ package resolvers_test
 import (
 	"testing"
 
+	log "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
@@ -223,7 +224,7 @@ func TestCoAuthoring_DiscardDraftMatrix(t *testing.T) {
 			}
 			pc, gc := coAuthMatrixEnv(primary, tc.owners, tc.rules)
 			ctx := ctxWithStubClaims(t, tc.claims)
-			_, err := resolvers.DiscardDraft(ctx, pc, gc, "pol")
+			_, err := resolvers.DiscardDraft(ctx, log.Nop(), pc, gc, nil, "pol")
 			if tc.wantAllow {
 				if err != nil {
 					t.Fatalf("expected discard allowed, got %v", err)

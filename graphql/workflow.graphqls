@@ -72,6 +72,16 @@ type StageUnitProgress {
   status: String!    # SATISFIED | PENDING | REJECTED
 }
 
+# One stage's due date and approval rule, with the individual approvals it has
+# and needs. Approve-as-group units keep their own tally in StageUnitProgress.
+type StageProgress {
+  dueAt: String      # RFC3339; null until the stage is entered
+  quorum: String!    # one | majority | all | nofm
+  quorumN: Int!      # approvals an nofm stage needs; 0 on every other rule
+  approvals: Int!    # individual approvals the stage has
+  required: Int!     # individual approvals the stage needs under its rule
+}
+
 type WorkflowStatus {
   status: ApprovalStatus!
   runId: String!
@@ -85,6 +95,14 @@ type WorkflowStatus {
   # Per-stage approve-as-group unit progress, index-aligned with stageNames; an
   # empty inner list means the stage has no group units.
   stageUnitProgress: [[StageUnitProgress!]!]!
+  # The effective submitter's user id (during act-as, the account acted as);
+  # null when the run has none.
+  submittedBy: String
+  # RFC3339 time the run was submitted; null when unset.
+  submittedAt: String
+  # Each stage's due date and rule, index-aligned with stageNames; empty when
+  # there is no run.
+  stageProgress: [StageProgress!]!
 }
 
 type PendingTask {

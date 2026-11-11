@@ -637,6 +637,7 @@ func TestWorkflowStatusResolver_ReaderAllowedOnStandardPolicyUnchanged(t *testin
 			{UserID: "dave", State: "pending", Name: &dave},
 		}},
 		StageUnitProgress: [][]*resolvers.StageUnitProgress{},
+		StageProgress:     []*resolvers.StageProgress{},
 	}
 	if !reflect.DeepEqual(out, want) {
 		t.Fatalf("status = %s, want %s", statusJSON(out), statusJSON(want))

@@ -48,6 +48,7 @@ func (r *Resolver) CounterReviewSuggestionResolver(ctx context.Context, threadID
 	logger.Info("review suggestion countered",
 		log.F("thread_id", threadID), log.F("policy_version_id", versionID), log.F("side", access.side.String()),
 		log.F("rounds", len(resp.GetThread().GetSuggestion().GetRounds())), log.F("duration_ms", time.Since(started).Milliseconds()))
+	r.markReviewedByReviewer(ctx, "counterReviewSuggestion", versionID, access)
 	return reviewThreadFromProto(ctx, newLabelResolver(r.IdentityClient, nil, nil, nil), resp.GetThread(), access.effect), nil
 }
 
@@ -80,6 +81,7 @@ func (r *Resolver) CloseReviewSuggestionResolver(ctx context.Context, threadID s
 	logger.Info("review suggestion closed",
 		log.F("thread_id", threadID), log.F("policy_version_id", versionID), log.F("side", access.side.String()),
 		log.F("outcome", string(outcome)), log.F("has_reason", reasonText != ""), log.F("duration_ms", time.Since(started).Milliseconds()))
+	r.markReviewedByReviewer(ctx, "closeReviewSuggestion", versionID, access)
 	return reviewThreadFromProto(ctx, newLabelResolver(r.IdentityClient, nil, nil, nil), resp.GetThread(), access.effect), nil
 }
 

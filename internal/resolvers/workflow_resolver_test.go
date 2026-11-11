@@ -353,7 +353,7 @@ func TestBulkDecideResolver_ForwardsDecisions(t *testing.T) {
 		},
 	}
 	out, err := resolvers.BulkDecideResolver(
-		ctxWithClaims(t, "u1", "site-admin"), c,
+		ctxWithClaims(t, "u1", "site-admin"), log.Nop(), c, nil,
 		resolvers.BulkDecideInput{
 			Decisions: []*resolvers.DecisionInput{
 				{
@@ -379,7 +379,7 @@ func TestBulkDecideResolver_ForwardsDecisions(t *testing.T) {
 
 func TestBulkDecideResolver_Unauthenticated(t *testing.T) {
 	c := &fakeWorkflowClient{}
-	_, err := resolvers.BulkDecideResolver(context.Background(), c, resolvers.BulkDecideInput{})
+	_, err := resolvers.BulkDecideResolver(context.Background(), log.Nop(), c, nil, resolvers.BulkDecideInput{})
 	if err == nil {
 		t.Fatal("expected unauthenticated")
 	}
@@ -392,7 +392,7 @@ func TestBulkDecideResolver_Unauthenticated(t *testing.T) {
 // assignment. So the request must reach the workflow service.
 func TestBulkDecideResolver_ForwardsWithoutApproveCapability(t *testing.T) {
 	c := &fakeWorkflowClient{bulkResp: &workflowv1.BulkDecideResponse{BulkBatchId: "b"}}
-	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "reader"), c, resolvers.BulkDecideInput{
+	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "reader"), log.Nop(), c, nil, resolvers.BulkDecideInput{
 		Decisions: []*resolvers.DecisionInput{
 			{
 				PolicyVersionID: "pv-1", StageIndex: 0,
@@ -410,7 +410,7 @@ func TestBulkDecideResolver_ForwardsWithoutApproveCapability(t *testing.T) {
 
 func TestBulkDecideResolver_AllowsApprover(t *testing.T) {
 	c := &fakeWorkflowClient{bulkResp: &workflowv1.BulkDecideResponse{BulkBatchId: "b"}}
-	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "approver"), c, resolvers.BulkDecideInput{})
+	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "approver"), log.Nop(), c, nil, resolvers.BulkDecideInput{})
 	if err != nil {
 		t.Fatalf("approver should pass: %v", err)
 	}
@@ -418,7 +418,7 @@ func TestBulkDecideResolver_AllowsApprover(t *testing.T) {
 
 func TestBulkDecideResolver_PropagatesError(t *testing.T) {
 	c := &fakeWorkflowClient{bulkErr: errors.New("svc down")}
-	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "site-admin"), c, resolvers.BulkDecideInput{})
+	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "site-admin"), log.Nop(), c, nil, resolvers.BulkDecideInput{})
 	if err == nil {
 		t.Fatal("expected error to propagate")
 	}
@@ -502,7 +502,7 @@ func TestAssignmentHistoryResolver_OwnerInheritedAllowed(t *testing.T) {
 func TestSignalWorkflowResolver_ForwardsComment(t *testing.T) {
 	c := &fakeWorkflowClient{}
 	_, err := resolvers.SignalWorkflowResolver(
-		ctxWithClaims(t, "u1"), c, "pv1", "r1", "t1",
+		ctxWithClaims(t, "u1"), log.Nop(), c, nil, "pv1", "r1", "t1",
 		resolvers.SignalTypeSignalTypeApprove, "lgtm",
 	)
 	if err != nil {
@@ -519,7 +519,7 @@ func TestSignalWorkflowResolver_ForwardsComment(t *testing.T) {
 func TestSignalWorkflowResolver_Unauthenticated(t *testing.T) {
 	c := &fakeWorkflowClient{}
 	_, err := resolvers.SignalWorkflowResolver(
-		context.Background(), c, "pv1", "r1", "t1",
+		context.Background(), log.Nop(), c, nil, "pv1", "r1", "t1",
 		resolvers.SignalTypeSignalTypeApprove, "lgtm",
 	)
 	if err == nil {

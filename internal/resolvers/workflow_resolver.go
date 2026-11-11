@@ -165,7 +165,9 @@ func emptySubmitRefusal(err error) error {
 // SignalWorkflowResolver delivers an approver decision to an active run.
 func SignalWorkflowResolver(
 	ctx context.Context,
+	logger log.Logger,
 	client workflowv1.WorkflowServiceClient,
+	snapshots corev1.ReviewSnapshotServiceClient,
 	policyVersionID, runID, taskID string,
 	signal SignalType,
 	comment string,
@@ -184,6 +186,13 @@ func SignalWorkflowResolver(
 	})
 	if err != nil {
 		return false, fmt.Errorf("workflow signal: %w", err)
+	}
+	// The vote, or the comments sent back, count as reviewing the version as it
+	// is now (#115). Workflow refused anyone without an open seat above, so the
+	// actor holds one.
+	switch signal {
+	case SignalTypeSignalTypeApprove, SignalTypeSignalTypeReject, SignalTypeSignalTypeRequestChanges:
+		markReviewedAfterAct(ctx, logger, snapshots, "signalWorkflow", policyVersionID, claims.UserID())
 	}
 	return true, nil
 }
@@ -233,7 +242,9 @@ func SwapAssigneeResolver(
 // BulkDecideResolver wires the bulkDecide mutation.
 func BulkDecideResolver(
 	ctx context.Context,
+	logger log.Logger,
 	client workflowv1.WorkflowServiceClient,
+	snapshots corev1.ReviewSnapshotServiceClient,
 	input BulkDecideInput,
 ) (*BulkDecideResult, error) {
 	claims, ok := principal.FromContext(ctx)
@@ -252,6 +263,13 @@ func BulkDecideResolver(
 	resp, err := client.BulkDecide(ctx, &workflowv1.BulkDecideRequest{Decisions: decisions})
 	if err != nil {
 		return nil, fmt.Errorf("workflow bulk decide: %w", err)
+	}
+	// Each item that was decided moves the caller's snapshot of its version
+	// (#115); an item that failed decided nothing.
+	for _, r := range resp.GetResults() {
+		if r.GetOk() {
+			markReviewedAfterAct(ctx, logger, snapshots, "bulkDecide", r.GetPolicyVersionId(), claims.UserID())
+		}
 	}
 	out := &BulkDecideResult{
 		BulkBatchID: resp.GetBulkBatchId(),

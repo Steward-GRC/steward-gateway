@@ -65,6 +65,36 @@ func reviewCadenceFromProto(c corev1.ReviewCadence) ReviewCadence {
 	}
 }
 
+// categoryDocumentTypesToProto maps a GQL CategoryDocumentTypes to its proto counterpart.
+func categoryDocumentTypesToProto(t CategoryDocumentTypes) corev1.CategoryDocumentTypes {
+	switch t {
+	case CategoryDocumentTypesPolicies:
+		return corev1.CategoryDocumentTypes_CATEGORY_DOCUMENT_TYPES_POLICIES
+	case CategoryDocumentTypesProcedures:
+		return corev1.CategoryDocumentTypes_CATEGORY_DOCUMENT_TYPES_PROCEDURES
+	case CategoryDocumentTypesNone:
+		return corev1.CategoryDocumentTypes_CATEGORY_DOCUMENT_TYPES_NONE
+	default:
+		return corev1.CategoryDocumentTypes_CATEGORY_DOCUMENT_TYPES_BOTH
+	}
+}
+
+// categoryDocumentTypesFromProto maps a proto CategoryDocumentTypes to the GQL
+// enum. UNSPECIFIED reads as BOTH, as core reads a category stored before the
+// setting existed.
+func categoryDocumentTypesFromProto(t corev1.CategoryDocumentTypes) CategoryDocumentTypes {
+	switch t {
+	case corev1.CategoryDocumentTypes_CATEGORY_DOCUMENT_TYPES_POLICIES:
+		return CategoryDocumentTypesPolicies
+	case corev1.CategoryDocumentTypes_CATEGORY_DOCUMENT_TYPES_PROCEDURES:
+		return CategoryDocumentTypesProcedures
+	case corev1.CategoryDocumentTypes_CATEGORY_DOCUMENT_TYPES_NONE:
+		return CategoryDocumentTypesNone
+	default:
+		return CategoryDocumentTypesBoth
+	}
+}
+
 // categoryFromProto maps a core Category. The audience and exclusion lists are
 // nil when the category inherits them and non-nil (possibly empty) when it
 // sets its own.
@@ -89,6 +119,7 @@ func categoryFromProto(g *corev1.Category) *Category {
 		DefaultTemplateID:     nilIfEmpty(g.DefaultTemplateId),
 		DefaultTemplateNone:   g.DefaultTemplateNone,
 		DefaultTemplateLocked: g.GetDefaultTemplateLocked(),
+		DocumentTypes:         categoryDocumentTypesFromProto(g.GetDocumentTypes()),
 		DefaultWorkflowID:     nilIfEmpty(g.DefaultWorkflowId),
 		Owners:                owners,
 		IdpGroupIds:           idpGroupIds,
@@ -234,6 +265,44 @@ func SetCategoryTemplateLock(ctx context.Context, client corev1.CategoryServiceC
 		return nil, err
 	}
 	return categoryFromProto(resp.Category), nil
+}
+
+// SetCategoryDocumentTypes sets which document types the category takes. The
+// rule is core's: it refuses a narrowing that would strand live documents with
+// CATEGORY_HOLDS_DOCUMENTS (count in the error metadata) and enforces the
+// setting on createPolicy and movePolicy with CATEGORY_REFUSES_TYPE. Only a
+// site admin sets it, as with the other category settings.
+func SetCategoryDocumentTypes(ctx context.Context, client corev1.CategoryServiceClient, id string, documentTypes CategoryDocumentTypes) (*Category, error) {
+	if err := authorizeOp(ctx, authz.GroupManage); err != nil {
+		return nil, err
+	}
+	uid, err := claimsUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.SetCategoryDocumentTypes(ctx, &corev1.SetCategoryDocumentTypesRequest{
+		Id:            id,
+		DocumentTypes: categoryDocumentTypesToProto(documentTypes),
+		ActorUserId:   uid,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return categoryFromProto(resp.Category), nil
+}
+
+// CountCategoryDocuments counts the category's own live documents by kind
+// (published and draft; retired ones and descendants are left out), for the
+// settings form's check before it narrows. Site admin only.
+func CountCategoryDocuments(ctx context.Context, client corev1.CategoryServiceClient, categoryID string) (*CategoryDocumentCounts, error) {
+	if err := authorizeOp(ctx, authz.GroupManage); err != nil {
+		return nil, err
+	}
+	resp, err := client.CountCategoryDocuments(ctx, &corev1.CountCategoryDocumentsRequest{CategoryId: categoryID})
+	if err != nil {
+		return nil, err
+	}
+	return &CategoryDocumentCounts{Policies: int(resp.GetPolicies()), Procedures: int(resp.GetProcedures())}, nil
 }
 
 // SetCategoryGovernance persists a category's governance. idpGroupIds and

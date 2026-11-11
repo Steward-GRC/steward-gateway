@@ -29,6 +29,11 @@ func (r *mutationResolver) SetCategoryTemplateLock(ctx context.Context, id strin
 	return SetCategoryTemplateLock(ctx, r.CategoryClient, id, locked)
 }
 
+// SetCategoryDocumentTypes is the resolver for the setCategoryDocumentTypes field.
+func (r *mutationResolver) SetCategoryDocumentTypes(ctx context.Context, id string, documentTypes CategoryDocumentTypes) (*Category, error) {
+	return SetCategoryDocumentTypes(ctx, r.CategoryClient, id, documentTypes)
+}
+
 // RenameCategory is the resolver for the renameCategory field.
 func (r *mutationResolver) RenameCategory(ctx context.Context, id string, name string, slug string) (*Category, error) {
 	return RenameCategory(ctx, r.CategoryClient, id, name, slug)
@@ -316,6 +321,11 @@ func (r *queryResolver) CategoryChildren(ctx context.Context, parentID *string) 
 // CategoryTree is the resolver for the categoryTree field.
 func (r *queryResolver) CategoryTree(ctx context.Context, rootID *string) ([]*Category, error) {
 	return CategoryTree(ctx, r.CategoryClient, rootID)
+}
+
+// CategoryDocumentCounts is the resolver for the categoryDocumentCounts field.
+func (r *queryResolver) CategoryDocumentCounts(ctx context.Context, categoryID string) (*CategoryDocumentCounts, error) {
+	return CountCategoryDocuments(ctx, r.CategoryClient, categoryID)
 }
 
 // Templates is the resolver for the templates field.

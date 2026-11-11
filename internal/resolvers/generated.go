@@ -370,6 +370,7 @@ type ComplexityRoot struct {
 		DefaultTemplateLocked func(childComplexity int) int
 		DefaultTemplateNone   func(childComplexity int) int
 		DefaultWorkflowID     func(childComplexity int) int
+		DocumentTypes         func(childComplexity int) int
 		ExclusionGroupIds     func(childComplexity int) int
 		ID                    func(childComplexity int) int
 		IdpGroupIds           func(childComplexity int) int
@@ -385,6 +386,11 @@ type ComplexityRoot struct {
 	CategoryApprovers struct {
 		ApproverIds func(childComplexity int) int
 		CategoryID  func(childComplexity int) int
+	}
+
+	CategoryDocumentCounts struct {
+		Policies   func(childComplexity int) int
+		Procedures func(childComplexity int) int
 	}
 
 	CategoryPref struct {
@@ -779,6 +785,7 @@ type ComplexityRoot struct {
 		SetCaseStatus                 func(childComplexity int, caseID string, status CaseStatus) int
 		SetCategoryCadence            func(childComplexity int, category NotifCategory, cadence NotifCadence) int
 		SetCategoryDefaults           func(childComplexity int, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) int
+		SetCategoryDocumentTypes      func(childComplexity int, id string, documentTypes CategoryDocumentTypes) int
 		SetCategoryGovernance         func(childComplexity int, id string, owners []string, idpGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) int
 		SetCategoryRuleset            func(childComplexity int, categoryID string, rules []*RaciRuleInput) int
 		SetCategoryTemplateLock       func(childComplexity int, id string, locked bool) int
@@ -1025,6 +1032,7 @@ type ComplexityRoot struct {
 		Category                   func(childComplexity int, id string) int
 		CategoryApprovers          func(childComplexity int, categoryID string) int
 		CategoryChildren           func(childComplexity int, parentID *string) int
+		CategoryDocumentCounts     func(childComplexity int, categoryID string) int
 		CategoryRuleset            func(childComplexity int, categoryID string) int
 		CategoryTree               func(childComplexity int, rootID *string) int
 		CompletionReport           func(childComplexity int, policyVersionID string, groupID *string) int
@@ -1613,6 +1621,7 @@ type MutationResolver interface {
 	CreateCategory(ctx context.Context, name string, slug string, parentID *string) (*Category, error)
 	SetCategoryDefaults(ctx context.Context, id string, defaultTemplateID *string, defaultWorkflowID *string, defaultTemplateNone *bool) (*Category, error)
 	SetCategoryTemplateLock(ctx context.Context, id string, locked bool) (*Category, error)
+	SetCategoryDocumentTypes(ctx context.Context, id string, documentTypes CategoryDocumentTypes) (*Category, error)
 	RenameCategory(ctx context.Context, id string, name string, slug string) (*Category, error)
 	DeleteCategory(ctx context.Context, id string) (bool, error)
 	MoveCategory(ctx context.Context, categoryID string, newParentID *string) (*Category, error)
@@ -1786,6 +1795,7 @@ type QueryResolver interface {
 	Category(ctx context.Context, id string) (*Category, error)
 	CategoryChildren(ctx context.Context, parentID *string) ([]*Category, error)
 	CategoryTree(ctx context.Context, rootID *string) ([]*Category, error)
+	CategoryDocumentCounts(ctx context.Context, categoryID string) (*CategoryDocumentCounts, error)
 	Templates(ctx context.Context, ownerCategoryID *string) ([]*Template, error)
 	LatestTemplateVersion(ctx context.Context, templateID string) (*TemplateVersion, error)
 	TemplateVersions(ctx context.Context, templateID string) ([]*TemplateVersion, error)
@@ -3119,6 +3129,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Category.DefaultWorkflowID(childComplexity), true
+	case "Category.documentTypes":
+		if e.ComplexityRoot.Category.DocumentTypes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Category.DocumentTypes(childComplexity), true
 	case "Category.exclusionGroupIds":
 		if e.ComplexityRoot.Category.ExclusionGroupIds == nil {
 			break
@@ -3192,6 +3208,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.CategoryApprovers.CategoryID(childComplexity), true
+
+	case "CategoryDocumentCounts.policies":
+		if e.ComplexityRoot.CategoryDocumentCounts.Policies == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CategoryDocumentCounts.Policies(childComplexity), true
+	case "CategoryDocumentCounts.procedures":
+		if e.ComplexityRoot.CategoryDocumentCounts.Procedures == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CategoryDocumentCounts.Procedures(childComplexity), true
 
 	case "CategoryPref.cadence":
 		if e.ComplexityRoot.CategoryPref.Cadence == nil {
@@ -5421,6 +5450,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetCategoryDefaults(childComplexity, args["id"].(string), args["defaultTemplateId"].(*string), args["defaultWorkflowId"].(*string), args["defaultTemplateNone"].(*bool)), true
+	case "Mutation.setCategoryDocumentTypes":
+		if e.ComplexityRoot.Mutation.SetCategoryDocumentTypes == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setCategoryDocumentTypes_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetCategoryDocumentTypes(childComplexity, args["id"].(string), args["documentTypes"].(CategoryDocumentTypes)), true
 	case "Mutation.setCategoryGovernance":
 		if e.ComplexityRoot.Mutation.SetCategoryGovernance == nil {
 			break
@@ -6870,6 +6910,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.CategoryChildren(childComplexity, args["parentId"].(*string)), true
+	case "Query.categoryDocumentCounts":
+		if e.ComplexityRoot.Query.CategoryDocumentCounts == nil {
+			break
+		}
+
+		args, err := ec.field_Query_categoryDocumentCounts_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CategoryDocumentCounts(childComplexity, args["categoryId"].(string)), true
 	case "Query.categoryRuleset":
 		if e.ComplexityRoot.Query.CategoryRuleset == nil {
 			break
@@ -10498,6 +10549,10 @@ type IssueCollabTokenPayload {
   # category forest when rootId is omitted. Categories are at most three
   # levels deep, so this is always a small, one-call read.
   categoryTree(rootId: ID): [Category!]!
+  # How many live documents the category itself holds (published and draft, retired
+  # ones left out, descendants not counted), by kind. Site admin only. The settings
+  # form reads it before it narrows documentTypes, to say how many would be stranded.
+  categoryDocumentCounts(categoryId: ID!): CategoryDocumentCounts!
 
   # Templates
   templates(ownerCategoryId: ID): [Template!]!
@@ -10535,6 +10590,13 @@ extend type Mutation {
   # default template. Core's refusals reach the client as extensions code
   # CATEGORY_TEMPLATE_LOCKED (4004) and TEMPLATE_LOCK_NEEDS_DEFAULT (4005).
   setCategoryTemplateLock(id: ID!, locked: Boolean!): Category!
+  # Set which document types the category takes (site admin only). Widening always
+  # works. Narrowing is refused (FAILED_PRECONDITION) while the category holds live
+  # documents it would no longer accept: extensions code CATEGORY_HOLDS_DOCUMENTS
+  # (4008) with count, policies and procedures as strings, so the form can link to a
+  # bulk move. createPolicy and movePolicy refuse a type the category does not take
+  # with extensions code CATEGORY_REFUSES_TYPE (4007).
+  setCategoryDocumentTypes(id: ID!, documentTypes: CategoryDocumentTypes!): Category!
   # Rename a category (name + slug). Does NOT renumber existing policies.
   renameCategory(id: ID!, name: String!, slug: String!): Category!
   # Delete a category and its policy-free descendants. Refused
@@ -10669,6 +10731,15 @@ enum Sensitivity { STANDARD SENSITIVE }
 # ack pipeline; otherwise they share the policies surface and lifecycle.
 enum DocumentType { POLICY PROCEDURE }
 
+# What a category takes: both (the default), policies only, procedures only, or none
+# (a container that holds only child categories).
+enum CategoryDocumentTypes { BOTH POLICIES PROCEDURES NONE }
+
+type CategoryDocumentCounts {
+  policies: Int!
+  procedures: Int!
+}
+
 enum AckTrigger { NONE ON_PUBLISH ON_CHANGE }
 enum ReviewCadence { NONE ANNUAL BIENNIAL ON_DATE }
 
@@ -10685,6 +10756,9 @@ type Category {
   # True when defaultTemplateId is binding: a document in this category, or in one
   # that inherits the template, must use it. Never true without a defaultTemplateId.
   defaultTemplateLocked: Boolean!
+  # Which document types the category takes. The category's own setting; a child
+  # does not inherit it. NONE makes it a container of child categories.
+  documentTypes: CategoryDocumentTypes!
   defaultWorkflowId: ID
   owners: [ID!]!
   # Per-category ack-audience IdP group names. Empty list = "no audience"
@@ -13771,6 +13845,8 @@ func (ec *executionContext) childFields_Category(ctx context.Context, field grap
 		return ec.fieldContext_Category_defaultTemplateNone(ctx, field)
 	case "defaultTemplateLocked":
 		return ec.fieldContext_Category_defaultTemplateLocked(ctx, field)
+	case "documentTypes":
+		return ec.fieldContext_Category_documentTypes(ctx, field)
 	case "defaultWorkflowId":
 		return ec.fieldContext_Category_defaultWorkflowId(ctx, field)
 	case "owners":
@@ -13803,6 +13879,16 @@ func (ec *executionContext) childFields_CategoryApprovers(ctx context.Context, f
 		return ec.fieldContext_CategoryApprovers_approverIds(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type CategoryApprovers", field.Name)
+}
+
+func (ec *executionContext) childFields_CategoryDocumentCounts(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "policies":
+		return ec.fieldContext_CategoryDocumentCounts_policies(ctx, field)
+	case "procedures":
+		return ec.fieldContext_CategoryDocumentCounts_procedures(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type CategoryDocumentCounts", field.Name)
 }
 
 func (ec *executionContext) childFields_CategoryPref(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -18047,6 +18133,28 @@ func (ec *executionContext) field_Mutation_setCategoryDefaults_args(ctx context.
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setCategoryDocumentTypes_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "documentTypes",
+		func(ctx context.Context, v any) (CategoryDocumentTypes, error) {
+			return ec.unmarshalNCategoryDocumentTypes2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryDocumentTypes(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["documentTypes"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_setCategoryGovernance_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19592,6 +19700,20 @@ func (ec *executionContext) field_Query_categoryChildren_args(ctx context.Contex
 		return nil, err
 	}
 	args["parentId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_categoryDocumentCounts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "categoryId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["categoryId"] = arg0
 	return args, nil
 }
 
@@ -25409,6 +25531,29 @@ func (ec *executionContext) fieldContext_Category_defaultTemplateLocked(_ contex
 	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _Category_documentTypes(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Category_documentTypes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DocumentTypes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v CategoryDocumentTypes) graphql.Marshaler {
+			return ec.marshalNCategoryDocumentTypes2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryDocumentTypes(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Category_documentTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type CategoryDocumentTypes does not have child fields"))
+}
+
 func (ec *executionContext) _Category_defaultWorkflowId(ctx context.Context, field graphql.CollectedField, obj *Category) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25683,6 +25828,52 @@ func (ec *executionContext) _CategoryApprovers_approverIds(ctx context.Context, 
 }
 func (ec *executionContext) fieldContext_CategoryApprovers_approverIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("CategoryApprovers", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _CategoryDocumentCounts_policies(ctx context.Context, field graphql.CollectedField, obj *CategoryDocumentCounts) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CategoryDocumentCounts_policies(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Policies, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CategoryDocumentCounts_policies(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CategoryDocumentCounts", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _CategoryDocumentCounts_procedures(ctx context.Context, field graphql.CollectedField, obj *CategoryDocumentCounts) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CategoryDocumentCounts_procedures(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Procedures, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CategoryDocumentCounts_procedures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CategoryDocumentCounts", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
 func (ec *executionContext) _CategoryPref_category(ctx context.Context, field graphql.CollectedField, obj *CategoryPref) (ret graphql.Marshaler) {
@@ -30476,6 +30667,50 @@ func (ec *executionContext) fieldContext_Mutation_setCategoryTemplateLock(ctx co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setCategoryTemplateLock_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setCategoryDocumentTypes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setCategoryDocumentTypes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetCategoryDocumentTypes(ctx, fc.Args["id"].(string), fc.Args["documentTypes"].(CategoryDocumentTypes))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *Category) graphql.Marshaler {
+			return ec.marshalNCategory2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategory(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setCategoryDocumentTypes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Category(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setCategoryDocumentTypes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -40339,6 +40574,50 @@ func (ec *executionContext) fieldContext_Query_categoryTree(ctx context.Context,
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_categoryTree_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_categoryDocumentCounts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_categoryDocumentCounts(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CategoryDocumentCounts(ctx, fc.Args["categoryId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *CategoryDocumentCounts) graphql.Marshaler {
+			return ec.marshalNCategoryDocumentCounts2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryDocumentCounts(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_categoryDocumentCounts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CategoryDocumentCounts(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_categoryDocumentCounts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -56476,6 +56755,11 @@ func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "documentTypes":
+			out.Values[i] = ec._Category_documentTypes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "defaultWorkflowId":
 			out.Values[i] = ec._Category_defaultWorkflowId(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
@@ -56566,6 +56850,49 @@ func (ec *executionContext) _CategoryApprovers(ctx context.Context, sel ast.Sele
 			}
 		case "approverIds":
 			out.Values[i] = ec._CategoryApprovers_approverIds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var categoryDocumentCountsImplementors = []string{"CategoryDocumentCounts"}
+
+func (ec *executionContext) _CategoryDocumentCounts(ctx context.Context, sel ast.SelectionSet, obj *CategoryDocumentCounts) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, categoryDocumentCountsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CategoryDocumentCounts")
+		case "policies":
+			out.Values[i] = ec._CategoryDocumentCounts_policies(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "procedures":
+			out.Values[i] = ec._CategoryDocumentCounts_procedures(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -58854,6 +59181,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setCategoryTemplateLock":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setCategoryTemplateLock(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setCategoryDocumentTypes":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setCategoryDocumentTypes(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -61616,6 +61950,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_categoryTree(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "categoryDocumentCounts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_categoryDocumentCounts(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -68282,6 +68638,30 @@ func (ec *executionContext) marshalNCategoryApprovers2ᚖgithubᚗcomᚋSteward�
 func (ec *executionContext) unmarshalNCategoryApproversInput2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryApproversInput(ctx context.Context, v any) (*CategoryApproversInput, error) {
 	res, err := ec.unmarshalInputCategoryApproversInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCategoryDocumentCounts2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryDocumentCounts(ctx context.Context, sel ast.SelectionSet, v CategoryDocumentCounts) graphql.Marshaler {
+	return ec._CategoryDocumentCounts(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCategoryDocumentCounts2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryDocumentCounts(ctx context.Context, sel ast.SelectionSet, v *CategoryDocumentCounts) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CategoryDocumentCounts(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNCategoryDocumentTypes2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryDocumentTypes(ctx context.Context, v any) (CategoryDocumentTypes, error) {
+	var res CategoryDocumentTypes
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCategoryDocumentTypes2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryDocumentTypes(ctx context.Context, sel ast.SelectionSet, v CategoryDocumentTypes) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNCategoryPref2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCategoryPrefᚄ(ctx context.Context, sel ast.SelectionSet, v []*CategoryPref) graphql.Marshaler {

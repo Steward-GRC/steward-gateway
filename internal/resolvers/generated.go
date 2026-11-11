@@ -433,6 +433,16 @@ type ComplexityRoot struct {
 		PolicyID    func(childComplexity int) int
 	}
 
+	DecidedApproval struct {
+		CurrentStageIdx func(childComplexity int) int
+		DecidedAt       func(childComplexity int) int
+		Decision        func(childComplexity int) int
+		PolicyTitle     func(childComplexity int) int
+		PolicyVersionID func(childComplexity int) int
+		RunID           func(childComplexity int) int
+		StageCount      func(childComplexity int) int
+	}
+
 	DecisionResult struct {
 		AssignmentID    func(childComplexity int) int
 		Error           func(childComplexity int) int
@@ -1019,6 +1029,7 @@ type ComplexityRoot struct {
 		CategoryTree               func(childComplexity int, rootID *string) int
 		CompletionReport           func(childComplexity int, policyVersionID string, groupID *string) int
 		ContactBlocks              func(childComplexity int, includeArchived *bool) int
+		DecidedApprovals           func(childComplexity int) int
 		Definitions                func(childComplexity int, categoryID *string, includeArchived *bool) int
 		Diagnostics                func(childComplexity int) int
 		DiffVersions               func(childComplexity int, fromVersionID string, toVersionID string) int
@@ -1852,6 +1863,7 @@ type QueryResolver interface {
 	WorkflowStatus(ctx context.Context, policyVersionID string) (*WorkflowStatus, error)
 	PendingTasks(ctx context.Context) ([]*PendingTask, error)
 	UpcomingApprovals(ctx context.Context) ([]*UpcomingApproval, error)
+	DecidedApprovals(ctx context.Context) ([]*DecidedApproval, error)
 	EffectiveWorkflow(ctx context.Context, policyID string) (*EffectiveWorkflow, error)
 	AssignmentHistory(ctx context.Context, policyVersionID string, stageIndex int) ([]*AssignmentHistoryEntry, error)
 	StageEligibleAssignees(ctx context.Context, policyVersionID string, stageIndex int) (*StageEligibleAssignees, error)
@@ -3354,6 +3366,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.CorrectiveAction.PolicyID(childComplexity), true
+
+	case "DecidedApproval.currentStageIdx":
+		if e.ComplexityRoot.DecidedApproval.CurrentStageIdx == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DecidedApproval.CurrentStageIdx(childComplexity), true
+	case "DecidedApproval.decidedAt":
+		if e.ComplexityRoot.DecidedApproval.DecidedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DecidedApproval.DecidedAt(childComplexity), true
+	case "DecidedApproval.decision":
+		if e.ComplexityRoot.DecidedApproval.Decision == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DecidedApproval.Decision(childComplexity), true
+	case "DecidedApproval.policyTitle":
+		if e.ComplexityRoot.DecidedApproval.PolicyTitle == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DecidedApproval.PolicyTitle(childComplexity), true
+	case "DecidedApproval.policyVersionId":
+		if e.ComplexityRoot.DecidedApproval.PolicyVersionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DecidedApproval.PolicyVersionID(childComplexity), true
+	case "DecidedApproval.runId":
+		if e.ComplexityRoot.DecidedApproval.RunID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DecidedApproval.RunID(childComplexity), true
+	case "DecidedApproval.stageCount":
+		if e.ComplexityRoot.DecidedApproval.StageCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.DecidedApproval.StageCount(childComplexity), true
 
 	case "DecisionResult.assignmentId":
 		if e.ComplexityRoot.DecisionResult.AssignmentID == nil {
@@ -6859,6 +6914,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.ContactBlocks(childComplexity, args["includeArchived"].(*bool)), true
+	case "Query.decidedApprovals":
+		if e.ComplexityRoot.Query.DecidedApprovals == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.DecidedApprovals(childComplexity), true
 	case "Query.definitions":
 		if e.ComplexityRoot.Query.Definitions == nil {
 			break
@@ -12703,6 +12764,22 @@ type UpcomingApproval {
   stageName: String!
 }
 
+# One approval the signed-in user has already decided on a run that is still in
+# review: the data behind the approvals inbox's "In progress" group.
+type DecidedApproval {
+  policyVersionId: ID!
+  policyTitle: String!
+  runId: String!
+  # The stage the run is at now, zero-based.
+  currentStageIdx: Int!
+  # How many stages the run has; 0 when workflow could not read it.
+  stageCount: Int!
+  # The caller's decision: "approved" or "rejected".
+  decision: String!
+  # When the caller decided, RFC 3339 (this schema has no DateTime scalar).
+  decidedAt: String!
+}
+
 type EffectiveWorkflow {
   # The resolved workflow-definition id, or null when none is attached/inherited.
   workflowDefId: ID
@@ -12748,6 +12825,16 @@ extend type Query {
   from the signed-in user and is never client-supplied.
   """
   upcomingApprovals: [UpcomingApproval!]!
+
+  """
+  The approvals the authenticated user has already decided, on runs still in
+  review: the "In progress" group of the approvals inbox. A run drops out once
+  it resolves (published, rejected or withdrawn). Only the caller's own
+  decisions are listed; the user id is bound from the signed-in user and is
+  never client-supplied. An entry whose policy the caller can no longer read,
+  or that core no longer holds, is left out.
+  """
+  decidedApprovals: [DecidedApproval!]!
 
   """
   The approval workflow EFFECTIVE for a policy — attached to its category or
@@ -13808,6 +13895,26 @@ func (ec *executionContext) childFields_CorrectiveAction(ctx context.Context, fi
 		return ec.fieldContext_CorrectiveAction_policyId(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type CorrectiveAction", field.Name)
+}
+
+func (ec *executionContext) childFields_DecidedApproval(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "policyVersionId":
+		return ec.fieldContext_DecidedApproval_policyVersionId(ctx, field)
+	case "policyTitle":
+		return ec.fieldContext_DecidedApproval_policyTitle(ctx, field)
+	case "runId":
+		return ec.fieldContext_DecidedApproval_runId(ctx, field)
+	case "currentStageIdx":
+		return ec.fieldContext_DecidedApproval_currentStageIdx(ctx, field)
+	case "stageCount":
+		return ec.fieldContext_DecidedApproval_stageCount(ctx, field)
+	case "decision":
+		return ec.fieldContext_DecidedApproval_decision(ctx, field)
+	case "decidedAt":
+		return ec.fieldContext_DecidedApproval_decidedAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type DecidedApproval", field.Name)
 }
 
 func (ec *executionContext) childFields_DecisionResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -26238,6 +26345,167 @@ func (ec *executionContext) _CorrectiveAction_policyId(ctx context.Context, fiel
 }
 func (ec *executionContext) fieldContext_CorrectiveAction_policyId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("CorrectiveAction", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _DecidedApproval_policyVersionId(ctx context.Context, field graphql.CollectedField, obj *DecidedApproval) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DecidedApproval_policyVersionId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PolicyVersionID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DecidedApproval_policyVersionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DecidedApproval", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _DecidedApproval_policyTitle(ctx context.Context, field graphql.CollectedField, obj *DecidedApproval) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DecidedApproval_policyTitle(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PolicyTitle, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DecidedApproval_policyTitle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DecidedApproval", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _DecidedApproval_runId(ctx context.Context, field graphql.CollectedField, obj *DecidedApproval) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DecidedApproval_runId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RunID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DecidedApproval_runId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DecidedApproval", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _DecidedApproval_currentStageIdx(ctx context.Context, field graphql.CollectedField, obj *DecidedApproval) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DecidedApproval_currentStageIdx(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentStageIdx, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DecidedApproval_currentStageIdx(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DecidedApproval", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _DecidedApproval_stageCount(ctx context.Context, field graphql.CollectedField, obj *DecidedApproval) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DecidedApproval_stageCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StageCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DecidedApproval_stageCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DecidedApproval", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _DecidedApproval_decision(ctx context.Context, field graphql.CollectedField, obj *DecidedApproval) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DecidedApproval_decision(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Decision, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DecidedApproval_decision(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DecidedApproval", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _DecidedApproval_decidedAt(ctx context.Context, field graphql.CollectedField, obj *DecidedApproval) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_DecidedApproval_decidedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DecidedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_DecidedApproval_decidedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("DecidedApproval", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _DecisionResult_policyVersionId(ctx context.Context, field graphql.CollectedField, obj *DecisionResult) (ret graphql.Marshaler) {
@@ -43180,6 +43448,38 @@ func (ec *executionContext) fieldContext_Query_upcomingApprovals(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_decidedApprovals(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_decidedApprovals(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().DecidedApprovals(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*DecidedApproval) graphql.Marshaler {
+			return ec.marshalNDecidedApproval2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDecidedApprovalᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_decidedApprovals(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_DecidedApproval(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_effectiveWorkflow(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -56628,6 +56928,74 @@ func (ec *executionContext) _CorrectiveAction(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var decidedApprovalImplementors = []string{"DecidedApproval"}
+
+func (ec *executionContext) _DecidedApproval(ctx context.Context, sel ast.SelectionSet, obj *DecidedApproval) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, decidedApprovalImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DecidedApproval")
+		case "policyVersionId":
+			out.Values[i] = ec._DecidedApproval_policyVersionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "policyTitle":
+			out.Values[i] = ec._DecidedApproval_policyTitle(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "runId":
+			out.Values[i] = ec._DecidedApproval_runId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currentStageIdx":
+			out.Values[i] = ec._DecidedApproval_currentStageIdx(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stageCount":
+			out.Values[i] = ec._DecidedApproval_stageCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "decision":
+			out.Values[i] = ec._DecidedApproval_decision(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "decidedAt":
+			out.Values[i] = ec._DecidedApproval_decidedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var decisionResultImplementors = []string{"DecisionResult"}
 
 func (ec *executionContext) _DecisionResult(ctx context.Context, sel ast.SelectionSet, obj *DecisionResult) graphql.Marshaler {
@@ -62954,6 +63322,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "decidedApprovals":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_decidedApprovals(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "effectiveWorkflow":
 			field := field
 
@@ -68064,6 +68454,32 @@ func (ec *executionContext) marshalNDateTime2timeᚐTime(ctx context.Context, se
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNDecidedApproval2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDecidedApprovalᚄ(ctx context.Context, sel ast.SelectionSet, v []*DecidedApproval) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNDecidedApproval2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDecidedApproval(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNDecidedApproval2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDecidedApproval(ctx context.Context, sel ast.SelectionSet, v *DecidedApproval) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._DecidedApproval(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNDecisionInput2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDecisionInputᚄ(ctx context.Context, v any) ([]*DecisionInput, error) {

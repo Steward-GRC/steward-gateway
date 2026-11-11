@@ -121,6 +121,22 @@ type UpcomingApproval {
   stageName: String!
 }
 
+# One approval the signed-in user has already decided on a run that is still in
+# review: the data behind the approvals inbox's "In progress" group.
+type DecidedApproval {
+  policyVersionId: ID!
+  policyTitle: String!
+  runId: String!
+  # The stage the run is at now, zero-based.
+  currentStageIdx: Int!
+  # How many stages the run has; 0 when workflow could not read it.
+  stageCount: Int!
+  # The caller's decision: "approved" or "rejected".
+  decision: String!
+  # When the caller decided, RFC 3339 (this schema has no DateTime scalar).
+  decidedAt: String!
+}
+
 type EffectiveWorkflow {
   # The resolved workflow-definition id, or null when none is attached/inherited.
   workflowDefId: ID
@@ -166,6 +182,16 @@ extend type Query {
   from the signed-in user and is never client-supplied.
   """
   upcomingApprovals: [UpcomingApproval!]!
+
+  """
+  The approvals the authenticated user has already decided, on runs still in
+  review: the "In progress" group of the approvals inbox. A run drops out once
+  it resolves (published, rejected or withdrawn). Only the caller's own
+  decisions are listed; the user id is bound from the signed-in user and is
+  never client-supplied. An entry whose policy the caller can no longer read,
+  or that core no longer holds, is left out.
+  """
+  decidedApprovals: [DecidedApproval!]!
 
   """
   The approval workflow EFFECTIVE for a policy — attached to its category or

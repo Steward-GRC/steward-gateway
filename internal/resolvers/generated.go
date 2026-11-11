@@ -215,6 +215,22 @@ type ComplexityRoot struct {
 		VersionNo    func(childComplexity int) int
 	}
 
+	AssetKindSetting struct {
+		Enabled    func(childComplexity int) int
+		Extensions func(childComplexity int) int
+		Kind       func(childComplexity int) int
+		Label      func(childComplexity int) int
+		MaxBytes   func(childComplexity int) int
+	}
+
+	AssetSettings struct {
+		Kinds             func(childComplexity int) int
+		MaxFileBytes      func(childComplexity int) int
+		RefusedExtensions func(childComplexity int) int
+		UpdatedAt         func(childComplexity int) int
+		UpdatedBy         func(childComplexity int) int
+	}
+
 	AssignmentHistoryEntry struct {
 		ActorName        func(childComplexity int) int
 		ActorRole        func(childComplexity int) int
@@ -731,6 +747,7 @@ type ComplexityRoot struct {
 		SetAIProviderConfig           func(childComplexity int, input AIProviderConfigInput) int
 		SetAIProviderCredential       func(childComplexity int, credential string) int
 		SetAIRetrievalConfig          func(childComplexity int, topK int) int
+		SetAssetSettings              func(childComplexity int, allowedKinds []string) int
 		SetCaseDiscoveryDate          func(childComplexity int, caseID string, discoveredOn string) int
 		SetCaseStatus                 func(childComplexity int, caseID string, status CaseStatus) int
 		SetCategoryCadence            func(childComplexity int, category NotifCategory, cadence NotifCadence) int
@@ -959,6 +976,7 @@ type ComplexityRoot struct {
 		AiJob                      func(childComplexity int, jobID string) int
 		AiJobResultContent         func(childComplexity int, resultRef string) int
 		AiRetrievalConfig          func(childComplexity int) int
+		AssetSettings              func(childComplexity int) int
 		AssignmentHistory          func(childComplexity int, policyVersionID string, stageIndex int) int
 		AuditLegalHolds            func(childComplexity int, includeReleased *bool) int
 		AuditLog                   func(childComplexity int, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) int
@@ -1553,6 +1571,7 @@ type MutationResolver interface {
 	SetCategoryGovernance(ctx context.Context, id string, owners []string, idpGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) (*Category, error)
 	SetPolicyAck(ctx context.Context, policyID string, ackTriggers *AckTrigger, ackAudienceOverride []string) (*Policy, error)
 	SetGlobalSettings(ctx context.Context, input GlobalSettingsInput) (*GlobalSettings, error)
+	SetAssetSettings(ctx context.Context, allowedKinds []string) (*AssetSettings, error)
 	SetEmailServiceConfig(ctx context.Context, input EmailServiceConfigInput) (*EmailServiceConfigStatus, error)
 	AddAppendix(ctx context.Context, policyVersionID string, title string, contentJSON string) (*Appendix, error)
 	UpdateAppendix(ctx context.Context, id string, title string, contentJSON string) (*Appendix, error)
@@ -1703,6 +1722,7 @@ type QueryResolver interface {
 	EffectiveTemplate(ctx context.Context, policyID string) (*EffectiveTemplate, error)
 	EffectiveGovernance(ctx context.Context, categoryID string) (*EffectiveGovernance, error)
 	GlobalSettings(ctx context.Context) (*GlobalSettings, error)
+	AssetSettings(ctx context.Context) (*AssetSettings, error)
 	EmailServiceConfig(ctx context.Context) (*EmailServiceConfigStatus, error)
 	RelatedPolicies(ctx context.Context, policyID string) ([]*RelatedPolicy, error)
 	RelatedPolicyCandidates(ctx context.Context, policyID string) ([]*Policy, error)
@@ -2417,6 +2437,68 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AppendixVersion.VersionNo(childComplexity), true
+
+	case "AssetKindSetting.enabled":
+		if e.ComplexityRoot.AssetKindSetting.Enabled == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetKindSetting.Enabled(childComplexity), true
+	case "AssetKindSetting.extensions":
+		if e.ComplexityRoot.AssetKindSetting.Extensions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetKindSetting.Extensions(childComplexity), true
+	case "AssetKindSetting.kind":
+		if e.ComplexityRoot.AssetKindSetting.Kind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetKindSetting.Kind(childComplexity), true
+	case "AssetKindSetting.label":
+		if e.ComplexityRoot.AssetKindSetting.Label == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetKindSetting.Label(childComplexity), true
+	case "AssetKindSetting.maxBytes":
+		if e.ComplexityRoot.AssetKindSetting.MaxBytes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetKindSetting.MaxBytes(childComplexity), true
+
+	case "AssetSettings.kinds":
+		if e.ComplexityRoot.AssetSettings.Kinds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetSettings.Kinds(childComplexity), true
+	case "AssetSettings.maxFileBytes":
+		if e.ComplexityRoot.AssetSettings.MaxFileBytes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetSettings.MaxFileBytes(childComplexity), true
+	case "AssetSettings.refusedExtensions":
+		if e.ComplexityRoot.AssetSettings.RefusedExtensions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetSettings.RefusedExtensions(childComplexity), true
+	case "AssetSettings.updatedAt":
+		if e.ComplexityRoot.AssetSettings.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetSettings.UpdatedAt(childComplexity), true
+	case "AssetSettings.updatedBy":
+		if e.ComplexityRoot.AssetSettings.UpdatedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AssetSettings.UpdatedBy(childComplexity), true
 
 	case "AssignmentHistoryEntry.actorName":
 		if e.ComplexityRoot.AssignmentHistoryEntry.ActorName == nil {
@@ -5105,6 +5187,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetAIRetrievalConfig(childComplexity, args["topK"].(int)), true
+	case "Mutation.setAssetSettings":
+		if e.ComplexityRoot.Mutation.SetAssetSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setAssetSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetAssetSettings(childComplexity, args["allowedKinds"].([]string)), true
 	case "Mutation.setCaseDiscoveryDate":
 		if e.ComplexityRoot.Mutation.SetCaseDiscoveryDate == nil {
 			break
@@ -6423,6 +6516,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.AiRetrievalConfig(childComplexity), true
+	case "Query.assetSettings":
+		if e.ComplexityRoot.Query.AssetSettings == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.AssetSettings(childComplexity), true
 	case "Query.assignmentHistory":
 		if e.ComplexityRoot.Query.AssignmentHistory == nil {
 			break
@@ -10439,6 +10538,48 @@ extend type Query { globalSettings: GlobalSettings! }
 # Site-admin only.
 extend type Mutation { setGlobalSettings(input: GlobalSettingsInput!): GlobalSettings! }
 
+# --- Editor file settings (which kinds of file the File card accepts) ---
+# Backed by core AssetService. All kinds are on by default; HTML, SVG, XML,
+# scripts, executables, archives and macro-enabled Office files have no switch
+# and are always refused.
+"One switch of the setting: a kind of file the File card may accept."
+type AssetKindSetting {
+  "pdf, image, video, word, text, markdown or office."
+  kind: String!
+  label: String!
+  "The extensions the kind covers, without the dot."
+  extensions: [String!]!
+  enabled: Boolean!
+  "The hard size cap for the kind, in bytes."
+  maxBytes: Int!
+}
+
+type AssetSettings {
+  "Every kind that has a switch, in display order."
+  kinds: [AssetKindSetting!]!
+  "Extensions that are always refused and have no switch."
+  refusedExtensions: [String!]!
+  "The largest cap of any kind, in bytes (the upload limit)."
+  maxFileBytes: Int!
+  "The user id of the admin who last changed it; empty until first changed."
+  updatedBy: String!
+  "RFC 3339; empty until first changed."
+  updatedAt: String!
+}
+
+extend type Query {
+  "Readable by any signed-in user, so the editor can follow it."
+  assetSettings: AssetSettings!
+}
+
+extend type Mutation {
+  """
+  Site-admin only. Replaces the set of allowed kinds; an empty list turns every
+  kind off. An unknown kind is refused. Returns the settings now in force.
+  """
+  setAssetSettings(allowedKinds: [String!]!): AssetSettings!
+}
+
 # --- Email service configuration (site-admin) ---
 # The sending configuration for the platform email transport, persisted
 # server-side by core SettingsService. WRITE-ONLY credential:
@@ -12772,6 +12913,38 @@ func (ec *executionContext) childFields_AppendixVersion(ctx context.Context, fie
 		return ec.fieldContext_AppendixVersion_publishedBy(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type AppendixVersion", field.Name)
+}
+
+func (ec *executionContext) childFields_AssetKindSetting(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "kind":
+		return ec.fieldContext_AssetKindSetting_kind(ctx, field)
+	case "label":
+		return ec.fieldContext_AssetKindSetting_label(ctx, field)
+	case "extensions":
+		return ec.fieldContext_AssetKindSetting_extensions(ctx, field)
+	case "enabled":
+		return ec.fieldContext_AssetKindSetting_enabled(ctx, field)
+	case "maxBytes":
+		return ec.fieldContext_AssetKindSetting_maxBytes(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AssetKindSetting", field.Name)
+}
+
+func (ec *executionContext) childFields_AssetSettings(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "kinds":
+		return ec.fieldContext_AssetSettings_kinds(ctx, field)
+	case "refusedExtensions":
+		return ec.fieldContext_AssetSettings_refusedExtensions(ctx, field)
+	case "maxFileBytes":
+		return ec.fieldContext_AssetSettings_maxFileBytes(ctx, field)
+	case "updatedBy":
+		return ec.fieldContext_AssetSettings_updatedBy(ctx, field)
+	case "updatedAt":
+		return ec.fieldContext_AssetSettings_updatedAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AssetSettings", field.Name)
 }
 
 func (ec *executionContext) childFields_AssignmentHistoryEntry(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -17061,6 +17234,20 @@ func (ec *executionContext) field_Mutation_setAIRetrievalConfig_args(ctx context
 		return nil, err
 	}
 	args["topK"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setAssetSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "allowedKinds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["allowedKinds"] = arg0
 	return args, nil
 }
 
@@ -22110,6 +22297,245 @@ func (ec *executionContext) _AppendixVersion_publishedBy(ctx context.Context, fi
 }
 func (ec *executionContext) fieldContext_AppendixVersion_publishedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AssetKindSetting_kind(ctx context.Context, field graphql.CollectedField, obj *AssetKindSetting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetKindSetting_kind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetKindSetting_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetKindSetting", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AssetKindSetting_label(ctx context.Context, field graphql.CollectedField, obj *AssetKindSetting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetKindSetting_label(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetKindSetting_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetKindSetting", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AssetKindSetting_extensions(ctx context.Context, field graphql.CollectedField, obj *AssetKindSetting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetKindSetting_extensions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Extensions, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetKindSetting_extensions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetKindSetting", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AssetKindSetting_enabled(ctx context.Context, field graphql.CollectedField, obj *AssetKindSetting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetKindSetting_enabled(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetKindSetting_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetKindSetting", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _AssetKindSetting_maxBytes(ctx context.Context, field graphql.CollectedField, obj *AssetKindSetting) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetKindSetting_maxBytes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MaxBytes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetKindSetting_maxBytes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetKindSetting", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _AssetSettings_kinds(ctx context.Context, field graphql.CollectedField, obj *AssetSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetSettings_kinds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Kinds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*AssetKindSetting) graphql.Marshaler {
+			return ec.marshalNAssetKindSetting2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAssetKindSettingᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetSettings_kinds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssetSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AssetKindSetting(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssetSettings_refusedExtensions(ctx context.Context, field graphql.CollectedField, obj *AssetSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetSettings_refusedExtensions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RefusedExtensions, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetSettings_refusedExtensions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetSettings", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AssetSettings_maxFileBytes(ctx context.Context, field graphql.CollectedField, obj *AssetSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetSettings_maxFileBytes(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MaxFileBytes, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetSettings_maxFileBytes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetSettings", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _AssetSettings_updatedBy(ctx context.Context, field graphql.CollectedField, obj *AssetSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetSettings_updatedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetSettings_updatedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetSettings", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AssetSettings_updatedAt(ctx context.Context, field graphql.CollectedField, obj *AssetSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AssetSettings_updatedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AssetSettings_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AssetSettings", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _AssignmentHistoryEntry_id(ctx context.Context, field graphql.CollectedField, obj *AssignmentHistoryEntry) (ret graphql.Marshaler) {
@@ -30170,6 +30596,50 @@ func (ec *executionContext) fieldContext_Mutation_setGlobalSettings(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setGlobalSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setAssetSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setAssetSettings(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetAssetSettings(ctx, fc.Args["allowedKinds"].([]string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *AssetSettings) graphql.Marshaler {
+			return ec.marshalNAssetSettings2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAssetSettings(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setAssetSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AssetSettings(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setAssetSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -38836,6 +39306,38 @@ func (ec *executionContext) fieldContext_Query_globalSettings(_ context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_GlobalSettings(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_assetSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_assetSettings(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().AssetSettings(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *AssetSettings) graphql.Marshaler {
+			return ec.marshalNAssetSettings2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAssetSettings(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_assetSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AssetSettings(ctx, field)
 		},
 	}
 	return fc, nil
@@ -52688,6 +53190,122 @@ func (ec *executionContext) _AppendixVersion(ctx context.Context, sel ast.Select
 	return out
 }
 
+var assetKindSettingImplementors = []string{"AssetKindSetting"}
+
+func (ec *executionContext) _AssetKindSetting(ctx context.Context, sel ast.SelectionSet, obj *AssetKindSetting) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, assetKindSettingImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AssetKindSetting")
+		case "kind":
+			out.Values[i] = ec._AssetKindSetting_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._AssetKindSetting_label(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "extensions":
+			out.Values[i] = ec._AssetKindSetting_extensions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "enabled":
+			out.Values[i] = ec._AssetKindSetting_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxBytes":
+			out.Values[i] = ec._AssetKindSetting_maxBytes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var assetSettingsImplementors = []string{"AssetSettings"}
+
+func (ec *executionContext) _AssetSettings(ctx context.Context, sel ast.SelectionSet, obj *AssetSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, assetSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AssetSettings")
+		case "kinds":
+			out.Values[i] = ec._AssetSettings_kinds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "refusedExtensions":
+			out.Values[i] = ec._AssetSettings_refusedExtensions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxFileBytes":
+			out.Values[i] = ec._AssetSettings_maxFileBytes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedBy":
+			out.Values[i] = ec._AssetSettings_updatedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._AssetSettings_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var assignmentHistoryEntryImplementors = []string{"AssignmentHistoryEntry"}
 
 func (ec *executionContext) _AssignmentHistoryEntry(ctx context.Context, sel ast.SelectionSet, obj *AssignmentHistoryEntry) graphql.Marshaler {
@@ -56079,6 +56697,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setAssetSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setAssetSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setEmailServiceConfig":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setEmailServiceConfig(ctx, field)
@@ -58793,6 +59418,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_globalSettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "assetSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_assetSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -64352,6 +64999,46 @@ func (ec *executionContext) unmarshalNApprovalStatus2githubᚗcomᚋStewardᚑGR
 
 func (ec *executionContext) marshalNApprovalStatus2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐApprovalStatus(ctx context.Context, sel ast.SelectionSet, v ApprovalStatus) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNAssetKindSetting2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAssetKindSettingᚄ(ctx context.Context, sel ast.SelectionSet, v []*AssetKindSetting) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAssetKindSetting2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAssetKindSetting(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAssetKindSetting2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAssetKindSetting(ctx context.Context, sel ast.SelectionSet, v *AssetKindSetting) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AssetKindSetting(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAssetSettings2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAssetSettings(ctx context.Context, sel ast.SelectionSet, v AssetSettings) graphql.Marshaler {
+	return ec._AssetSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAssetSettings2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAssetSettings(ctx context.Context, sel ast.SelectionSet, v *AssetSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AssetSettings(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNAssignmentHistoryEntry2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAssignmentHistoryEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*AssignmentHistoryEntry) graphql.Marshaler {

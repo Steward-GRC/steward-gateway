@@ -183,6 +183,11 @@ func (r *mutationResolver) SetGlobalSettings(ctx context.Context, input GlobalSe
 	return SetGlobalSettings(ctx, r.SettingsClient, input)
 }
 
+// SetAssetSettings is the resolver for the setAssetSettings field.
+func (r *mutationResolver) SetAssetSettings(ctx context.Context, allowedKinds []string) (*AssetSettings, error) {
+	return SetAssetSettings(ctx, r.AssetClient, allowedKinds)
+}
+
 // SetEmailServiceConfig is the resolver for the setEmailServiceConfig field.
 func (r *mutationResolver) SetEmailServiceConfig(ctx context.Context, input EmailServiceConfigInput) (*EmailServiceConfigStatus, error) {
 	return SetEmailServiceConfig(ctx, r.SettingsClient, input)
@@ -371,6 +376,11 @@ func (r *queryResolver) EffectiveGovernance(ctx context.Context, categoryID stri
 // GlobalSettings is the resolver for the globalSettings field.
 func (r *queryResolver) GlobalSettings(ctx context.Context) (*GlobalSettings, error) {
 	return GetGlobalSettings(ctx, r.SettingsClient)
+}
+
+// AssetSettings is the resolver for the assetSettings field.
+func (r *queryResolver) AssetSettings(ctx context.Context) (*AssetSettings, error) {
+	return GetAssetSettings(ctx, r.AssetClient)
 }
 
 // EmailServiceConfig is the resolver for the emailServiceConfig field.

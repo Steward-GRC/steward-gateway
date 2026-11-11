@@ -453,6 +453,48 @@ extend type Query { globalSettings: GlobalSettings! }
 # Site-admin only.
 extend type Mutation { setGlobalSettings(input: GlobalSettingsInput!): GlobalSettings! }
 
+# --- Editor file settings (which kinds of file the File card accepts) ---
+# Backed by core AssetService. All kinds are on by default; HTML, SVG, XML,
+# scripts, executables, archives and macro-enabled Office files have no switch
+# and are always refused.
+"One switch of the setting: a kind of file the File card may accept."
+type AssetKindSetting {
+  "pdf, image, video, word, text, markdown or office."
+  kind: String!
+  label: String!
+  "The extensions the kind covers, without the dot."
+  extensions: [String!]!
+  enabled: Boolean!
+  "The hard size cap for the kind, in bytes."
+  maxBytes: Int!
+}
+
+type AssetSettings {
+  "Every kind that has a switch, in display order."
+  kinds: [AssetKindSetting!]!
+  "Extensions that are always refused and have no switch."
+  refusedExtensions: [String!]!
+  "The largest cap of any kind, in bytes (the upload limit)."
+  maxFileBytes: Int!
+  "The user id of the admin who last changed it; empty until first changed."
+  updatedBy: String!
+  "RFC 3339; empty until first changed."
+  updatedAt: String!
+}
+
+extend type Query {
+  "Readable by any signed-in user, so the editor can follow it."
+  assetSettings: AssetSettings!
+}
+
+extend type Mutation {
+  """
+  Site-admin only. Replaces the set of allowed kinds; an empty list turns every
+  kind off. An unknown kind is refused. Returns the settings now in force.
+  """
+  setAssetSettings(allowedKinds: [String!]!): AssetSettings!
+}
+
 # --- Email service configuration (site-admin) ---
 # The sending configuration for the platform email transport, persisted
 # server-side by core SettingsService. WRITE-ONLY credential:

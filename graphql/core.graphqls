@@ -108,7 +108,10 @@ extend type Mutation {
   # With no collab configured the flush and the freeze are both skipped.
   publishDraft(policyId: ID!): PolicyVersion!
   # Discard (delete) a policy's working draft. Only the draft is removed — the
-  # policy and any published versions are untouched.
+  # policy and any published versions are untouched. A draft that is in review
+  # has its open approval run withdrawn first (as the mock server ends it), so
+  # no approver keeps a task on it; if the run can't be withdrawn the draft is
+  # kept and the error is returned.
   discardDraft(policyId: ID!): Boolean!
   # Hard-delete a never-published policy (site-admin/category-author). Removes
   # the policy, its draft, and any appendices. Refused if ever published.
@@ -281,6 +284,9 @@ type Policy {
   # The version number/status of whichever version is current (published if
   # set, else the draft). Null when the policy has neither. versionNo is 0
   # for an unpublished draft, which isn't numbered until it's published.
+  # currentVersionStatus is DRAFT, IN_REVIEW, REJECTED, PUBLISHED, SUPERSEDED
+  # or ARCHIVED (REJECTED only when the latest version was turned down and
+  # nothing is published).
   currentVersionNo: Int
   currentVersionStatus: String
   # Template tri-state. templateNone=true → explicit NONE (freeform), overrides
@@ -330,6 +336,9 @@ type PolicyVersion {
   id: ID!
   policyId: ID!
   versionNo: Int!
+  # DRAFT, IN_REVIEW, REJECTED, PUBLISHED, SUPERSEDED or ARCHIVED. A version
+  # that is not published (a draft, one in review, a rejected one) is read only
+  # by an editor of the policy or the holder of a pending approval seat on it.
   status: String!
   templateVersionId: ID!
   contentJson: String!

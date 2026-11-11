@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
@@ -651,7 +652,7 @@ func TestDiscardDraft_NoAuthorGrantDenied(t *testing.T) {
 	pc, gc := coAuthMatrixEnv("creator-other", nil,
 		[]*corev1.CategoryRule{authorRule("someone-else", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-1", RolesValue: []string{"policy-author"}})
-	_, err := resolvers.DiscardDraft(ctx, pc, gc, "pol")
+	_, err := resolvers.DiscardDraft(ctx, log.Nop(), pc, gc, nil, "pol")
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("want PermissionDenied, got %v", err)
 	}
@@ -669,7 +670,7 @@ func TestDiscardDraft_CategoryAuthorAllowed(t *testing.T) {
 	pc, gc := coAuthMatrixEnv("creator-other", nil,
 		[]*corev1.CategoryRule{authorRule("coauthor-u", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "coauthor-u", RolesValue: []string{"reader"}})
-	ok, err := resolvers.DiscardDraft(ctx, pc, gc, "pol")
+	ok, err := resolvers.DiscardDraft(ctx, log.Nop(), pc, gc, nil, "pol")
 	if err != nil {
 		t.Fatalf("expected category author to be allowed to discard, got %v", err)
 	}
@@ -697,7 +698,7 @@ func TestDiscardDraft_ForwardsPolicyIDAndBindsActor(t *testing.T) {
 	client := &fakePolicyClient{policies: map[string]*corev1.Policy{
 		"pol-9": {Id: "pol-9", OwnerUserId: "user-42"},
 	}}
-	ok, err := resolvers.DiscardDraft(ctxWithRoles(t, "user-42", []string{"policy-author"}), client, nil, "pol-9")
+	ok, err := resolvers.DiscardDraft(ctxWithRoles(t, "user-42", []string{"policy-author"}), log.Nop(), client, nil, nil, "pol-9")
 	if err != nil {
 		t.Fatalf("DiscardDraft: %v", err)
 	}
@@ -718,7 +719,7 @@ func TestDiscardDraft_ForwardsPolicyIDAndBindsActor(t *testing.T) {
 // TestDiscardDraft_Unauthenticated rejects a call with no authenticated user.
 func TestDiscardDraft_Unauthenticated(t *testing.T) {
 	client := &fakePolicyClient{}
-	if _, err := resolvers.DiscardDraft(context.Background(), client, nil, "pol-9"); err == nil {
+	if _, err := resolvers.DiscardDraft(context.Background(), log.Nop(), client, nil, nil, "pol-9"); err == nil {
 		t.Fatal("expected error with no authenticated user")
 	}
 	if client.lastDiscard != nil {
@@ -1370,7 +1371,7 @@ func TestPolicyFromProto_MapsUpdatedAtAndCurrentVersion(t *testing.T) {
 	if cur.CurrentVersionNo == nil || *cur.CurrentVersionNo != 3 {
 		t.Fatalf("unexpected CurrentVersionNo: %v", cur.CurrentVersionNo)
 	}
-	if cur.CurrentVersionStatus == nil || *cur.CurrentVersionStatus != "POLICY_VERSION_STATUS_PUBLISHED" {
+	if cur.CurrentVersionStatus == nil || *cur.CurrentVersionStatus != "PUBLISHED" {
 		t.Fatalf("unexpected CurrentVersionStatus: %v", cur.CurrentVersionStatus)
 	}
 

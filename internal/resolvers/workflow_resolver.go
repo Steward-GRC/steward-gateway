@@ -79,6 +79,7 @@ func workflowUsability(def *workflowv1.WorkflowDef) (usable bool, firstUnstaffed
 // SubmitWorkflowResolver starts an approval saga for a policy version.
 func SubmitWorkflowResolver(
 	ctx context.Context,
+	lg log.Logger,
 	client workflowv1.WorkflowServiceClient,
 	categoryClient corev1.CategoryServiceClient,
 	policyClient corev1.PolicyServiceClient,
@@ -107,9 +108,35 @@ func SubmitWorkflowResolver(
 		AncestorCategoryIds: lineage,
 	})
 	if err != nil {
+		if refused := emptySubmitRefusal(err); refused != nil {
+			lg.Info("workflow submit refused: the document holds no text",
+				log.F("policy_id", policyID), log.F("policy_version_id", policyVersionID))
+			return nil, refused
+		}
+		lg.Debug("workflow submit failed",
+			log.F("policy_id", policyID), log.F("policy_version_id", policyVersionID), log.F("code", status.Code(err).String()))
 		return nil, fmt.Errorf("workflow submit: %w", err)
 	}
+	lg.Info("workflow submitted for review",
+		log.F("policy_id", policyID), log.F("policy_version_id", policyVersionID), log.F("run_id", resp.GetRunId()))
 	return &WorkflowSubmitResult{RunID: resp.GetRunId()}, nil
+}
+
+// emptySubmitMarker is what core's refusal of an empty submit says. Core answers
+// InvalidArgument; the mock server answers FailedPrecondition ("A document with
+// no content can't be submitted."), and steward-web is built against the mock.
+const emptySubmitMarker = "holds no text"
+
+// emptySubmitRefusal turns core's refusal of an empty-document submit, as it
+// comes back through workflow, into the FailedPrecondition the mock gives. Any
+// other error, including another InvalidArgument, is nil here and relayed as it
+// is.
+func emptySubmitRefusal(err error) error {
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.InvalidArgument || !strings.Contains(st.Message(), emptySubmitMarker) {
+		return nil
+	}
+	return status.Error(codes.FailedPrecondition, "A document with no content can't be submitted.")
 }
 
 // SignalWorkflowResolver delivers an approver decision to an active run.
@@ -385,6 +412,9 @@ func WorkflowStatusResolver(
 		}
 		stageAssignees = append(stageAssignees, row)
 	}
+	if !hideComments {
+		attachChangesRequested(ctx, logger, client, policyVersionID, resp, stageAssignees)
+	}
 	groupNames := map[string]string{}
 	resolveGroupName := func(gid string) *string {
 		if gid == "" {
@@ -427,6 +457,74 @@ func WorkflowStatusResolver(
 		StageAssignees:    stageAssignees,
 		StageUnitProgress: stageUnitProgress,
 	}, nil
+}
+
+// changesRequestedEvent is the history event workflow writes when an approver
+// sends comments back: the comment is in the entry's reason, and the seat stays
+// pending. It is kept nowhere else, not in StageAssignee.comment.
+const changesRequestedEvent = "changes_requested"
+
+// attachChangesRequested shows each pending seat's latest request for changes.
+// It reads the history of the run's current stage, the only stage whose seats
+// can be asked, and fills the seats by the user who held them: the account an
+// admin acted as, when the entry says so, else the actor. A history that cannot
+// be read leaves the seats as they are; the status must not fail for a note.
+func attachChangesRequested(ctx context.Context, logger log.Logger, client workflowv1.WorkflowServiceClient, policyVersionID string, resp *workflowv1.GetStatusResponse, rows [][]*StageAssignee) {
+	stage := int(resp.GetCurrentStageIdx())
+	if resp.GetStatus() != workflowv1.ApprovalStatus_APPROVAL_STATUS_IN_REVIEW || stage < 0 || stage >= len(rows) {
+		return
+	}
+	pending := false
+	for _, a := range rows[stage] {
+		if a.State == "pending" {
+			pending = true
+			break
+		}
+	}
+	if !pending {
+		return
+	}
+	start := time.Now()
+	h, err := client.GetAssignmentHistory(ctx, &workflowv1.GetAssignmentHistoryRequest{
+		PolicyVersionId: policyVersionID,
+		StageIndex:      toInt32(stage),
+	})
+	if err != nil {
+		logger.Warn("workflow status: could not read the stage history, showing no change requests",
+			log.F("policy_version_id", policyVersionID), log.F("stage", stage), log.F("code", status.Code(err).String()),
+			log.F("duration_ms", time.Since(start).Milliseconds()))
+		return
+	}
+	latest := map[string]*workflowv1.AssignmentHistoryEntry{}
+	for _, e := range h.GetEntries() {
+		if e.GetEvent() != changesRequestedEvent || e.GetReason() == "" {
+			continue
+		}
+		holder := e.GetImpersonatedUserId()
+		if holder == "" {
+			holder = e.GetActorUserId()
+		}
+		if prev, ok := latest[holder]; !ok || e.GetId() > prev.GetId() {
+			latest[holder] = e
+		}
+	}
+	shown := 0
+	for _, a := range rows[stage] {
+		e, ok := latest[a.UserID]
+		if !ok || a.State != "pending" {
+			continue
+		}
+		c := e.GetReason()
+		a.ChangesRequested = &c
+		if ts := e.GetCreatedAt(); ts != nil {
+			at := ts.AsTime().UTC().Format(time.RFC3339)
+			a.ChangesRequestedAt = &at
+		}
+		shown++
+	}
+	logger.Debug("workflow status: change requests attached to pending seats",
+		log.F("policy_version_id", policyVersionID), log.F("stage", stage), log.F("entries", len(h.GetEntries())),
+		log.F("seats", shown), log.F("duration_ms", time.Since(start).Milliseconds()))
 }
 
 // PendingTasksResolver lists approval tasks awaiting the authenticated user.

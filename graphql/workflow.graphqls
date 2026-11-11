@@ -47,6 +47,14 @@ type StageAssignee {
   # The group whose seat this is, when the user holds a group seat; null for
   # an individual seat.
   groupId: ID
+  # The comment this seat's holder sent back when asking for changes, read from
+  # the seat's history (workflow keeps it nowhere else). The latest one wins.
+  # Asking for changes is not a decision: the seat stays pending and `comment`
+  # stays null. Null when no changes were requested, and for a reader who sees
+  # the policy obfuscated (the comment is free text about the content).
+  changesRequested: String
+  # ISO-8601 time of that request.
+  changesRequestedAt: String
 }
 
 # One approve-as-group unit's live tally on a stage. groupName is

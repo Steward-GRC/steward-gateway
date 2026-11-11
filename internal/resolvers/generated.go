@@ -1185,12 +1185,14 @@ type ComplexityRoot struct {
 	}
 
 	StageAssignee struct {
-		Comment   func(childComplexity int) int
-		DecidedAt func(childComplexity int) int
-		GroupID   func(childComplexity int) int
-		Name      func(childComplexity int) int
-		State     func(childComplexity int) int
-		UserID    func(childComplexity int) int
+		ChangesRequested   func(childComplexity int) int
+		ChangesRequestedAt func(childComplexity int) int
+		Comment            func(childComplexity int) int
+		DecidedAt          func(childComplexity int) int
+		GroupID            func(childComplexity int) int
+		Name               func(childComplexity int) int
+		State              func(childComplexity int) int
+		UserID             func(childComplexity int) int
 	}
 
 	StageEligibleAssignees struct {
@@ -7549,6 +7551,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.SpCertificate.SpMetadataXML(childComplexity), true
 
+	case "StageAssignee.changesRequested":
+		if e.ComplexityRoot.StageAssignee.ChangesRequested == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageAssignee.ChangesRequested(childComplexity), true
+	case "StageAssignee.changesRequestedAt":
+		if e.ComplexityRoot.StageAssignee.ChangesRequestedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageAssignee.ChangesRequestedAt(childComplexity), true
 	case "StageAssignee.comment":
 		if e.ComplexityRoot.StageAssignee.Comment == nil {
 			break
@@ -9298,7 +9312,10 @@ extend type Mutation {
   # With no collab configured the flush and the freeze are both skipped.
   publishDraft(policyId: ID!): PolicyVersion!
   # Discard (delete) a policy's working draft. Only the draft is removed — the
-  # policy and any published versions are untouched.
+  # policy and any published versions are untouched. A draft that is in review
+  # has its open approval run withdrawn first (as the mock server ends it), so
+  # no approver keeps a task on it; if the run can't be withdrawn the draft is
+  # kept and the error is returned.
   discardDraft(policyId: ID!): Boolean!
   # Hard-delete a never-published policy (site-admin/category-author). Removes
   # the policy, its draft, and any appendices. Refused if ever published.
@@ -9471,6 +9488,9 @@ type Policy {
   # The version number/status of whichever version is current (published if
   # set, else the draft). Null when the policy has neither. versionNo is 0
   # for an unpublished draft, which isn't numbered until it's published.
+  # currentVersionStatus is DRAFT, IN_REVIEW, REJECTED, PUBLISHED, SUPERSEDED
+  # or ARCHIVED (REJECTED only when the latest version was turned down and
+  # nothing is published).
   currentVersionNo: Int
   currentVersionStatus: String
   # Template tri-state. templateNone=true → explicit NONE (freeform), overrides
@@ -9520,6 +9540,9 @@ type PolicyVersion {
   id: ID!
   policyId: ID!
   versionNo: Int!
+  # DRAFT, IN_REVIEW, REJECTED, PUBLISHED, SUPERSEDED or ARCHIVED. A version
+  # that is not published (a draft, one in review, a rejected one) is read only
+  # by an editor of the policy or the holder of a pending approval seat on it.
   status: String!
   templateVersionId: ID!
   contentJson: String!
@@ -11108,6 +11131,14 @@ type StageAssignee {
   # The group whose seat this is, when the user holds a group seat; null for
   # an individual seat.
   groupId: ID
+  # The comment this seat's holder sent back when asking for changes, read from
+  # the seat's history (workflow keeps it nowhere else). The latest one wins.
+  # Asking for changes is not a decision: the seat stays pending and ` + "`" + `comment` + "`" + `
+  # stays null. Null when no changes were requested, and for a reader who sees
+  # the policy obfuscated (the comment is free text about the content).
+  changesRequested: String
+  # ISO-8601 time of that request.
+  changesRequestedAt: String
 }
 
 # One approve-as-group unit's live tally on a stage. groupName is
@@ -13262,6 +13293,10 @@ func (ec *executionContext) childFields_StageAssignee(ctx context.Context, field
 		return ec.fieldContext_StageAssignee_decidedAt(ctx, field)
 	case "groupId":
 		return ec.fieldContext_StageAssignee_groupId(ctx, field)
+	case "changesRequested":
+		return ec.fieldContext_StageAssignee_changesRequested(ctx, field)
+	case "changesRequestedAt":
+		return ec.fieldContext_StageAssignee_changesRequestedAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type StageAssignee", field.Name)
 }
@@ -41564,6 +41599,52 @@ func (ec *executionContext) fieldContext_StageAssignee_groupId(_ context.Context
 	return graphql.NewScalarFieldContext("StageAssignee", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
+func (ec *executionContext) _StageAssignee_changesRequested(ctx context.Context, field graphql.CollectedField, obj *StageAssignee) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageAssignee_changesRequested(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ChangesRequested, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_StageAssignee_changesRequested(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageAssignee", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _StageAssignee_changesRequestedAt(ctx context.Context, field graphql.CollectedField, obj *StageAssignee) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageAssignee_changesRequestedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ChangesRequestedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_StageAssignee_changesRequestedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageAssignee", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _StageEligibleAssignees_stageIndex(ctx context.Context, field graphql.CollectedField, obj *StageEligibleAssignees) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57431,6 +57512,16 @@ func (ec *executionContext) _StageAssignee(ctx context.Context, sel ast.Selectio
 			}
 		case "groupId":
 			out.Values[i] = ec._StageAssignee_groupId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "changesRequested":
+			out.Values[i] = ec._StageAssignee_changesRequested(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "changesRequestedAt":
+			out.Values[i] = ec._StageAssignee_changesRequestedAt(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}

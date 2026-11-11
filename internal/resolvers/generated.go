@@ -77,8 +77,9 @@ type ComplexityRoot struct {
 	}
 
 	AIHealth struct {
-		Available func(childComplexity int) int
-		Reason    func(childComplexity int) int
+		Available      func(childComplexity int) int
+		ProviderReason func(childComplexity int) int
+		Reason         func(childComplexity int) int
 	}
 
 	AIJobResult struct {
@@ -1830,6 +1831,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AIHealth.Available(childComplexity), true
+	case "AIHealth.providerReason":
+		if e.ComplexityRoot.AIHealth.ProviderReason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AIHealth.ProviderReason(childComplexity), true
 	case "AIHealth.reason":
 		if e.ComplexityRoot.AIHealth.Reason == nil {
 			break
@@ -8890,6 +8897,14 @@ type AIHealth {
   configured). Null when available is true.
   """
   reason: String
+  """
+  Why the model provider is unavailable, as the ai service reports it:
+  "auth_failed" (the provider refused the credential), "provider_error" (the
+  provider call failed) or "not_configured" (no provider is set up). Set only
+  when reason is "provider_unavailable" and the ai service gave a reason;
+  null otherwise.
+  """
+  providerReason: String
 }
 
 # The retrieval candidate count (top_k) the ai service pulls before ranking
@@ -11571,6 +11586,8 @@ func (ec *executionContext) childFields_AIHealth(ctx context.Context, field grap
 		return ec.fieldContext_AIHealth_available(ctx, field)
 	case "reason":
 		return ec.fieldContext_AIHealth_reason(ctx, field)
+	case "providerReason":
+		return ec.fieldContext_AIHealth_providerReason(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type AIHealth", field.Name)
 }
@@ -18863,6 +18880,29 @@ func (ec *executionContext) _AIHealth_reason(ctx context.Context, field graphql.
 	)
 }
 func (ec *executionContext) fieldContext_AIHealth_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AIHealth", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AIHealth_providerReason(ctx context.Context, field graphql.CollectedField, obj *AIHealth) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AIHealth_providerReason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ProviderReason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AIHealth_providerReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("AIHealth", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -47886,6 +47926,11 @@ func (ec *executionContext) _AIHealth(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "reason":
 			out.Values[i] = ec._AIHealth_reason(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "providerReason":
+			out.Values[i] = ec._AIHealth_providerReason(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}

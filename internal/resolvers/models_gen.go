@@ -1260,6 +1260,14 @@ type StageEligibleAssignees struct {
 	Assignees  []*UserLabel `json:"assignees"`
 }
 
+type StageProgress struct {
+	DueAt     *string `json:"dueAt,omitempty"`
+	Quorum    string  `json:"quorum"`
+	QuorumN   int     `json:"quorumN"`
+	Approvals int     `json:"approvals"`
+	Required  int     `json:"required"`
+}
+
 type StageUnitProgress struct {
 	GroupID   string  `json:"groupId"`
 	GroupName *string `json:"groupName,omitempty"`
@@ -1539,6 +1547,9 @@ type WorkflowStatus struct {
 	StageNames        []string               `json:"stageNames"`
 	StageAssignees    [][]*StageAssignee     `json:"stageAssignees"`
 	StageUnitProgress [][]*StageUnitProgress `json:"stageUnitProgress"`
+	SubmittedBy       *string                `json:"submittedBy,omitempty"`
+	SubmittedAt       *string                `json:"submittedAt,omitempty"`
+	StageProgress     []*StageProgress       `json:"stageProgress"`
 }
 
 type WorkflowSubmitResult struct {

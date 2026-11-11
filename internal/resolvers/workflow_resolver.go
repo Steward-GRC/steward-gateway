@@ -426,6 +426,7 @@ func WorkflowStatusResolver(
 				StageNames:        []string{},
 				StageAssignees:    [][]*StageAssignee{},
 				StageUnitProgress: [][]*StageUnitProgress{},
+				StageProgress:     []*StageProgress{},
 			}, nil
 		}
 		return nil, fmt.Errorf("workflow get status: %w", err)
@@ -491,6 +492,31 @@ func WorkflowStatusResolver(
 		}
 		stageUnitProgress = append(stageUnitProgress, row)
 	}
+	stageProgress := make([]*StageProgress, 0, len(resp.GetStageProgress()))
+	for i, sp := range resp.GetStageProgress() {
+		entry := &StageProgress{
+			Quorum:    sp.GetQuorum(),
+			QuorumN:   int(sp.GetQuorumN()),
+			Approvals: int(sp.GetApprovals()),
+			Required:  int(sp.GetRequired()),
+		}
+		if ts := sp.GetDueAt(); ts != nil {
+			s := ts.AsTime().UTC().Format(time.RFC3339)
+			entry.DueAt = &s
+		}
+		log.Trace(logger, "workflow status stage progress",
+			log.F("policy_version_id", policyVersionID), log.F("stage_idx", i), log.F("quorum", entry.Quorum),
+			log.F("approvals", entry.Approvals), log.F("required", entry.Required), log.F("has_due_at", entry.DueAt != nil))
+		stageProgress = append(stageProgress, entry)
+	}
+	var submittedAt *string
+	if ts := resp.GetSubmittedAt(); ts != nil {
+		s := ts.AsTime().UTC().Format(time.RFC3339)
+		submittedAt = &s
+	}
+	logger.Debug("workflow status submitter and stage progress mapped",
+		log.F("policy_version_id", policyVersionID), log.F("stages", len(stageProgress)),
+		log.F("has_submitter", resp.GetSubmittedBy() != ""), log.F("has_submitted_at", submittedAt != nil))
 	return &WorkflowStatus{
 		Status:            approvalStatusProtoToGQL(resp.GetStatus()),
 		RunID:             resp.GetRunId(),
@@ -498,6 +524,9 @@ func WorkflowStatusResolver(
 		StageNames:        resp.GetStageNames(),
 		StageAssignees:    stageAssignees,
 		StageUnitProgress: stageUnitProgress,
+		SubmittedBy:       nilIfEmpty(resp.GetSubmittedBy()),
+		SubmittedAt:       submittedAt,
+		StageProgress:     stageProgress,
 	}, nil
 }
 

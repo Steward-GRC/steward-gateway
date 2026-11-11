@@ -1326,6 +1326,14 @@ type ComplexityRoot struct {
 		StageName  func(childComplexity int) int
 	}
 
+	StageProgress struct {
+		Approvals func(childComplexity int) int
+		DueAt     func(childComplexity int) int
+		Quorum    func(childComplexity int) int
+		QuorumN   func(childComplexity int) int
+		Required  func(childComplexity int) int
+	}
+
 	StageUnitProgress struct {
 		Approvals func(childComplexity int) int
 		GroupID   func(childComplexity int) int
@@ -1523,8 +1531,11 @@ type ComplexityRoot struct {
 		RunID             func(childComplexity int) int
 		StageAssignees    func(childComplexity int) int
 		StageNames        func(childComplexity int) int
+		StageProgress     func(childComplexity int) int
 		StageUnitProgress func(childComplexity int) int
 		Status            func(childComplexity int) int
+		SubmittedAt       func(childComplexity int) int
+		SubmittedBy       func(childComplexity int) int
 	}
 
 	WorkflowSubmitResult struct {
@@ -8444,6 +8455,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.StageEligibleAssignees.StageName(childComplexity), true
 
+	case "StageProgress.approvals":
+		if e.ComplexityRoot.StageProgress.Approvals == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageProgress.Approvals(childComplexity), true
+	case "StageProgress.dueAt":
+		if e.ComplexityRoot.StageProgress.DueAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageProgress.DueAt(childComplexity), true
+	case "StageProgress.quorum":
+		if e.ComplexityRoot.StageProgress.Quorum == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageProgress.Quorum(childComplexity), true
+	case "StageProgress.quorumN":
+		if e.ComplexityRoot.StageProgress.QuorumN == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageProgress.QuorumN(childComplexity), true
+	case "StageProgress.required":
+		if e.ComplexityRoot.StageProgress.Required == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageProgress.Required(childComplexity), true
+
 	case "StageUnitProgress.approvals":
 		if e.ComplexityRoot.StageUnitProgress.Approvals == nil {
 			break
@@ -9222,6 +9264,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkflowStatus.StageNames(childComplexity), true
+	case "WorkflowStatus.stageProgress":
+		if e.ComplexityRoot.WorkflowStatus.StageProgress == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStatus.StageProgress(childComplexity), true
 	case "WorkflowStatus.stageUnitProgress":
 		if e.ComplexityRoot.WorkflowStatus.StageUnitProgress == nil {
 			break
@@ -9234,6 +9282,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkflowStatus.Status(childComplexity), true
+	case "WorkflowStatus.submittedAt":
+		if e.ComplexityRoot.WorkflowStatus.SubmittedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStatus.SubmittedAt(childComplexity), true
+	case "WorkflowStatus.submittedBy":
+		if e.ComplexityRoot.WorkflowStatus.SubmittedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStatus.SubmittedBy(childComplexity), true
 
 	case "WorkflowSubmitResult.runId":
 		if e.ComplexityRoot.WorkflowSubmitResult.RunID == nil {
@@ -12333,6 +12393,16 @@ type StageUnitProgress {
   status: String!    # SATISFIED | PENDING | REJECTED
 }
 
+# One stage's due date and approval rule, with the individual approvals it has
+# and needs. Approve-as-group units keep their own tally in StageUnitProgress.
+type StageProgress {
+  dueAt: String      # RFC3339; null until the stage is entered
+  quorum: String!    # one | majority | all | nofm
+  quorumN: Int!      # approvals an nofm stage needs; 0 on every other rule
+  approvals: Int!    # individual approvals the stage has
+  required: Int!     # individual approvals the stage needs under its rule
+}
+
 type WorkflowStatus {
   status: ApprovalStatus!
   runId: String!
@@ -12346,6 +12416,14 @@ type WorkflowStatus {
   # Per-stage approve-as-group unit progress, index-aligned with stageNames; an
   # empty inner list means the stage has no group units.
   stageUnitProgress: [[StageUnitProgress!]!]!
+  # The effective submitter's user id (during act-as, the account acted as);
+  # null when the run has none.
+  submittedBy: String
+  # RFC3339 time the run was submitted; null when unset.
+  submittedAt: String
+  # Each stage's due date and rule, index-aligned with stageNames; empty when
+  # there is no run.
+  stageProgress: [StageProgress!]!
 }
 
 type PendingTask {
@@ -14711,6 +14789,22 @@ func (ec *executionContext) childFields_StageEligibleAssignees(ctx context.Conte
 	return nil, fmt.Errorf("no field named %q was found under type StageEligibleAssignees", field.Name)
 }
 
+func (ec *executionContext) childFields_StageProgress(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "dueAt":
+		return ec.fieldContext_StageProgress_dueAt(ctx, field)
+	case "quorum":
+		return ec.fieldContext_StageProgress_quorum(ctx, field)
+	case "quorumN":
+		return ec.fieldContext_StageProgress_quorumN(ctx, field)
+	case "approvals":
+		return ec.fieldContext_StageProgress_approvals(ctx, field)
+	case "required":
+		return ec.fieldContext_StageProgress_required(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type StageProgress", field.Name)
+}
+
 func (ec *executionContext) childFields_StageUnitProgress(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "groupId":
@@ -15099,6 +15193,12 @@ func (ec *executionContext) childFields_WorkflowStatus(ctx context.Context, fiel
 		return ec.fieldContext_WorkflowStatus_stageAssignees(ctx, field)
 	case "stageUnitProgress":
 		return ec.fieldContext_WorkflowStatus_stageUnitProgress(ctx, field)
+	case "submittedBy":
+		return ec.fieldContext_WorkflowStatus_submittedBy(ctx, field)
+	case "submittedAt":
+		return ec.fieldContext_WorkflowStatus_submittedAt(ctx, field)
+	case "stageProgress":
+		return ec.fieldContext_WorkflowStatus_stageProgress(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type WorkflowStatus", field.Name)
 }
@@ -46261,6 +46361,121 @@ func (ec *executionContext) fieldContext_StageEligibleAssignees_assignees(_ cont
 	return fc, nil
 }
 
+func (ec *executionContext) _StageProgress_dueAt(ctx context.Context, field graphql.CollectedField, obj *StageProgress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageProgress_dueAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DueAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_StageProgress_dueAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageProgress", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _StageProgress_quorum(ctx context.Context, field graphql.CollectedField, obj *StageProgress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageProgress_quorum(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Quorum, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StageProgress_quorum(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageProgress", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _StageProgress_quorumN(ctx context.Context, field graphql.CollectedField, obj *StageProgress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageProgress_quorumN(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.QuorumN, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StageProgress_quorumN(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageProgress", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _StageProgress_approvals(ctx context.Context, field graphql.CollectedField, obj *StageProgress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageProgress_approvals(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Approvals, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StageProgress_approvals(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageProgress", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _StageProgress_required(ctx context.Context, field graphql.CollectedField, obj *StageProgress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageProgress_required(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Required, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StageProgress_required(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageProgress", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
 func (ec *executionContext) _StageUnitProgress_groupId(ctx context.Context, field graphql.CollectedField, obj *StageUnitProgress) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -49313,6 +49528,84 @@ func (ec *executionContext) fieldContext_WorkflowStatus_stageUnitProgress(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_StageUnitProgress(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkflowStatus_submittedBy(ctx context.Context, field graphql.CollectedField, obj *WorkflowStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStatus_submittedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubmittedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStatus_submittedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _WorkflowStatus_submittedAt(ctx context.Context, field graphql.CollectedField, obj *WorkflowStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStatus_submittedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubmittedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStatus_submittedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _WorkflowStatus_stageProgress(ctx context.Context, field graphql.CollectedField, obj *WorkflowStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStatus_stageProgress(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StageProgress, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*StageProgress) graphql.Marshaler {
+			return ec.marshalNStageProgress2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐStageProgressᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStatus_stageProgress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkflowStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_StageProgress(ctx, field)
 		},
 	}
 	return fc, nil
@@ -63264,6 +63557,64 @@ func (ec *executionContext) _StageEligibleAssignees(ctx context.Context, sel ast
 	return out
 }
 
+var stageProgressImplementors = []string{"StageProgress"}
+
+func (ec *executionContext) _StageProgress(ctx context.Context, sel ast.SelectionSet, obj *StageProgress) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, stageProgressImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("StageProgress")
+		case "dueAt":
+			out.Values[i] = ec._StageProgress_dueAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "quorum":
+			out.Values[i] = ec._StageProgress_quorum(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "quorumN":
+			out.Values[i] = ec._StageProgress_quorumN(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "approvals":
+			out.Values[i] = ec._StageProgress_approvals(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "required":
+			out.Values[i] = ec._StageProgress_required(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var stageUnitProgressImplementors = []string{"StageUnitProgress"}
 
 func (ec *executionContext) _StageUnitProgress(ctx context.Context, sel ast.SelectionSet, obj *StageUnitProgress) graphql.Marshaler {
@@ -64674,6 +65025,21 @@ func (ec *executionContext) _WorkflowStatus(ctx context.Context, sel ast.Selecti
 			}
 		case "stageUnitProgress":
 			out.Values[i] = ec._WorkflowStatus_stageUnitProgress(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "submittedBy":
+			out.Values[i] = ec._WorkflowStatus_submittedBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "submittedAt":
+			out.Values[i] = ec._WorkflowStatus_submittedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "stageProgress":
+			out.Values[i] = ec._WorkflowStatus_stageProgress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -68327,6 +68693,32 @@ func (ec *executionContext) marshalNStageEligibleAssignees2ᚖgithubᚗcomᚋSte
 		return graphql.Null
 	}
 	return ec._StageEligibleAssignees(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNStageProgress2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐStageProgressᚄ(ctx context.Context, sel ast.SelectionSet, v []*StageProgress) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNStageProgress2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐStageProgress(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNStageProgress2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐStageProgress(ctx context.Context, sel ast.SelectionSet, v *StageProgress) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._StageProgress(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNStageUnitProgress2ᚕᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐStageUnitProgressᚄ(ctx context.Context, sel ast.SelectionSet, v [][]*StageUnitProgress) graphql.Marshaler {

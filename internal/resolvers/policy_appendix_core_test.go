@@ -44,6 +44,9 @@ type appendixCore struct {
 	lastActor, lastTitle string
 	// lastReorder is the latest reorder request core was sent.
 	lastReorder *corev1.ReorderPolicyAppendicesRequest
+	// lastDiff is the latest diff request core was sent; diffs counts them.
+	lastDiff *corev1.DiffPolicyAppendixRequest
+	diffs    int
 }
 
 func (c *appendixCore) note(a *fakeAppendix, r *appendixRow, user string) {

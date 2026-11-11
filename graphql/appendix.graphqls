@@ -71,6 +71,11 @@ extend type Query {
   policyAppendices(policyId: ID!, includeRetired: Boolean): [PolicyAppendix!]!
   # One appendix. A reader gets NotFound for one that is retired or has no published row.
   policyAppendix(id: ID!): PolicyAppendix!
+  # The appendix's text against its latest published row, section by section: the open draft, or
+  # the given contentJson (what the author is typing, not saved) when one is passed. Writes
+  # nothing and starts no draft. Editors only, decided as for the appendix drafts; anyone else is
+  # PermissionDenied. An unreadable contentJson is InvalidArgument.
+  appendixDiff(id: ID!, contentJson: String): [SectionDiff!]!
 }
 
 extend type Mutation {

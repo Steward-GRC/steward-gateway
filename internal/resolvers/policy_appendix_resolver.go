@@ -316,6 +316,58 @@ func (r *Resolver) ReorderPolicyAppendicesResolver(ctx context.Context, policyID
 	return out, nil
 }
 
+// AppendixDiffResolver is the appendixDiff query (#125): the appendix's text
+// against its latest published row, from core's DiffPolicyAppendix. The text is
+// the open draft, or contentJSON when the author passes what they are typing,
+// which goes to core as it is (core validates it; InvalidArgument passes
+// through). It writes nothing. Who may: whoever may edit the policy, decided as
+// for the appendix drafts; the author, admin and compliance rule of the mock
+// stays with the on-hold access model, so nobody else is let in here. An
+// obfuscated reader gets the section shape without the word diff, as for the
+// policy version diff. The appendix text is never logged.
+func (r *Resolver) AppendixDiffResolver(ctx context.Context, id string, contentJSON *string) ([]*SectionDiff, error) {
+	logger := r.logger()
+	if _, err := signedIn(ctx); err != nil {
+		logger.Debug("appendix diff refused: no signed-in user", log.F("appendix_id", id))
+		return nil, err
+	}
+	client, err := r.appendixClient()
+	if err != nil {
+		return nil, err
+	}
+	got, err := client.GetPolicyAppendix(ctx, &corev1.GetPolicyAppendixRequest{Id: id})
+	if err != nil {
+		logger.Debug("appendix diff: lookup failed", log.F("appendix_id", id), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	policyID := got.GetAppendix().GetPolicyId()
+	access, err := r.appendixAccessFor(ctx, "appendixDiff", policyID)
+	if err != nil {
+		return nil, err
+	}
+	if !access.editor {
+		logger.Info("appendix diff refused: the caller may not edit the policy",
+			log.F("appendix_id", id), log.F("policy_id", policyID))
+		return nil, errAppendixForbidden
+	}
+	log.Trace(logger, "appendix diff: calling core", log.F("appendix_id", id), log.F("policy_id", policyID),
+		log.F("unsaved_text", contentJSON != nil))
+	started := time.Now()
+	resp, err := client.DiffPolicyAppendix(ctx, &corev1.DiffPolicyAppendixRequest{Id: id, ContentJson: contentJSON})
+	if err != nil {
+		logger.Error(err, "appendix diff: core failed", log.F("appendix_id", id), log.F("policy_id", policyID),
+			log.F("code", status.Code(err).String()), log.F("duration_ms", time.Since(started).Milliseconds()))
+		return nil, err
+	}
+	out := make([]*SectionDiff, 0, len(resp.GetDiffs()))
+	for _, d := range resp.GetDiffs() {
+		out = append(out, sectionDiffFromProto(d))
+	}
+	logger.Debug("appendix diffed", log.F("appendix_id", id), log.F("policy_id", policyID), log.F("sections", len(out)),
+		log.F("effect", string(access.effect)), log.F("duration_ms", time.Since(started).Milliseconds()))
+	return obfuscateSectionDiffs(out, access.effect), nil
+}
+
 // AppendicesForVersionResolver is PolicyVersion.appendices: the older Appendix
 // shape, filled from the latest published row of each live appendix of the
 // policy, the same on every version (policyVersionId is the version asked).

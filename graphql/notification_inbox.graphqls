@@ -1,0 +1,63 @@
+# --- Notification inbox: the caller's in-app notices ---
+# Backed by obligations (InboxService), which stores the notices and gives the facts
+# (kind, category, whether it needs action, the payload). The gateway renders the title, the
+# line and the link from the kind and the payload. Every field acts for the signed-in user
+# alone; no argument names a user, so only the caller's own notices are ever returned.
+# Quiet hours are not here yet. The live subscription that tells an open page a notice arrived
+# is not here yet either.
+extend type Query {
+  # Newest first. first defaults to 20 and must be at least 1 (more than 100 is read as 100);
+  # after is the endCursor of the previous page (an unknown cursor is InvalidArgument).
+  myNotifications(filter: NotificationFilter, first: Int, after: String): NotificationPage!
+  # For the bell's badge.
+  myUnreadNotificationCount: Int!
+}
+
+extend type Mutation {
+  # Idempotent: a notice that is already read keeps its first readAt. Someone else's notice, or
+  # an unknown id, is NotFound.
+  markNotificationRead(id: ID!): Notification!
+  # How many notices it marked.
+  markAllNotificationsRead: Int!
+}
+
+# Every field is optional and they combine. needsAction true is the "Needs action" tab, false the
+# "Updates" tab, null both.
+input NotificationFilter {
+  needsAction: Boolean
+  unread: Boolean
+  category: NotifCategory
+}
+
+type NotificationPage {
+  items: [Notification!]!
+  # Null on the last page.
+  endCursor: String
+  hasMore: Boolean!
+}
+
+type Notification {
+  id: ID!
+  kind: String!
+  category: NotifCategory!
+  title: String!
+  line: String!
+  needsAction: Boolean!
+  link: NotificationLink
+  # RFC 3339.
+  createdAt: String!
+  # RFC 3339; null while unread.
+  readAt: String
+}
+
+enum NotificationLinkKind {
+  APPROVAL
+  CASE
+  POLICY
+}
+
+# What the notice opens: a policy number, an approval's policy version id, or a case id.
+type NotificationLink {
+  kind: NotificationLinkKind!
+  ref: String!
+}

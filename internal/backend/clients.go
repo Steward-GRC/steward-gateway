@@ -71,6 +71,7 @@ type Clients struct {
 	Reporting  obligationsv1.ReportingServiceClient
 	Obligation obligationsv1.ObligationServiceClient
 	Welcome    obligationsv1.WelcomeServiceClient
+	Inbox      obligationsv1.InboxServiceClient
 
 	Audit auditv1.AuditServiceClient
 
@@ -134,6 +135,7 @@ func NewClients(conns Conns) (*Clients, error) {
 		Reporting:  obligationsv1.NewReportingServiceClient(ob),
 		Obligation: obligationsv1.NewObligationServiceClient(ob),
 		Welcome:    obligationsv1.NewWelcomeServiceClient(ob),
+		Inbox:      obligationsv1.NewInboxServiceClient(ob),
 
 		Audit: auditv1.NewAuditServiceClient(conns[Audit]),
 

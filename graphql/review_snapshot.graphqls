@@ -1,0 +1,18 @@
+# --- Review snapshots ---
+# What an approver has changed to look at since they last reviewed a version. Core keeps one
+# snapshot of the text per approver and version; only the gateway reads or moves it, on behalf of
+# the signed-in user. Both fields are refused unless the caller holds a seat on the version's run,
+# so the author and anyone outside the run are turned away.
+
+extend type Query {
+  # What changed in each section of the version since the caller, an approver on its run, last
+  # reviewed it: when they last commented, replied, voted, sent comments or marked it reviewed.
+  # Sections that did not change are left out. A reader who sees the policy obfuscated gets no
+  # word diffs.
+  versionChangesSinceReview(policyVersionId: ID!): [SectionDiff!]!
+}
+
+extend type Mutation {
+  # The caller, an approver on the version's run, has reviewed the version as it is now.
+  markVersionReviewed(policyVersionId: ID!): Boolean!
+}

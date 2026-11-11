@@ -59,6 +59,7 @@ type Clients struct {
 	Reference         corev1.ReferenceServiceClient
 	DefinitionLibrary corev1.DefinitionLibraryServiceClient
 	Asset             corev1.AssetServiceClient
+	ReviewSnapshot    corev1.ReviewSnapshotServiceClient
 
 	Workflow workflowv1.WorkflowServiceClient
 
@@ -118,6 +119,7 @@ func NewClients(conns Conns) (*Clients, error) {
 		Reference:         corev1.NewReferenceServiceClient(core),
 		DefinitionLibrary: corev1.NewDefinitionLibraryServiceClient(core),
 		Asset:             corev1.NewAssetServiceClient(core),
+		ReviewSnapshot:    corev1.NewReviewSnapshotServiceClient(core),
 
 		Workflow: workflowv1.NewWorkflowServiceClient(wf),
 

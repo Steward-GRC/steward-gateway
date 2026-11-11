@@ -100,7 +100,7 @@ func (r *mutationResolver) RenameTemplate(ctx context.Context, id string, name s
 
 // CreatePolicy is the resolver for the createPolicy field.
 func (r *mutationResolver) CreatePolicy(ctx context.Context, homeCategoryID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) (*Policy, error) {
-	return CreatePolicyWithSkeleton(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.TemplateClient, homeCategoryID, title, sensitivity, templateID, documentType)
+	return CreatePolicyWithSkeleton(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.TemplateClient, r.IdentityAdminClient, r.IdentityClient, r.WorkflowClient, homeCategoryID, title, sensitivity, templateID, documentType)
 }
 
 // SaveDraft is the resolver for the saveDraft field.
@@ -390,7 +390,7 @@ func (r *queryResolver) EmailServiceConfig(ctx context.Context) (*EmailServiceCo
 
 // RelatedPolicies is the resolver for the relatedPolicies field.
 func (r *queryResolver) RelatedPolicies(ctx context.Context, policyID string) ([]*RelatedPolicy, error) {
-	return RelatedPoliciesResolver(ctx, r.RelationClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.IdentityClient, policyID)
+	return r.RelatedPoliciesResolver(ctx, policyID)
 }
 
 // RelatedPolicyCandidates is the resolver for the relatedPolicyCandidates field.
@@ -405,7 +405,7 @@ func (r *queryResolver) ContactBlocks(ctx context.Context, includeArchived *bool
 
 // PolicyContactBlocks is the resolver for the policyContactBlocks field.
 func (r *queryResolver) PolicyContactBlocks(ctx context.Context, policyID string) ([]*ContactBlock, error) {
-	return PolicyContactBlocksResolver(ctx, r.ContactClient, policyID)
+	return r.PolicyContactBlocksResolver(ctx, policyID)
 }
 
 // References is the resolver for the references field.
@@ -415,7 +415,7 @@ func (r *queryResolver) References(ctx context.Context, includeArchived *bool) (
 
 // PolicyReferences is the resolver for the policyReferences field.
 func (r *queryResolver) PolicyReferences(ctx context.Context, policyID string) ([]*Reference, error) {
-	return PolicyReferencesResolver(ctx, r.ReferenceClient, policyID)
+	return r.PolicyReferencesResolver(ctx, policyID)
 }
 
 // Definitions is the resolver for the definitions field.
@@ -430,7 +430,7 @@ func (r *queryResolver) PolicyDefinitionCandidates(ctx context.Context, policyID
 
 // PolicyDefinitionEntries is the resolver for the policyDefinitionEntries field.
 func (r *queryResolver) PolicyDefinitionEntries(ctx context.Context, policyID string) ([]*DefinitionEntry, error) {
-	return PolicyDefinitionEntriesResolver(ctx, r.DefinitionLibraryClient, policyID)
+	return r.PolicyDefinitionEntriesResolver(ctx, policyID)
 }
 
 // CategoryRuleset is the resolver for the categoryRuleset field.

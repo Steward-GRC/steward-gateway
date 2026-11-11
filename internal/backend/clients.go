@@ -55,6 +55,7 @@ type Clients struct {
 	Settings          corev1.SettingsServiceClient
 	Appendix          corev1.AppendixServiceClient
 	PolicyAppendix    corev1.PolicyAppendixServiceClient
+	VersionLink       corev1.VersionLinkServiceClient
 	Relation          corev1.RelationServiceClient
 	Contact           corev1.ContactServiceClient
 	Reference         corev1.ReferenceServiceClient
@@ -117,6 +118,7 @@ func NewClients(conns Conns) (*Clients, error) {
 		Settings:          corev1.NewSettingsServiceClient(core),
 		Appendix:          corev1.NewAppendixServiceClient(core),
 		PolicyAppendix:    corev1.NewPolicyAppendixServiceClient(core),
+		VersionLink:       corev1.NewVersionLinkServiceClient(core),
 		Relation:          corev1.NewRelationServiceClient(core),
 		Contact:           corev1.NewContactServiceClient(core),
 		Reference:         corev1.NewReferenceServiceClient(core),

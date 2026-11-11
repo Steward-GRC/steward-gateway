@@ -133,15 +133,6 @@ func ReferencesResolver(ctx context.Context, client corev1.ReferenceServiceClien
 	return referencesFromProto(resp.GetReferences()), nil
 }
 
-// PolicyReferencesResolver lists the entries attached to a policy (resolved live, incl.
-func PolicyReferencesResolver(ctx context.Context, client corev1.ReferenceServiceClient, policyID string) ([]*Reference, error) {
-	resp, err := client.ListPolicyReferences(ctx, &corev1.ListPolicyReferencesRequest{PolicyId: policyID})
-	if err != nil {
-		return nil, fmt.Errorf("list policy references: %w", err)
-	}
-	return referencesFromProto(resp.GetReferences()), nil
-}
-
 // CreateReferenceResolver adds a library entry.
 func CreateReferenceResolver(ctx context.Context, client corev1.ReferenceServiceClient, in *ReferenceInput) (*Reference, error) {
 	actor, err := claimsUserID(ctx)

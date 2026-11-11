@@ -88,15 +88,6 @@ func ContactBlocksResolver(ctx context.Context, client corev1.ContactServiceClie
 	return contactBlocksFromProto(resp.GetBlocks()), nil
 }
 
-// PolicyContactBlocksResolver lists the blocks attached to a policy (resolved live).
-func PolicyContactBlocksResolver(ctx context.Context, client corev1.ContactServiceClient, policyID string) ([]*ContactBlock, error) {
-	resp, err := client.ListPolicyContactBlocks(ctx, &corev1.ListPolicyContactBlocksRequest{PolicyId: policyID})
-	if err != nil {
-		return nil, fmt.Errorf("list policy contact blocks: %w", err)
-	}
-	return contactBlocksFromProto(resp.GetBlocks()), nil
-}
-
 // CreateContactBlockResolver adds a library block.
 func CreateContactBlockResolver(ctx context.Context, client corev1.ContactServiceClient, in *ContactBlockInput) (*ContactBlock, error) {
 	if err := authorizeContactLibrary(ctx); err != nil {

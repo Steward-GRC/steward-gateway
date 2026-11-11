@@ -12,7 +12,11 @@ import (
 
 	log "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Core pins a starting draft to its template version but stores content {} because it has no
@@ -23,14 +27,26 @@ import (
 // CreatePolicyWithSkeleton is CreatePolicy plus the starting headings of the template core
 // pinned the new draft to. The skeleton is best effort: the policy exists once core has
 // answered, so a failure here is logged and the policy is still returned (with a blank draft).
-func CreatePolicyWithSkeleton(ctx context.Context, lg log.Logger, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, templates corev1.TemplateServiceClient, homeCategoryID, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) (*Policy, error) {
+// The policy comes back through the same read model as the queries, because Policy.viewerCan is
+// non-null in the schema and a bare core projection fails the response with INTERNAL (#149).
+func CreatePolicyWithSkeleton(ctx context.Context, lg log.Logger, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, templates corev1.TemplateServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, homeCategoryID, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) (*Policy, error) {
 	policy, err := CreatePolicy(ctx, client, categoryClient, homeCategoryID, title, sensitivity, templateID, documentType)
 	if err != nil {
 		return nil, err
 	}
 	lg.Debug("policy created; seeding the starting skeleton", log.F("policy_id", policy.ID), log.F("template_chosen", templateID != nil && *templateID != ""))
 	seedSkeleton(ctx, lg, client, templates, policy)
-	return policy, nil
+	visible, err := resolvePolicyReadModel(ctx, []*Policy{policy}, client, categoryClient, adminClient, identity, workflow)
+	if err != nil {
+		return nil, err
+	}
+	if len(visible) == 0 {
+		// The write has already happened, so this must not look like an empty success.
+		err := status.Error(codes.Internal, "created policy is not visible to its creator")
+		lg.Error(err, "create policy: the new policy was filtered out of the read model", log.F("policy_id", policy.ID))
+		return nil, err
+	}
+	return visible[0], nil
 }
 
 // SetPolicyTemplateWithSkeleton is SetPolicyTemplate plus the starting headings when core

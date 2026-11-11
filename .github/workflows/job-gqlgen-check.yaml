@@ -3,12 +3,17 @@ name: GraphQL codegen
 # scripts/gqlgen-generate.sh runs gqlgen and puts the licence header back,
 # and any change it makes fails the check.
 #
-# Limited CI mode (org variable CI_MODE=limited, issue #101): skipped on PRs. Pull
-# requests only otherwise, and not while the PR is a draft.
+# Limited CI mode (org variable CI_MODE=limited, issue #47): skipped on PRs, run nightly
+# and on release/** pushes. Pull requests only otherwise, and not while the PR is a draft.
 on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: ['release/**']
+  schedule:
+    - cron: '32 6 * * *'
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true

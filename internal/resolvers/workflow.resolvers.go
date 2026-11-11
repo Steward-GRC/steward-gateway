@@ -68,7 +68,7 @@ func (r *queryResolver) UpcomingApprovals(ctx context.Context) ([]*UpcomingAppro
 
 // EffectiveWorkflow is the resolver for the effectiveWorkflow field.
 func (r *queryResolver) EffectiveWorkflow(ctx context.Context, policyID string) (*EffectiveWorkflow, error) {
-	return ResolveEffectiveWorkflowResolver(ctx, r.PolicyClient, r.CategoryClient, r.WorkflowClient, policyID)
+	return ResolveEffectiveWorkflowResolver(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.WorkflowClient, policyID)
 }
 
 // AssignmentHistory is the resolver for the assignmentHistory field.

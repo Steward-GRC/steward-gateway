@@ -81,7 +81,7 @@ func TestResolveEffectiveWorkflow_GroupUnitStaffsAStage(t *testing.T) {
 			{Id: "s1", Name: "Approval", GroupUnits: []*workflowv1.GroupUnit{{GroupId: "approvers", InternalQuorum: "one"}}},
 		}}},
 	}
-	ew, err := resolvers.ResolveEffectiveWorkflowResolver(context.Background(), pol, cat, wf, "pol-1")
+	ew, err := resolvers.ResolveEffectiveWorkflowResolver(adminCtx(t), log.Nop(), pol, cat, wf, "pol-1")
 	if err != nil {
 		t.Fatalf("ResolveEffectiveWorkflowResolver: %v", err)
 	}

@@ -115,6 +115,16 @@ the caller is seated on the version's approval run, in any stage and in any stat
 workflow's `GetStatus`. The author, anyone else, and a version with no run get `PermissionDenied`
 and core is never asked. The user id core receives is always the signed-in user's.
 
+The snapshot also moves when the approver acts, so nothing they have just dealt with shows as
+changed. After `signalWorkflow` with approve, reject or request_changes succeeds, and for each item
+`bulkDecide` decided, the gateway marks that version reviewed for the caller. After
+`addReviewThread`, `replyReviewThread`, `setReviewThreadResolved` (resolve and reopen),
+`counterReviewSuggestion` and `closeReviewSuggestion` by a caller who holds a seat on the version's
+run, it does the same; the author side holds no seat and moves nobody. Sending comments
+(request_changes) changes no status and leaves the seat open. A failed mark is logged as a warning
+(version id, user id and status code only) and never fails the act, because the vote or comment
+already happened.
+
 ## Inline review threads
 
 `reviewThreads(policyVersionId)`, `addReviewThread`, `replyReviewThread`, `setReviewThreadResolved`
@@ -158,6 +168,31 @@ the document, the gateway never edits content.
   the rounds, who acted, the turn, the outcome and the reason stay.
 - Suggestion text is never logged, and core's audit never carries it.
 
+## Appendix life cycle
+
+An appendix belongs to a policy, not to one of its versions, and has a version table of its own.
+`policyAppendices(policyId, includeRetired)`, `policyAppendix(id)`, `createPolicyAppendix`,
+`saveAppendixDraft`, `publishAppendix`, `retireAppendix` and `restoreAppendix` serve it from core's
+`PolicyAppendixService`. Core returns the published row and the draft side by side and applies no
+reader filtering; the gateway shapes the answer per caller. Each call applies the policy read
+decision first (a denied read is `NotFound`; an obfuscating one scrambles the text), then asks
+whether the caller may edit the policy:
+
+- **Editors** (whoever may edit the policy, a site admin included) see the draft, every row in
+  `versions` (oldest first, the draft last), `publishedVersions` newest first, the contributors, and
+  the retired appendices when `includeRetired` is set.
+- **Anyone else who may read** sees only the latest published row, only for live appendices that
+  have one, and no contributors. A write is `PermissionDenied` and core is never asked. A reader
+  asking for a retired or never-published appendix by id gets `NotFound`.
+- The calls that name only an appendix id (`policyAppendix`, save, publish, retire, restore) read
+  it from core's `GetPolicyAppendix` first to find its policy, before any write.
+- Contributors come from identity: a user that is disabled or removed is `active: false`; one
+  identity does not know stays listed with the id as the name.
+- `createdAt` and `createdBy` are read off the first row; `retiredBy` is always null because core does
+  not record it. `PolicyVersion.appendices` keeps the older `Appendix` shape, filled from the latest
+  published row of each live appendix of the policy on every version.
+- Not served yet: reordering, deleting for good, the draft diff and the co-editing token.
+
 ## Break-glass reads
 
 A site admin who sees a document obfuscated can ask for a time-boxed reveal of that one document
@@ -197,6 +232,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - core RelationService: ListRelatedPolicies, SetRelatedPolicies
 - core DefinitionLibraryService: ListDefinitionEntries, ListPolicyDefinitionCandidates, CreateDefinitionEntry, UpdateDefinitionEntry, DeleteDefinitionEntry, SetDefinitionEntryArchived, ListPolicyDefinitionEntries, SetPolicyDefinitionEntries
 - core AppendixService: ListAppendices, AddAppendix, UpdateAppendix, ReorderAppendices, DeleteAppendix
+- core PolicyAppendixService: ListPolicyAppendices, GetPolicyAppendix, CreatePolicyAppendix, SaveAppendixDraft, PublishAppendix, RetireAppendix, RestoreAppendix
 - core ContactService: ListContactBlocks, CreateContactBlock, UpdateContactBlock, DeleteContactBlock, SetContactBlockArchived, ListPolicyContactBlocks, SetPolicyContactBlocks
 - core SettingsService: GetGlobalSettings, SetGlobalSettings, SetEmailServiceConfig, EmailServiceConfigStatus
 - core ReferenceService: ListReferences, CreateReference, UpdateReference, DeleteReference, SetReferenceArchived, ListPolicyReferences, SetPolicyReferences

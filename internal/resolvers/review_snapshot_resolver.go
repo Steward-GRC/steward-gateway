@@ -72,6 +72,29 @@ func MarkVersionReviewed(ctx context.Context, logger log.Logger, snapshots corev
 	return true, nil
 }
 
+// markReviewedAfterAct moves userID's snapshot of the version after userID acted
+// on it: a decision, a comment sent back, or a thread act (#115). The act has
+// already happened, so this never returns an error: a failed mark is a warning
+// that names the ids and the status code only, never the comment or the error
+// text. No snapshot client means no snapshots are kept, which is not a failure.
+// The caller has to have established the seat; unlike MarkVersionReviewed this
+// does not ask the read decision or the run again.
+func markReviewedAfterAct(ctx context.Context, logger log.Logger, snapshots corev1.ReviewSnapshotServiceClient, op, versionID, userID string) {
+	if snapshots == nil {
+		log.Trace(logger, "mark after act skipped: no snapshot client", log.F("op", op), log.F("policy_version_id", versionID))
+		return
+	}
+	started := time.Now()
+	if _, err := snapshots.MarkVersionReviewed(ctx, &corev1.MarkVersionReviewedRequest{PolicyVersionId: versionID, UserId: userID}); err != nil {
+		logger.Warn("mark after act failed: the act stands",
+			log.F("op", op), log.F("policy_version_id", versionID), log.F("user_id", userID),
+			log.F("code", status.Code(err).String()), log.F("duration_ms", time.Since(started).Milliseconds()))
+		return
+	}
+	logger.Debug("version marked reviewed after the act",
+		log.F("op", op), log.F("policy_version_id", versionID), log.F("duration_ms", time.Since(started).Milliseconds()))
+}
+
 // authorizeSnapshotAccess is the gate in front of both fields. It returns the
 // signed-in user, whose id is the only one core is ever given, and the read
 // effect on the version's content. The order is fixed: the read decision, then

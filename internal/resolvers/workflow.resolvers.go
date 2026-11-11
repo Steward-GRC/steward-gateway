@@ -18,7 +18,7 @@ func (r *mutationResolver) SubmitWorkflow(ctx context.Context, policyVersionID s
 
 // SignalWorkflow is the resolver for the signalWorkflow field.
 func (r *mutationResolver) SignalWorkflow(ctx context.Context, policyVersionID string, runID string, taskID string, signal SignalType, comment string) (bool, error) {
-	return SignalWorkflowResolver(ctx, r.WorkflowClient, policyVersionID, runID, taskID, signal, comment)
+	return SignalWorkflowResolver(ctx, r.logger(), r.WorkflowClient, r.ReviewSnapshotClient, policyVersionID, runID, taskID, signal, comment)
 }
 
 // SwapAssignee is the resolver for the swapAssignee field.
@@ -28,7 +28,7 @@ func (r *mutationResolver) SwapAssignee(ctx context.Context, input SwapAssigneeI
 
 // BulkDecide is the resolver for the bulkDecide field.
 func (r *mutationResolver) BulkDecide(ctx context.Context, input BulkDecideInput) (*BulkDecideResult, error) {
-	return BulkDecideResolver(ctx, r.WorkflowClient, input)
+	return BulkDecideResolver(ctx, r.logger(), r.WorkflowClient, r.ReviewSnapshotClient, input)
 }
 
 // CreateWorkflowDef is the resolver for the createWorkflowDef field.
@@ -68,7 +68,7 @@ func (r *queryResolver) UpcomingApprovals(ctx context.Context) ([]*UpcomingAppro
 
 // EffectiveWorkflow is the resolver for the effectiveWorkflow field.
 func (r *queryResolver) EffectiveWorkflow(ctx context.Context, policyID string) (*EffectiveWorkflow, error) {
-	return ResolveEffectiveWorkflowResolver(ctx, r.PolicyClient, r.CategoryClient, r.WorkflowClient, policyID)
+	return ResolveEffectiveWorkflowResolver(ctx, r.logger().Ctx(ctx), r.PolicyClient, r.CategoryClient, r.WorkflowClient, policyID)
 }
 
 // AssignmentHistory is the resolver for the assignmentHistory field.

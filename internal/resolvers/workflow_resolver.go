@@ -24,30 +24,46 @@ import (
 
 // ResolveEffectiveWorkflowResolver computes the approval workflow EFFECTIVE for a policy: it loads
 // the policy's home group, walks the group lineage leaf→root, and asks the workflow service to
-// resolve it (per-policy override, else the first group assignment up the chain).
+// resolve it (per-policy override, else the first group assignment up the chain). Only someone who
+// can author the policy may read it (the same gate as submit), and the result carries the
+// workflow's name and the usable flags, never its stages.
 func ResolveEffectiveWorkflowResolver(
 	ctx context.Context,
+	lg log.Logger,
 	policyClient corev1.PolicyServiceClient,
 	categoryClient corev1.CategoryServiceClient,
 	workflowClient workflowv1.WorkflowServiceClient,
 	policyID string,
 ) (*EffectiveWorkflow, error) {
+	if _, err := authorizeEffectiveAuthor(ctx, policyClient, categoryClient, policyID); err != nil {
+		lg.Debug("effective workflow refused: caller cannot author the policy",
+			log.F("policy_id", policyID), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	log.Trace(lg, "effective workflow: caller may author the policy", log.F("policy_id", policyID))
 	pol, err := policyClient.GetPolicy(ctx, &corev1.GetPolicyRequest{Id: policyID})
 	if err != nil {
+		lg.Error(err, "effective workflow: get policy failed", log.F("policy_id", policyID), log.F("code", status.Code(err).String()))
 		return nil, fmt.Errorf("get policy: %w", err)
 	}
 	ancestors, err := categoryLineage(ctx, categoryClient, pol.GetPolicy().GetHomeCategoryId())
 	if err != nil {
+		lg.Error(err, "effective workflow: category lineage failed", log.F("policy_id", policyID), log.F("code", status.Code(err).String()))
 		return nil, err
 	}
+	start := time.Now()
 	resp, err := workflowClient.ResolveWorkflow(ctx, &workflowv1.ResolveWorkflowRequest{
 		PolicyId:            policyID,
 		AncestorCategoryIds: ancestors,
 	})
 	if err != nil {
+		lg.Error(err, "effective workflow: resolve failed", log.F("policy_id", policyID),
+			log.F("code", status.Code(err).String()), log.F("duration_ms", time.Since(start).Milliseconds()))
 		return nil, fmt.Errorf("resolve workflow: %w", err)
 	}
 	defID := resp.GetWorkflowDefId()
+	lg.Debug("effective workflow: resolved", log.F("policy_id", policyID), log.F("workflow_def_id", defID),
+		log.F("ancestors", len(ancestors)), log.F("duration_ms", time.Since(start).Milliseconds()))
 	ew := &EffectiveWorkflow{HasWorkflow: defID != ""}
 	if defID != "" {
 		ew.WorkflowDefID = &defID
@@ -56,11 +72,17 @@ func ResolveEffectiveWorkflowResolver(
 		ew.Usable = true
 		return ew, nil
 	}
+	start = time.Now()
 	def, err := workflowClient.GetWorkflowDef(ctx, &workflowv1.GetWorkflowDefRequest{Id: defID})
 	if err != nil {
+		lg.Error(err, "effective workflow: get workflow def failed", log.F("policy_id", policyID), log.F("workflow_def_id", defID),
+			log.F("code", status.Code(err).String()), log.F("duration_ms", time.Since(start).Milliseconds()))
 		return nil, fmt.Errorf("get workflow def: %w", err)
 	}
+	ew.Name = nilIfEmpty(def.GetDef().GetName())
 	ew.Usable, ew.FirstUnstaffedStage = workflowUsability(def.GetDef())
+	lg.Debug("effective workflow: read definition", log.F("policy_id", policyID), log.F("workflow_def_id", defID),
+		log.F("named", ew.Name != nil), log.F("usable", ew.Usable), log.F("duration_ms", time.Since(start).Milliseconds()))
 	return ew, nil
 }
 
@@ -143,7 +165,9 @@ func emptySubmitRefusal(err error) error {
 // SignalWorkflowResolver delivers an approver decision to an active run.
 func SignalWorkflowResolver(
 	ctx context.Context,
+	logger log.Logger,
 	client workflowv1.WorkflowServiceClient,
+	snapshots corev1.ReviewSnapshotServiceClient,
 	policyVersionID, runID, taskID string,
 	signal SignalType,
 	comment string,
@@ -162,6 +186,13 @@ func SignalWorkflowResolver(
 	})
 	if err != nil {
 		return false, fmt.Errorf("workflow signal: %w", err)
+	}
+	// The vote, or the comments sent back, count as reviewing the version as it
+	// is now (#115). Workflow refused anyone without an open seat above, so the
+	// actor holds one.
+	switch signal {
+	case SignalTypeSignalTypeApprove, SignalTypeSignalTypeReject, SignalTypeSignalTypeRequestChanges:
+		markReviewedAfterAct(ctx, logger, snapshots, "signalWorkflow", policyVersionID, claims.UserID())
 	}
 	return true, nil
 }
@@ -211,7 +242,9 @@ func SwapAssigneeResolver(
 // BulkDecideResolver wires the bulkDecide mutation.
 func BulkDecideResolver(
 	ctx context.Context,
+	logger log.Logger,
 	client workflowv1.WorkflowServiceClient,
+	snapshots corev1.ReviewSnapshotServiceClient,
 	input BulkDecideInput,
 ) (*BulkDecideResult, error) {
 	claims, ok := principal.FromContext(ctx)
@@ -230,6 +263,13 @@ func BulkDecideResolver(
 	resp, err := client.BulkDecide(ctx, &workflowv1.BulkDecideRequest{Decisions: decisions})
 	if err != nil {
 		return nil, fmt.Errorf("workflow bulk decide: %w", err)
+	}
+	// Each item that was decided moves the caller's snapshot of its version
+	// (#115); an item that failed decided nothing.
+	for _, r := range resp.GetResults() {
+		if r.GetOk() {
+			markReviewedAfterAct(ctx, logger, snapshots, "bulkDecide", r.GetPolicyVersionId(), claims.UserID())
+		}
 	}
 	out := &BulkDecideResult{
 		BulkBatchID: resp.GetBulkBatchId(),

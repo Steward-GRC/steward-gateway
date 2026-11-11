@@ -221,3 +221,73 @@ func TestDecidedApprovalsResolver_UnauthenticatedIsRefused(t *testing.T) {
 		t.Fatalf("workflow asked %d times for an unauthenticated caller", wf.decidedCalls)
 	}
 }
+
+// secondReadFails is core answering GetPolicy normally the first time a policy
+// is read and with err every time after, the way a core outage between the
+// resolver's own read and the read decision's read looks.
+type secondReadFails struct {
+	coreLikeVersions
+	err   error
+	reads map[string]int
+}
+
+func (f *secondReadFails) GetPolicy(ctx context.Context, in *corev1.GetPolicyRequest, opts ...grpc.CallOption) (*corev1.GetPolicyResponse, error) {
+	if f.reads == nil {
+		f.reads = map[string]int{}
+	}
+	f.reads[in.GetId()]++
+	if f.reads[in.GetId()] > 1 {
+		return nil, f.err
+	}
+	return f.coreLikeVersions.GetPolicy(ctx, in, opts...)
+}
+
+func TestDecidedApprovalsResolver_AFailingPolicyReadDuringTheDecisionFailsTheQuery(t *testing.T) {
+	for _, code := range []codes.Code{codes.Internal, codes.Unavailable} {
+		t.Run(code.String(), func(t *testing.T) {
+			wf := decidedWorkflow(
+				&workflowv1.DecidedApproval{PolicyVersionId: "pv-open-1", RunId: "run-o", Decision: "approved"},
+			)
+			core, groups := decidedCore()
+			pc := &secondReadFails{coreLikeVersions: core, err: status.Error(code, "core down")}
+			got, err := decide(t, readerCtx(t), wf, pc, groups)
+			if err == nil || got != nil {
+				t.Fatalf("got %+v, %v; want an error and no list", got, err)
+			}
+			if status.Code(err) != code {
+				t.Fatalf("code = %v, want %v carried through", status.Code(err), code)
+			}
+		})
+	}
+}
+
+func TestDecidedApprovalsResolver_APolicyGoneDuringTheDecisionDropsTheEntry(t *testing.T) {
+	wf := decidedWorkflow(
+		&workflowv1.DecidedApproval{PolicyVersionId: "pv-open-1", RunId: "run-o", Decision: "approved"},
+	)
+	core, groups := decidedCore()
+	pc := &secondReadFails{coreLikeVersions: core, err: status.Error(codes.NotFound, "policy not found")}
+	got, err := decide(t, readerCtx(t), wf, pc, groups)
+	if err != nil {
+		t.Fatalf("a NotFound policy must not fail the query: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("got %+v, want the entry dropped", got)
+	}
+}
+
+func TestDecidedApprovalsResolver_ARealReadDenyStillDropsTheEntryWithoutFailing(t *testing.T) {
+	wf := decidedWorkflow(
+		&workflowv1.DecidedApproval{PolicyVersionId: "pv-hidden-1", RunId: "run-h", Decision: "approved"},
+		&workflowv1.DecidedApproval{PolicyVersionId: "pv-open-1", RunId: "run-o", Decision: "approved"},
+	)
+	core, groups := decidedCore()
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-1", RolesValue: []string{"reader"}, IdpGroupsValue: []string{"Admins"}})
+	got, err := decide(t, ctx, wf, core, groups)
+	if err != nil {
+		t.Fatalf("a read deny must not fail the query: %v", err)
+	}
+	if len(got) != 1 || got[0].RunID != "run-o" {
+		t.Fatalf("got %+v, want only the readable policy's entry", got)
+	}
+}

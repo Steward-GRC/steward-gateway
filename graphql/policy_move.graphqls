@@ -1,0 +1,32 @@
+extend type Query {
+  # Site-admin: the dry run of movePolicies. What moving these documents to the
+  # category would do, in the order asked. Nothing changes.
+  previewMovePolicies(policyIds: [ID!]!, homeCategoryId: ID!): MovePoliciesPreview!
+}
+
+extend type Mutation {
+  # Site-admin: move several documents to one category, all or nothing. Each is
+  # renumbered from the target's sequence, in order. Refused whole (MOVE_REFUSED,
+  # naming the first document that cannot move and why) if any would be refused.
+  movePolicies(policyIds: [ID!]!, homeCategoryId: ID!): MovePoliciesResult!
+}
+
+type MovePoliciesPreview {
+  items: [MovePolicyItem!]!
+}
+
+type MovePoliciesResult {
+  moved: [MovePolicyItem!]!
+}
+
+type MovePolicyItem {
+  policyId: ID!
+  title: String!
+  # The document's number before the move.
+  number: String!
+  # The number in the target's sequence; null when it cannot move.
+  newNumber: String
+  # Why it cannot move (CATEGORY_REFUSES_TYPE, RETIRED, not allowed), as core
+  # words it; null when it can.
+  refusal: String
+}

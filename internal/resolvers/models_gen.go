@@ -747,6 +747,22 @@ type MfaFactor struct {
 	Label      *string `json:"label,omitempty"`
 }
 
+type MovePoliciesPreview struct {
+	Items []*MovePolicyItem `json:"items"`
+}
+
+type MovePoliciesResult struct {
+	Moved []*MovePolicyItem `json:"moved"`
+}
+
+type MovePolicyItem struct {
+	PolicyID  string  `json:"policyId"`
+	Title     string  `json:"title"`
+	Number    string  `json:"number"`
+	NewNumber *string `json:"newNumber,omitempty"`
+	Refusal   *string `json:"refusal,omitempty"`
+}
+
 type Mutation struct {
 }
 

@@ -1035,6 +1035,7 @@ type ComplexityRoot struct {
 		AppendixDiff               func(childComplexity int, id string, contentJSON *string) int
 		AssetSettings              func(childComplexity int) int
 		AssignmentHistory          func(childComplexity int, policyVersionID string, stageIndex int) int
+		AuditActions               func(childComplexity int) int
 		AuditLegalHolds            func(childComplexity int, includeReleased *bool) int
 		AuditLog                   func(childComplexity int, tier *string, groupID *string, actorUserID *string, subject *string, actions []string, subjectType *string, actorGroupID *string, pageSize *int, pageToken *string) int
 		AuditSegment               func(childComplexity int, fromRecordID string, toRecordID string) int
@@ -1803,6 +1804,7 @@ type QueryResolver interface {
 	PolicyAppendix(ctx context.Context, id string) (*PolicyAppendix, error)
 	AppendixDiff(ctx context.Context, id string, contentJSON *string) ([]*SectionDiff, error)
 	AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, actions []string, subjectType *string, actorGroupID *string, pageSize *int, pageToken *string) (*AuditQueryPage, error)
+	AuditActions(ctx context.Context) ([]string, error)
 	AuditSegment(ctx context.Context, fromRecordID string, toRecordID string) (*AuditSegment, error)
 	VerifyAuditChain(ctx context.Context, fromRecordID string, toRecordID string) (*AuditChainVerification, error)
 	AuditLegalHolds(ctx context.Context, includeReleased *bool) ([]*AuditLegalHold, error)
@@ -6910,6 +6912,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.AssignmentHistory(childComplexity, args["policyVersionId"].(string), args["stageIndex"].(int)), true
+	case "Query.auditActions":
+		if e.ComplexityRoot.Query.AuditActions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.AuditActions(childComplexity), true
 	case "Query.auditLegalHolds":
 		if e.ComplexityRoot.Query.AuditLegalHolds == nil {
 			break
@@ -10594,6 +10602,9 @@ extend type Query {
   # group; a group with no members returns no records. A group manager may only name a group they
   # manage in actorGroupId.
   auditLog(tier: String, groupId: ID, actorUserId: ID, subject: String, actions: [String!], subjectType: String, actorGroupId: ID, pageSize: Int, pageToken: String): AuditQueryPage!
+  # The distinct action codes the log holds, sorted, for the auditLog actions filter. Codes only; the
+  # client supplies the readable labels. Same access as auditLog.
+  auditActions: [String!]!
   auditSegment(fromRecordId: String!, toRecordId: String!): AuditSegment!
   verifyAuditChain(fromRecordId: String!, toRecordId: String!): AuditChainVerification!
   # Oldest first; released holds only with includeReleased.
@@ -40800,6 +40811,29 @@ func (ec *executionContext) fieldContext_Query_auditLog(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_auditActions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_auditActions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().AuditActions(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_auditActions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Query_auditSegment(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -62393,6 +62427,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_auditLog(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "auditActions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_auditActions(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

@@ -32,6 +32,11 @@ func (r *queryResolver) AuditLog(ctx context.Context, tier *string, groupID *str
 		AuditLogFilter{Actions: actions, SubjectType: subjectType, ActorGroupID: actorGroupID})
 }
 
+// AuditActions is the resolver for the auditActions field.
+func (r *queryResolver) AuditActions(ctx context.Context) ([]string, error) {
+	return QueryAuditActionsResolver(ctx, r.logger(), r.AuditClient, r.IdentityClient)
+}
+
 // AuditSegment is the resolver for the auditSegment field.
 func (r *queryResolver) AuditSegment(ctx context.Context, fromRecordID string, toRecordID string) (*AuditSegment, error) {
 	return ExportAuditSegmentResolver(ctx, r.AuditClient, fromRecordID, toRecordID)

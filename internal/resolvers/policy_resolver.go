@@ -154,8 +154,9 @@ func grantOwnerApprover(ctx context.Context, subj authz.Subject, res authz.Resou
 // decision; edit and submit also include the primary author, so the read side
 // matches the write gate (authorizeEffectiveAuthor). Ack follows obligations:
 // an override deny removes the viewer from the audience, an override allow
-// uses the ungated acknowledge rule, otherwise the read-gated one.
-func viewerCanFor(subj authz.Subject, res authz.Resource, readD authz.Effect, raci raciReadResult, isPrimaryAuthor bool) *PolicyViewerCan {
+// uses the ungated acknowledge rule, otherwise the read-gated one. A
+// procedure is never acknowledged, so its ack is always false (#160).
+func viewerCanFor(subj authz.Subject, res authz.Resource, readD authz.Effect, raci raciReadResult, isPrimaryAuthor bool, docType DocumentType) *PolicyViewerCan {
 	allowed := func(p authz.Permission) bool { return authz.Authorize(subj, p, &res).Allowed() }
 	var ack bool
 	switch subjOverrideFor(subj, res.ID) {
@@ -164,6 +165,9 @@ func viewerCanFor(subj authz.Subject, res authz.Resource, readD authz.Effect, ra
 		ack = raci.ackUngated
 	default:
 		ack = raci.action.Acknowledge.Allowed
+	}
+	if docType == DocumentTypeProcedure {
+		ack = false
 	}
 	return &PolicyViewerCan{
 		Read:              readD != authz.EffectDeny,
@@ -299,7 +303,7 @@ func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClien
 			continue
 		}
 		psubj := grantOwnerApprover(ctx, subj, res, lineage, categoryClient)
-		p.ViewerCan = viewerCanFor(psubj, res, readD, raci, p.OwnerUserID == subj.UserID)
+		p.ViewerCan = viewerCanFor(psubj, res, readD, raci, p.OwnerUserID == subj.UserID, p.DocumentType)
 		if !p.ViewerCan.Edit && !seats.holds(ctx, derefOrEmpty(p.CurrentDraftVersionID)) {
 			p.CurrentDraftVersionID = nil
 			if derefOrEmpty(p.CurrentPublishedVersionID) == "" {

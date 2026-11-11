@@ -106,8 +106,13 @@ type AuditEvent struct {
 	Attributes map[string]string `protobuf:"bytes,7,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Marks a record the law requires to be kept: it is never purged.
 	LegalBasisExempt bool `protobuf:"varint,8,opt,name=legal_basis_exempt,json=legalBasisExempt,proto3" json:"legal_basis_exempt,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The number of the policy version the event is about, 1 or more; 0 when it
+	// is about no version. The consumer records it in the event's hashed
+	// attributes as "version_number", so the chain covers it, and any
+	// "version_number" attribute the publisher sent is replaced by it.
+	VersionNumber int32 `protobuf:"varint,9,opt,name=version_number,json=versionNumber,proto3" json:"version_number,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AuditEvent) Reset() {
@@ -194,6 +199,13 @@ func (x *AuditEvent) GetLegalBasisExempt() bool {
 		return x.LegalBasisExempt
 	}
 	return false
+}
+
+func (x *AuditEvent) GetVersionNumber() int32 {
+	if x != nil {
+		return x.VersionNumber
+	}
+	return 0
 }
 
 // RequesterIdentity is the caller the gateway authenticated. Every RPC needs
@@ -303,7 +315,10 @@ type AuditRecord struct {
 	// Set on a tombstone the retention purge left: action, actor, subject and
 	// group are empty, and only the link and hash remain. A verifier checks
 	// its link and trusts its hash, which the checkpoints still cover.
-	Purged        bool `protobuf:"varint,12,opt,name=purged,proto3" json:"purged,omitempty"`
+	Purged bool `protobuf:"varint,12,opt,name=purged,proto3" json:"purged,omitempty"`
+	// The number of the policy version the record is about; 0 when it is about
+	// no version.
+	VersionNumber int32 `protobuf:"varint,13,opt,name=version_number,json=versionNumber,proto3" json:"version_number,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -422,6 +437,13 @@ func (x *AuditRecord) GetPurged() bool {
 	return false
 }
 
+func (x *AuditRecord) GetVersionNumber() int32 {
+	if x != nil {
+		return x.VersionNumber
+	}
+	return 0
+}
+
 // Checkpoint is a Merkle root over a record range and its RFC 3161 token.
 type Checkpoint struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -536,8 +558,10 @@ type QueryAuditLogRequest struct {
 	// 1 to 200; anything else means 50.
 	PageSize int32 `protobuf:"varint,5,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	// The next_page_token of the previous page.
-	PageToken     string             `protobuf:"bytes,6,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
-	Requester     *RequesterIdentity `protobuf:"bytes,7,opt,name=requester,proto3" json:"requester,omitempty"`
+	PageToken string             `protobuf:"bytes,6,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	Requester *RequesterIdentity `protobuf:"bytes,7,opt,name=requester,proto3" json:"requester,omitempty"`
+	// Only records about this policy version number; 0 means any.
+	VersionNumber int32 `protobuf:"varint,8,opt,name=version_number,json=versionNumber,proto3" json:"version_number,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -619,6 +643,13 @@ func (x *QueryAuditLogRequest) GetRequester() *RequesterIdentity {
 		return x.Requester
 	}
 	return nil
+}
+
+func (x *QueryAuditLogRequest) GetVersionNumber() int32 {
+	if x != nil {
+		return x.VersionNumber
+	}
+	return 0
 }
 
 type QueryAuditLogResponse struct {
@@ -1571,7 +1602,7 @@ var File_steward_audit_v1_audit_proto protoreflect.FileDescriptor
 
 const file_steward_audit_v1_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x1csteward/audit/v1/audit.proto\x12\x10steward.audit.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa1\x03\n" +
+	"\x1csteward/audit/v1/audit.proto\x12\x10steward.audit.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc8\x03\n" +
 	"\n" +
 	"AuditEvent\x12*\n" +
 	"\x04tier\x18\x01 \x01(\x0e2\x16.steward.audit.v1.TierR\x04tier\x12\x16\n" +
@@ -1584,7 +1615,8 @@ const file_steward_audit_v1_audit_proto_rawDesc = "" +
 	"\n" +
 	"attributes\x18\a \x03(\v2,.steward.audit.v1.AuditEvent.AttributesEntryR\n" +
 	"attributes\x12,\n" +
-	"\x12legal_basis_exempt\x18\b \x01(\bR\x10legalBasisExempt\x1a=\n" +
+	"\x12legal_basis_exempt\x18\b \x01(\bR\x10legalBasisExempt\x12%\n" +
+	"\x0eversion_number\x18\t \x01(\x05R\rversionNumber\x1a=\n" +
 	"\x0fAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb0\x01\n" +
@@ -1593,7 +1625,7 @@ const file_steward_audit_v1_audit_proto_rawDesc = "" +
 	"\x05roles\x18\x02 \x03(\tR\x05roles\x12\x16\n" +
 	"\x06groups\x18\x03 \x03(\tR\x06groups\x12%\n" +
 	"\x0emanaged_groups\x18\x04 \x03(\tR\rmanagedGroups\x12-\n" +
-	"\x12managed_categories\x18\x05 \x03(\tR\x11managedCategories\"\x84\x03\n" +
+	"\x12managed_categories\x18\x05 \x03(\tR\x11managedCategories\"\xab\x03\n" +
 	"\vAuditRecord\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1f\n" +
 	"\vrecord_uuid\x18\x02 \x01(\tR\n" +
@@ -1610,7 +1642,8 @@ const file_steward_audit_v1_audit_proto_rawDesc = "" +
 	" \x01(\tR\n" +
 	"recordHash\x12,\n" +
 	"\x12legal_basis_exempt\x18\v \x01(\bR\x10legalBasisExempt\x12\x16\n" +
-	"\x06purged\x18\f \x01(\bR\x06purged\"\xb8\x02\n" +
+	"\x06purged\x18\f \x01(\bR\x06purged\x12%\n" +
+	"\x0eversion_number\x18\r \x01(\x05R\rversionNumber\"\xb8\x02\n" +
 	"\n" +
 	"Checkpoint\x12'\n" +
 	"\x0fcheckpoint_uuid\x18\x01 \x01(\tR\x0echeckpointUuid\x12\x1f\n" +
@@ -1625,7 +1658,7 @@ const file_steward_audit_v1_audit_proto_rawDesc = "" +
 	"anchoredAt\x12$\n" +
 	"\x0efrom_record_id\x18\a \x01(\x03R\ffromRecordId\x12 \n" +
 	"\fto_record_id\x18\b \x01(\x03R\n" +
-	"toRecordId\"\x82\x02\n" +
+	"toRecordId\"\xa9\x02\n" +
 	"\x14QueryAuditLogRequest\x12\x12\n" +
 	"\x04tier\x18\x01 \x01(\tR\x04tier\x12\x19\n" +
 	"\bgroup_id\x18\x02 \x01(\tR\agroupId\x12\"\n" +
@@ -1634,7 +1667,8 @@ const file_steward_audit_v1_audit_proto_rawDesc = "" +
 	"\tpage_size\x18\x05 \x01(\x05R\bpageSize\x12\x1d\n" +
 	"\n" +
 	"page_token\x18\x06 \x01(\tR\tpageToken\x12A\n" +
-	"\trequester\x18\a \x01(\v2#.steward.audit.v1.RequesterIdentityR\trequester\"x\n" +
+	"\trequester\x18\a \x01(\v2#.steward.audit.v1.RequesterIdentityR\trequester\x12%\n" +
+	"\x0eversion_number\x18\b \x01(\x05R\rversionNumber\"x\n" +
 	"\x15QueryAuditLogResponse\x127\n" +
 	"\arecords\x18\x01 \x03(\v2\x1d.steward.audit.v1.AuditRecordR\arecords\x12&\n" +
 	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xa6\x01\n" +

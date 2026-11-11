@@ -16,8 +16,7 @@ extend type Mutation {
   # Starts a thread with its first message. Approvers on the version's run, its authors and site
   # admins only.
   # suggestedText proposes replacement text for the quote; it opens a suggestion on the other
-  # side's turn. Text equal to the quote is a plain comment. Suggestions are not served yet, so
-  # text that differs from the quote is refused.
+  # side's turn. Blank text, or text equal to the quote, is a plain comment.
   # toUserId is for the author: the one approver the thread is with. An approver's own thread is
   # with that approver and the author.
   addReviewThread(policyVersionId: ID!, quote: String!, occurrence: Int!, body: String!, suggestedText: String, toUserId: ID): ReviewThread!
@@ -27,6 +26,15 @@ extend type Mutation {
   setReviewThreadResolved(threadId: ID!, resolved: Boolean!): ReviewThread!
   # Deletes a thread; only the person who started it.
   deleteReviewThread(threadId: ID!): Boolean!
+  # Answers an open suggestion with new text, on the caller's turn. The turn flips to the other
+  # side. Blank text, a suggestion that has ended, a thread with no suggestion and a counter out
+  # of turn are refused.
+  counterReviewSuggestion(threadId: ID!, text: String!): ReviewThread!
+  # Ends an open suggestion with one outcome and resolves the thread. CHANGED and REMOVED are
+  # the author's on their turn, AGREED the reviewer's on their turn, NOT_AGREED either side's on
+  # their turn (reason required), WITHDRAWN the side that proposed first while it is not their
+  # turn. The text that was current is kept as closedText; the client applies it to the document.
+  closeReviewSuggestion(threadId: ID!, outcome: SuggestionOutcome!, reason: String): ReviewThread!
 }
 
 type ReviewThread {
@@ -41,8 +49,8 @@ type ReviewThread {
   # The approver the thread is with. Only that approver and the policy's authors see it.
   approverUserId: ID!
   messages: [ReviewMessage!]!
-  # Present when someone proposed replacement text for the quote. Always empty until suggestions
-  # are served.
+  # Present when someone proposed replacement text for the quote. The text, every round's text
+  # and closedText are empty for a reader whose view of the policy is obfuscated.
   suggestion: ReviewSuggestion
 }
 

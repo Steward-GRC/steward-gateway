@@ -618,7 +618,9 @@ type ComplexityRoot struct {
 		ChangeOrgProtocol             func(childComplexity int, domain string, protocol string, config []*KeyValueInput, secretRef *string, clientSecret *string) int
 		CheckReport                   func(childComplexity int, caseCode string, passphrase string) int
 		CloseCase                     func(childComplexity int, caseID string, outcome CaseOutcome, correctiveActions []*CorrectiveActionInput, closingMessage *string) int
+		CloseReviewSuggestion         func(childComplexity int, threadID string, outcome SuggestionOutcome, reason *string) int
 		CompleteOnboarding            func(childComplexity int, acceptTerms bool, username *string, firstName *string, lastName *string, email *string) int
+		CounterReviewSuggestion       func(childComplexity int, threadID string, text string) int
 		CreateAuditLegalHold          func(childComplexity int, subjectFilter *string, groupFilter *string, reason string) int
 		CreateCategory                func(childComplexity int, name string, slug string, parentID *string) int
 		CreateContactBlock            func(childComplexity int, block ContactBlockInput) int
@@ -1583,6 +1585,8 @@ type MutationResolver interface {
 	ReplyReviewThread(ctx context.Context, threadID string, body string) (*ReviewThread, error)
 	SetReviewThreadResolved(ctx context.Context, threadID string, resolved bool) (*ReviewThread, error)
 	DeleteReviewThread(ctx context.Context, threadID string) (bool, error)
+	CounterReviewSuggestion(ctx context.Context, threadID string, text string) (*ReviewThread, error)
+	CloseReviewSuggestion(ctx context.Context, threadID string, outcome SuggestionOutcome, reason *string) (*ReviewThread, error)
 	MarkVersionReviewed(ctx context.Context, policyVersionID string) (bool, error)
 	AddOrganization(ctx context.Context, input AddOrganizationInput) (*Organization, error)
 	StartDomainVerification(ctx context.Context, domain string, rotate *bool) (*DomainVerification, error)
@@ -3971,6 +3975,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CloseCase(childComplexity, args["caseId"].(string), args["outcome"].(CaseOutcome), args["correctiveActions"].([]*CorrectiveActionInput), args["closingMessage"].(*string)), true
+	case "Mutation.closeReviewSuggestion":
+		if e.ComplexityRoot.Mutation.CloseReviewSuggestion == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_closeReviewSuggestion_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CloseReviewSuggestion(childComplexity, args["threadId"].(string), args["outcome"].(SuggestionOutcome), args["reason"].(*string)), true
 	case "Mutation.completeOnboarding":
 		if e.ComplexityRoot.Mutation.CompleteOnboarding == nil {
 			break
@@ -3982,6 +3997,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CompleteOnboarding(childComplexity, args["acceptTerms"].(bool), args["username"].(*string), args["firstName"].(*string), args["lastName"].(*string), args["email"].(*string)), true
+	case "Mutation.counterReviewSuggestion":
+		if e.ComplexityRoot.Mutation.CounterReviewSuggestion == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_counterReviewSuggestion_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CounterReviewSuggestion(childComplexity, args["threadId"].(string), args["text"].(string)), true
 	case "Mutation.createAuditLegalHold":
 		if e.ComplexityRoot.Mutation.CreateAuditLegalHold == nil {
 			break
@@ -11242,8 +11268,7 @@ extend type Mutation {
   # Starts a thread with its first message. Approvers on the version's run, its authors and site
   # admins only.
   # suggestedText proposes replacement text for the quote; it opens a suggestion on the other
-  # side's turn. Text equal to the quote is a plain comment. Suggestions are not served yet, so
-  # text that differs from the quote is refused.
+  # side's turn. Blank text, or text equal to the quote, is a plain comment.
   # toUserId is for the author: the one approver the thread is with. An approver's own thread is
   # with that approver and the author.
   addReviewThread(policyVersionId: ID!, quote: String!, occurrence: Int!, body: String!, suggestedText: String, toUserId: ID): ReviewThread!
@@ -11253,6 +11278,15 @@ extend type Mutation {
   setReviewThreadResolved(threadId: ID!, resolved: Boolean!): ReviewThread!
   # Deletes a thread; only the person who started it.
   deleteReviewThread(threadId: ID!): Boolean!
+  # Answers an open suggestion with new text, on the caller's turn. The turn flips to the other
+  # side. Blank text, a suggestion that has ended, a thread with no suggestion and a counter out
+  # of turn are refused.
+  counterReviewSuggestion(threadId: ID!, text: String!): ReviewThread!
+  # Ends an open suggestion with one outcome and resolves the thread. CHANGED and REMOVED are
+  # the author's on their turn, AGREED the reviewer's on their turn, NOT_AGREED either side's on
+  # their turn (reason required), WITHDRAWN the side that proposed first while it is not their
+  # turn. The text that was current is kept as closedText; the client applies it to the document.
+  closeReviewSuggestion(threadId: ID!, outcome: SuggestionOutcome!, reason: String): ReviewThread!
 }
 
 type ReviewThread {
@@ -11267,8 +11301,8 @@ type ReviewThread {
   # The approver the thread is with. Only that approver and the policy's authors see it.
   approverUserId: ID!
   messages: [ReviewMessage!]!
-  # Present when someone proposed replacement text for the quote. Always empty until suggestions
-  # are served.
+  # Present when someone proposed replacement text for the quote. The text, every round's text
+  # and closedText are empty for a reader whose view of the policy is obfuscated.
   suggestion: ReviewSuggestion
 }
 
@@ -14743,6 +14777,36 @@ func (ec *executionContext) field_Mutation_closeCase_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_closeReviewSuggestion_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "threadId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["threadId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "outcome",
+		func(ctx context.Context, v any) (SuggestionOutcome, error) {
+			return ec.unmarshalNSuggestionOutcome2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionOutcome(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["outcome"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "reason",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["reason"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_completeOnboarding_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14786,6 +14850,28 @@ func (ec *executionContext) field_Mutation_completeOnboarding_args(ctx context.C
 		return nil, err
 	}
 	args["email"] = arg4
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_counterReviewSuggestion_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "threadId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["threadId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "text",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["text"] = arg1
 	return args, nil
 }
 
@@ -32521,6 +32607,94 @@ func (ec *executionContext) fieldContext_Mutation_deleteReviewThread(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteReviewThread_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_counterReviewSuggestion(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_counterReviewSuggestion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CounterReviewSuggestion(ctx, fc.Args["threadId"].(string), fc.Args["text"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ReviewThread) graphql.Marshaler {
+			return ec.marshalNReviewThread2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewThread(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_counterReviewSuggestion(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ReviewThread(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_counterReviewSuggestion_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_closeReviewSuggestion(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_closeReviewSuggestion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CloseReviewSuggestion(ctx, fc.Args["threadId"].(string), fc.Args["outcome"].(SuggestionOutcome), fc.Args["reason"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ReviewThread) graphql.Marshaler {
+			return ec.marshalNReviewThread2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewThread(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_closeReviewSuggestion(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ReviewThread(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_closeReviewSuggestion_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -54345,6 +54519,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "counterReviewSuggestion":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_counterReviewSuggestion(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "closeReviewSuggestion":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_closeReviewSuggestion(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "markVersionReviewed":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_markVersionReviewed(ctx, field)
@@ -64513,6 +64701,16 @@ func (ec *executionContext) unmarshalNSubmitPolicyReviewSectionInput2ᚖgithub�
 func (ec *executionContext) unmarshalNSubmitPolicyRevisionInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSubmitPolicyRevisionInput(ctx context.Context, v any) (SubmitPolicyRevisionInput, error) {
 	res, err := ec.unmarshalInputSubmitPolicyRevisionInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNSuggestionOutcome2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionOutcome(ctx context.Context, v any) (SuggestionOutcome, error) {
+	var res SuggestionOutcome
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSuggestionOutcome2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionOutcome(ctx context.Context, sel ast.SelectionSet, v SuggestionOutcome) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNSuggestionRound2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionRoundᚄ(ctx context.Context, sel ast.SelectionSet, v []*SuggestionRound) graphql.Marshaler {

@@ -130,10 +130,32 @@ read is `NotFound`), then reads the seats on the version's run from workflow's `
 - Anyone else is `PermissionDenied` on a write and gets an empty list; core is never asked.
 - An obfuscated reader gets every message without its body. Message authors are named from
   identity. Blank text and an occurrence below 1 are `InvalidArgument`.
-- `suggestedText` is accepted so the web's operations validate; text that differs from the quote
-  is refused with `Unimplemented` until suggestions are served.
+- An obfuscated reader also gets no suggested text (see below).
 - Replying to, resolving and deleting a thread name only the thread, so the gateway reads it from
   core (`GetReviewThread`) first to find its version; an unknown thread is `NotFound`.
+
+### Suggestions
+
+A thread may carry a `suggestion`: replacement text for its quote. `addReviewThread` takes
+`suggestedText`; blank text, or text equal to the quote, is a plain comment and `suggestion` is null.
+Otherwise the proposal is round 1 and the turn is the other side's. `counterReviewSuggestion(threadId,
+text)` adds a round on the caller's turn and flips the turn; `closeReviewSuggestion(threadId, outcome,
+reason)` ends it with one outcome (`CHANGED`, `REMOVED`, `AGREED`, `NOT_AGREED`, `WITHDRAWN`) and
+resolves the thread. The text current at the close is kept as `closedText`; the client applies it to
+the document, the gateway never edits content.
+
+- Both mutations run the same pre-checks as the other thread calls: the thread is read from core
+  to find its version, then the version read decision, the caller's side and seat, then the core
+  call. Someone who takes no part is `PermissionDenied` and core is never asked. An outcome that is
+  not one of the five is `InvalidArgument` before core is asked.
+- Core enforces the rules and the gateway relays its refusals: `InvalidArgument` for a blank counter
+  or a `NOT_AGREED` with no reason; `FailedPrecondition` for a counter out of turn, a thread with no
+  suggestion, a suggestion that has ended, an outcome that is not the caller's to choose now, or
+  a round that changed since the caller read it; `PermissionDenied` for a reviewer who is not the
+  thread's approver; `NotFound` for an unknown thread.
+- An obfuscated reader gets `text`, each round's `text` and `closedText` empty, like a message body;
+  the rounds, who acted, the turn, the outcome and the reason stay.
+- Suggestion text is never logged, and core's audit never carries it.
 
 ## Break-glass reads
 

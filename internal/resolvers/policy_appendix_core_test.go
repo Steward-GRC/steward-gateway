@@ -42,6 +42,8 @@ type appendixCore struct {
 	writes int // every call that changes or tries to change state
 	// lastActor and lastTitle are what the latest create was sent.
 	lastActor, lastTitle string
+	// lastReorder is the latest reorder request core was sent.
+	lastReorder *corev1.ReorderPolicyAppendicesRequest
 }
 
 func (c *appendixCore) note(a *fakeAppendix, r *appendixRow, user string) {
@@ -224,6 +226,48 @@ func (c *appendixCore) RestoreAppendix(_ context.Context, in *corev1.RestoreAppe
 	// restoring puts it last among the live ones
 	c.list = append(slices.DeleteFunc(c.list, func(o *fakeAppendix) bool { return o == a }), a)
 	return &corev1.RestoreAppendixResponse{Appendix: c.view(a)}, nil
+}
+
+// ReorderPolicyAppendices behaves as core does: the list must name every live
+// appendix of the policy exactly once, else InvalidArgument and the order is
+// left as it was.
+func (c *appendixCore) ReorderPolicyAppendices(_ context.Context, in *corev1.ReorderPolicyAppendicesRequest, _ ...grpc.CallOption) (*corev1.ReorderPolicyAppendicesResponse, error) {
+	c.writes++
+	c.lastReorder = in
+	live := c.live(in.GetPolicyId())
+	named := map[string]bool{}
+	for _, id := range in.GetOrderedIds() {
+		a, err := c.find(id)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "unknown appendix in the list")
+		}
+		if a.policyID != in.GetPolicyId() || a.retired || named[id] {
+			return nil, status.Error(codes.InvalidArgument, "name every live appendix of the policy exactly once")
+		}
+		named[id] = true
+	}
+	if len(named) != len(live) {
+		return nil, status.Error(codes.InvalidArgument, "name every live appendix of the policy exactly once")
+	}
+	// the live ones take the slots the policy's live ones held, in the new order
+	var slots []int
+	for i, a := range c.list {
+		if a.policyID == in.GetPolicyId() && !a.retired {
+			slots = append(slots, i)
+		}
+	}
+	var ordered []*fakeAppendix
+	for _, id := range in.GetOrderedIds() {
+		ordered = append(ordered, c.find0(id))
+	}
+	for n, a := range ordered {
+		c.list[slots[n]] = a
+	}
+	out := &corev1.ReorderPolicyAppendicesResponse{}
+	for _, a := range c.live(in.GetPolicyId()) {
+		out.Appendices = append(out.Appendices, c.view(a))
+	}
+	return out, nil
 }
 
 // find0 is find for a test that knows the appendix exists.

@@ -739,6 +739,7 @@ type ComplexityRoot struct {
 		RenameUserMfaFactor           func(childComplexity int, userID string, methodID string, label string) int
 		ReorderAppendices             func(childComplexity int, policyVersionID string, orderedIds []string) int
 		ReorderCategories             func(childComplexity int, parentID *string, orderedIds []string) int
+		ReorderPolicyAppendices       func(childComplexity int, policyID string, orderedIds []string) int
 		ReplyReviewThread             func(childComplexity int, threadID string, body string) int
 		ReplyToMyReport               func(childComplexity int, caseID string, body string) int
 		ReplyToReport                 func(childComplexity int, caseCode string, passphrase string, body string) int
@@ -1564,6 +1565,7 @@ type MutationResolver interface {
 	PublishAppendix(ctx context.Context, id string) (*PolicyAppendix, error)
 	RetireAppendix(ctx context.Context, id string) (*PolicyAppendix, error)
 	RestoreAppendix(ctx context.Context, id string) (*PolicyAppendix, error)
+	ReorderPolicyAppendices(ctx context.Context, policyID string, orderedIds []string) ([]*PolicyAppendix, error)
 	ShredAuditSubject(ctx context.Context, subjectKey string, reason string) (*AuditShredResult, error)
 	CreateAuditLegalHold(ctx context.Context, subjectFilter *string, groupFilter *string, reason string) (*AuditLegalHold, error)
 	ReleaseAuditLegalHold(ctx context.Context, holdUUID string) (*AuditLegalHold, error)
@@ -5014,6 +5016,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ReorderCategories(childComplexity, args["parentId"].(*string), args["orderedIds"].([]string)), true
+	case "Mutation.reorderPolicyAppendices":
+		if e.ComplexityRoot.Mutation.ReorderPolicyAppendices == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_reorderPolicyAppendices_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ReorderPolicyAppendices(childComplexity, args["policyId"].(string), args["orderedIds"].([]string)), true
 	case "Mutation.replyReviewThread":
 		if e.ComplexityRoot.Mutation.ReplyReviewThread == nil {
 			break
@@ -10108,6 +10121,11 @@ extend type Mutation {
   retireAppendix(id: ID!): PolicyAppendix!
   # Brings a retired appendix back, last in the order. Editors only.
   restoreAppendix(id: ID!): PolicyAppendix!
+  # Sets the order of the live appendices, which then take the letters A, B, C in that order.
+  # orderedIds must name every live appendix of the policy exactly once; a missing, repeated,
+  # foreign or retired id is refused and the order is left as it was. Makes no draft and touches no
+  # version. Editors only. The older reorderAppendices (by policy version) is unchanged.
+  reorderPolicyAppendices(policyId: ID!, orderedIds: [ID!]!): [PolicyAppendix!]!
 }
 `, BuiltIn: false},
 	{Name: "../../graphql/audit.graphqls", Input: `# --- Audit: query, export, verify ---
@@ -17072,6 +17090,28 @@ func (ec *executionContext) field_Mutation_reorderCategories_args(ctx context.Co
 		return nil, err
 	}
 	args["parentId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "orderedIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["orderedIds"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_reorderPolicyAppendices_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyId"] = arg0
 	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "orderedIds",
 		func(ctx context.Context, v any) ([]string, error) {
 			return ec.unmarshalNID2ᚕstringᚄ(ctx, v)
@@ -29487,6 +29527,50 @@ func (ec *executionContext) fieldContext_Mutation_restoreAppendix(ctx context.Co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_restoreAppendix_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_reorderPolicyAppendices(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_reorderPolicyAppendices(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ReorderPolicyAppendices(ctx, fc.Args["policyId"].(string), fc.Args["orderedIds"].([]string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*PolicyAppendix) graphql.Marshaler {
+			return ec.marshalNPolicyAppendix2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendixᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_reorderPolicyAppendices(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyAppendix(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_reorderPolicyAppendices_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -57331,6 +57415,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "restoreAppendix":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_restoreAppendix(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reorderPolicyAppendices":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_reorderPolicyAppendices(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

@@ -271,6 +271,51 @@ func (r *Resolver) RestoreAppendixResolver(ctx context.Context, id string) (*Pol
 	return shapePolicyAppendix(ctx, newAppendixPeople(r.IdentityClient), resp.GetAppendix(), access), nil
 }
 
+// ReorderPolicyAppendicesResolver sets the order of a policy's live appendices
+// (#124). The right to edit the policy is decided as for createPolicyAppendix,
+// before core is called, so a reader's reorder never reaches core. Core refuses
+// a list that is not every live appendix of the policy exactly once
+// (InvalidArgument) and relays NotFound; both pass through for the usual
+// GraphQL error codes. A reorder makes no draft.
+func (r *Resolver) ReorderPolicyAppendicesResolver(ctx context.Context, policyID string, orderedIDs []string) ([]*PolicyAppendix, error) {
+	logger := r.logger()
+	claims, err := signedIn(ctx)
+	if err != nil {
+		logger.Debug("reorder appendices refused: no signed-in user", log.F("policy_id", policyID))
+		return nil, err
+	}
+	client, err := r.appendixClient()
+	if err != nil {
+		return nil, err
+	}
+	access, err := r.appendixAccessFor(ctx, "reorderPolicyAppendices", policyID)
+	if err != nil {
+		return nil, err
+	}
+	if !access.editor {
+		logger.Info("reorder appendices refused: the caller may not edit the policy", log.F("policy_id", policyID))
+		return nil, errAppendixForbidden
+	}
+	log.Trace(logger, "reorder appendices: calling core", log.F("policy_id", policyID), log.F("count", len(orderedIDs)))
+	started := time.Now()
+	resp, err := client.ReorderPolicyAppendices(ctx, &corev1.ReorderPolicyAppendicesRequest{
+		PolicyId: policyID, OrderedIds: orderedIDs, ActorUserId: claims.UserID(),
+	})
+	if err != nil {
+		logger.Error(err, "reorder appendices: core failed", log.F("policy_id", policyID),
+			log.F("code", status.Code(err).String()), log.F("duration_ms", time.Since(started).Milliseconds()))
+		return nil, err
+	}
+	people := newAppendixPeople(r.IdentityClient)
+	out := make([]*PolicyAppendix, 0, len(resp.GetAppendices()))
+	for _, a := range resp.GetAppendices() {
+		out = append(out, shapePolicyAppendix(ctx, people, a, access))
+	}
+	logger.Info("appendices reordered", log.F("policy_id", policyID), log.F("count", len(out)),
+		log.F("duration_ms", time.Since(started).Milliseconds()))
+	return out, nil
+}
+
 // AppendicesForVersionResolver is PolicyVersion.appendices: the older Appendix
 // shape, filled from the latest published row of each live appendix of the
 // policy, the same on every version (policyVersionId is the version asked).

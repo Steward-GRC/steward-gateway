@@ -356,8 +356,10 @@ extend type Query {
   AIJobStatus.resultRef / AIJobResult.resultRef, set once phase=
   AI_JOB_PHASE_SUCCEEDED). Reads the job-result envelope from Redis and
   returns it as operation + resultJson (opaque, operation-shaped JSON — see
-  above). Errors if resultRef doesn't resolve (not yet written, or past its
-  TTL).
+  above). Served only to the user who submitted the job. A resultRef that
+  doesn't resolve (not yet written, or past its TTL), that belongs to another
+  user's job, or whose result has no recorded owner is refused with the same
+  not-found error.
   """
   aiJobResultContent(resultRef: String!): AIJobResultContent!
 }

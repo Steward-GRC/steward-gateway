@@ -19,8 +19,9 @@ var ErrResultNotFound = errors.New("aijobs: job result not found")
 // resultEnvelope is the JSON the ai operator writes under a job's resultRef:
 // the generation payload with an operation tag.
 type resultEnvelope struct {
-	Operation string          `json:"operation"`
-	Result    json.RawMessage `json:"result"`
+	Operation   string          `json:"operation"`
+	OwnerUserID string          `json:"owner_user_id"`
+	Result      json.RawMessage `json:"result"`
 }
 
 // Content is a job result's envelope, decoded just enough to route it: the operation tag, plus the
@@ -29,6 +30,15 @@ type resultEnvelope struct {
 type Content struct {
 	Operation  string
 	ResultJSON string
+	// OwnerUserID is the user who submitted the job; empty on an envelope written before owners were
+	// recorded.
+	OwnerUserID string
+}
+
+// OwnedBy reports whether userID is the job's submitter. An empty userID or an envelope with no
+// owner is owned by nobody, so neither ever matches.
+func (c *Content) OwnedBy(userID string) bool {
+	return c != nil && userID != "" && c.OwnerUserID != "" && c.OwnerUserID == userID
 }
 
 // ContentReader fetches a completed async AI job's generated content from Redis by resultRef — the
@@ -60,5 +70,5 @@ func (r *ContentReader) Fetch(ctx context.Context, resultRef string) (*Content, 
 	if env.Operation == "" {
 		return nil, fmt.Errorf("aijobs: result envelope at %q has no operation", resultRef)
 	}
-	return &Content{Operation: env.Operation, ResultJSON: string(env.Result)}, nil
+	return &Content{Operation: env.Operation, ResultJSON: string(env.Result), OwnerUserID: env.OwnerUserID}, nil
 }

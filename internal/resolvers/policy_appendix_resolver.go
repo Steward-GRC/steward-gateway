@@ -1,0 +1,448 @@
+// Copyright 2026 The Steward Authors
+// SPDX-License-Identifier: Apache-2.0
+
+package resolvers
+
+import (
+	"context"
+	"slices"
+	"strings"
+	"time"
+
+	log "github.com/Bugs5382/go-log"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	authz "github.com/Steward-GRC/steward-authz"
+	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+)
+
+// The appendix life cycle (#123). An appendix belongs to a policy, not to one
+// of its versions. Core stores the version table and returns the published row
+// and the draft side by side without looking at who asks; the gateway decides
+// what the caller sees. Editors (whoever may edit the policy, a site admin
+// included) see the drafts, every row, the retired appendices on request and
+// the contributors. Anyone else who may read the policy sees the latest
+// published row of the appendices that have one, and nothing more. The mock
+// server (appendices.ts) is the reference for each rule.
+
+var errAppendixForbidden = status.Error(codes.PermissionDenied, "You don't have permission to do that.")
+
+// appendixAccess is what the gateway decided about one caller on one policy.
+type appendixAccess struct {
+	// editor is true when the caller may edit the policy.
+	editor bool
+	// effect is the read effect on the policy: allow, or obfuscate to scramble the text.
+	effect authz.Effect
+}
+
+// appendixAccessFor decides the caller's access to a policy's appendices. The
+// order is fixed: the read decision first (a denied read is NotFound, as for a
+// version), then the right to edit.
+func (r *Resolver) appendixAccessFor(ctx context.Context, op, policyID string) (appendixAccess, error) {
+	logger := r.logger()
+	effect, breakGlass := versionReadDecision(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, policyID)
+	if effect == authz.EffectDeny {
+		logger.Debug("appendix refused by the policy read decision", log.F("op", op), log.F("policy_id", policyID))
+		return appendixAccess{}, status.Error(codes.NotFound, "policy not found")
+	}
+	if breakGlass {
+		if err := recordBreakGlassRead(ctx, r.PolicyClient, policyID, ""); err != nil {
+			logger.Error(err, "appendix: could not record the break-glass read", log.F("op", op), log.F("policy_id", policyID))
+			return appendixAccess{}, err
+		}
+	}
+	access := appendixAccess{effect: effect}
+	if _, aerr := authorizeEffectiveAuthor(ctx, r.PolicyClient, r.CategoryClient, policyID); aerr == nil {
+		access.editor = true
+	} else if status.Code(aerr) != codes.PermissionDenied {
+		logger.Error(aerr, "appendix: could not decide the author right",
+			log.F("op", op), log.F("policy_id", policyID), log.F("code", status.Code(aerr).String()))
+		return appendixAccess{}, aerr
+	}
+	log.Trace(logger, "appendix access decided", log.F("op", op), log.F("policy_id", policyID),
+		log.F("editor", access.editor), log.F("effect", string(effect)))
+	return access, nil
+}
+
+// appendixClient is the core client, or Unavailable when none is wired.
+func (r *Resolver) appendixClient() (corev1.PolicyAppendixServiceClient, error) {
+	if r.PolicyAppendixClient == nil {
+		return nil, status.Error(codes.Unavailable, "appendices are not available")
+	}
+	return r.PolicyAppendixClient, nil
+}
+
+// editableAppendix finds an appendix by id and checks the caller may edit its
+// policy, before any write. Core looks the appendix up (no actor check on a
+// read); an unknown id is NotFound, a caller who cannot edit PermissionDenied.
+func (r *Resolver) editableAppendix(ctx context.Context, op, id string) (corev1.PolicyAppendixServiceClient, appendixAccess, string, error) {
+	logger := r.logger()
+	claims, err := signedIn(ctx)
+	if err != nil {
+		logger.Debug("appendix refused: no signed-in user", log.F("op", op))
+		return nil, appendixAccess{}, "", err
+	}
+	client, err := r.appendixClient()
+	if err != nil {
+		return nil, appendixAccess{}, "", err
+	}
+	got, err := client.GetPolicyAppendix(ctx, &corev1.GetPolicyAppendixRequest{Id: id})
+	if err != nil {
+		logger.Debug("appendix: lookup failed", log.F("op", op), log.F("appendix_id", id), log.F("code", status.Code(err).String()))
+		return nil, appendixAccess{}, "", err
+	}
+	policyID := got.GetAppendix().GetPolicyId()
+	access, err := r.appendixAccessFor(ctx, op, policyID)
+	if err != nil {
+		return nil, appendixAccess{}, "", err
+	}
+	if !access.editor {
+		logger.Info("appendix write refused: the caller may not edit the policy",
+			log.F("op", op), log.F("appendix_id", id), log.F("policy_id", policyID))
+		return nil, appendixAccess{}, "", errAppendixForbidden
+	}
+	return client, access, claims.UserID(), nil
+}
+
+// PolicyAppendicesResolver lists a policy's appendices as the caller may see
+// them: readers the live ones with a published row, editors also the drafts
+// and, with includeRetired, the retired ones.
+func (r *Resolver) PolicyAppendicesResolver(ctx context.Context, policyID string, includeRetired *bool) ([]*PolicyAppendix, error) {
+	logger := r.logger()
+	if _, err := signedIn(ctx); err != nil {
+		return nil, err
+	}
+	client, err := r.appendixClient()
+	if err != nil {
+		return nil, err
+	}
+	access, err := r.appendixAccessFor(ctx, "policyAppendices", policyID)
+	if err != nil {
+		return nil, err
+	}
+	withRetired := access.editor && includeRetired != nil && *includeRetired
+	started := time.Now()
+	resp, err := client.ListPolicyAppendices(ctx, &corev1.ListPolicyAppendicesRequest{PolicyId: policyID, IncludeRetired: withRetired})
+	if err != nil {
+		logger.Error(err, "policy appendices: core list failed",
+			log.F("policy_id", policyID), log.F("code", status.Code(err).String()), log.F("duration_ms", time.Since(started).Milliseconds()))
+		return nil, err
+	}
+	people := newAppendixPeople(r.IdentityClient)
+	out := make([]*PolicyAppendix, 0, len(resp.GetAppendices()))
+	for _, a := range resp.GetAppendices() {
+		if !access.editor && (a.GetRetiredAt() != nil || a.GetPublished() == nil) {
+			continue
+		}
+		if !withRetired && a.GetRetiredAt() != nil {
+			continue
+		}
+		out = append(out, shapePolicyAppendix(ctx, people, a, access))
+	}
+	logger.Debug("policy appendices listed", log.F("policy_id", policyID), log.F("editor", access.editor),
+		log.F("include_retired", withRetired), log.F("from_core", len(resp.GetAppendices())), log.F("count", len(out)),
+		log.F("duration_ms", time.Since(started).Milliseconds()))
+	return out, nil
+}
+
+// PolicyAppendixResolver returns one appendix. A reader gets NotFound for one
+// that is retired or has no published row, so a draft is never confirmed.
+func (r *Resolver) PolicyAppendixResolver(ctx context.Context, id string) (*PolicyAppendix, error) {
+	logger := r.logger()
+	if _, err := signedIn(ctx); err != nil {
+		return nil, err
+	}
+	client, err := r.appendixClient()
+	if err != nil {
+		return nil, err
+	}
+	got, err := client.GetPolicyAppendix(ctx, &corev1.GetPolicyAppendixRequest{Id: id})
+	if err != nil {
+		logger.Debug("policy appendix: lookup failed", log.F("appendix_id", id), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	a := got.GetAppendix()
+	access, err := r.appendixAccessFor(ctx, "policyAppendix", a.GetPolicyId())
+	if err != nil {
+		return nil, err
+	}
+	if !access.editor && (a.GetRetiredAt() != nil || a.GetPublished() == nil) {
+		logger.Debug("policy appendix hidden from a reader", log.F("appendix_id", id), log.F("retired", a.GetRetiredAt() != nil))
+		return nil, status.Error(codes.NotFound, "appendix not found")
+	}
+	return shapePolicyAppendix(ctx, newAppendixPeople(r.IdentityClient), a, access), nil
+}
+
+// CreatePolicyAppendixResolver adds an appendix as a draft, last among the live
+// ones. A missing or blank title is core's to name.
+func (r *Resolver) CreatePolicyAppendixResolver(ctx context.Context, policyID string, title *string, contentJSON string) (*PolicyAppendix, error) {
+	logger := r.logger()
+	claims, err := signedIn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	client, err := r.appendixClient()
+	if err != nil {
+		return nil, err
+	}
+	access, err := r.appendixAccessFor(ctx, "createPolicyAppendix", policyID)
+	if err != nil {
+		return nil, err
+	}
+	if !access.editor {
+		logger.Info("create appendix refused: the caller may not edit the policy", log.F("policy_id", policyID))
+		return nil, errAppendixForbidden
+	}
+	resp, err := client.CreatePolicyAppendix(ctx, &corev1.CreatePolicyAppendixRequest{
+		PolicyId: policyID, Title: strings.TrimSpace(derefOrEmpty(title)), ContentJson: contentJSON, ActorUserId: claims.UserID(),
+	})
+	if err != nil {
+		logger.Error(err, "create appendix: core failed", log.F("policy_id", policyID), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	logger.Info("appendix created", log.F("policy_id", policyID), log.F("appendix_id", resp.GetAppendix().GetId()))
+	return shapePolicyAppendix(ctx, newAppendixPeople(r.IdentityClient), resp.GetAppendix(), access), nil
+}
+
+// SaveAppendixDraftResolver updates the open draft, or starts the next one
+// beside the published row. A blank title is refused.
+func (r *Resolver) SaveAppendixDraftResolver(ctx context.Context, id, title, contentJSON string) (*PolicyAppendix, error) {
+	client, access, actor, err := r.editableAppendix(ctx, "saveAppendixDraft", id)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(title) == "" {
+		return nil, status.Error(codes.InvalidArgument, "An appendix needs a title.")
+	}
+	resp, err := client.SaveAppendixDraft(ctx, &corev1.SaveAppendixDraftRequest{Id: id, Title: title, ContentJson: contentJSON, ActorUserId: actor})
+	if err != nil {
+		r.logger().Error(err, "save appendix draft: core failed", log.F("appendix_id", id), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	log.Trace(r.logger(), "appendix draft saved", log.F("appendix_id", id))
+	return shapePolicyAppendix(ctx, newAppendixPeople(r.IdentityClient), resp.GetAppendix(), access), nil
+}
+
+// PublishAppendixResolver promotes the draft to the next published version.
+func (r *Resolver) PublishAppendixResolver(ctx context.Context, id string) (*PolicyAppendix, error) {
+	client, access, actor, err := r.editableAppendix(ctx, "publishAppendix", id)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.PublishAppendix(ctx, &corev1.PublishAppendixRequest{Id: id, ActorUserId: actor})
+	if err != nil {
+		r.logger().Error(err, "publish appendix: core failed", log.F("appendix_id", id), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	r.logger().Info("appendix published", log.F("appendix_id", id))
+	return shapePolicyAppendix(ctx, newAppendixPeople(r.IdentityClient), resp.GetAppendix(), access), nil
+}
+
+// RetireAppendixResolver hides an appendix and keeps it with its history.
+func (r *Resolver) RetireAppendixResolver(ctx context.Context, id string) (*PolicyAppendix, error) {
+	client, access, actor, err := r.editableAppendix(ctx, "retireAppendix", id)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.RetireAppendix(ctx, &corev1.RetireAppendixRequest{Id: id, ActorUserId: actor})
+	if err != nil {
+		r.logger().Error(err, "retire appendix: core failed", log.F("appendix_id", id), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	r.logger().Info("appendix retired", log.F("appendix_id", id))
+	return shapePolicyAppendix(ctx, newAppendixPeople(r.IdentityClient), resp.GetAppendix(), access), nil
+}
+
+// RestoreAppendixResolver brings a retired appendix back, last in the order.
+func (r *Resolver) RestoreAppendixResolver(ctx context.Context, id string) (*PolicyAppendix, error) {
+	client, access, actor, err := r.editableAppendix(ctx, "restoreAppendix", id)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.RestoreAppendix(ctx, &corev1.RestoreAppendixRequest{Id: id, ActorUserId: actor})
+	if err != nil {
+		r.logger().Error(err, "restore appendix: core failed", log.F("appendix_id", id), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	r.logger().Info("appendix restored", log.F("appendix_id", id))
+	return shapePolicyAppendix(ctx, newAppendixPeople(r.IdentityClient), resp.GetAppendix(), access), nil
+}
+
+// AppendicesForVersionResolver is PolicyVersion.appendices: the older Appendix
+// shape, filled from the latest published row of each live appendix of the
+// policy, the same on every version (policyVersionId is the version asked).
+// The version itself was already read under the policy's read decision; the
+// text is scrambled here as it is there when that decision obfuscates.
+func (r *Resolver) AppendicesForVersionResolver(ctx context.Context, v *PolicyVersion) ([]*Appendix, error) {
+	logger := r.logger()
+	if _, err := signedIn(ctx); err != nil {
+		return nil, err
+	}
+	client, err := r.appendixClient()
+	if err != nil {
+		return nil, err
+	}
+	effect, _ := versionReadDecision(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, v.PolicyID)
+	if effect == authz.EffectDeny {
+		return nil, status.Error(codes.NotFound, "policy version not found")
+	}
+	resp, err := client.ListPolicyAppendices(ctx, &corev1.ListPolicyAppendicesRequest{PolicyId: v.PolicyID})
+	if err != nil {
+		logger.Error(err, "version appendices: core list failed",
+			log.F("policy_version_id", v.ID), log.F("policy_id", v.PolicyID), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	out := make([]*Appendix, 0, len(resp.GetAppendices()))
+	for _, a := range resp.GetAppendices() {
+		p := a.GetPublished()
+		if a.GetRetiredAt() != nil || p == nil {
+			continue
+		}
+		content := p.GetContentJson()
+		if effect == authz.EffectObfuscate {
+			content = obfuscateContentJSON(content)
+		}
+		out = append(out, &Appendix{
+			ID: a.GetId(), PolicyVersionID: v.ID, Title: p.GetTitle(), ContentJSON: content,
+			OrderIndex: int(a.GetOrderIndex()), Letter: a.GetLetter(),
+		})
+	}
+	logger.Debug("version appendices listed", log.F("policy_version_id", v.ID), log.F("policy_id", v.PolicyID),
+		log.F("count", len(out)), log.F("effect", string(effect)))
+	return out, nil
+}
+
+// appendixPeople resolves contributor ids to a name and whether they are still
+// active, once per user for a request.
+type appendixPeople struct {
+	identity identityv1.IdentityReadServiceClient
+	seen     map[string]*AppendixContributor
+}
+
+func newAppendixPeople(identity identityv1.IdentityReadServiceClient) *appendixPeople {
+	return &appendixPeople{identity: identity, seen: map[string]*AppendixContributor{}}
+}
+
+// of lists the ids as contributors, in order. A user identity does not know,
+// or cannot be reached for, stays listed with the id as the name and inactive.
+func (p *appendixPeople) of(ctx context.Context, ids []string) []*AppendixContributor {
+	out := make([]*AppendixContributor, 0, len(ids))
+	for _, id := range ids {
+		c, ok := p.seen[id]
+		if !ok {
+			c = &AppendixContributor{UserID: id, Name: id}
+			if p.identity != nil {
+				if resp, err := p.identity.GetUser(ctx, &identityv1.GetUserRequest{UserId: id}); err == nil && resp.GetUser() != nil {
+					u := resp.GetUser()
+					c.Active = u.GetEnabled() && u.GetDeletedAt() == ""
+					if name := firstNonEmpty(u.GetName(), u.GetEmail()); name != "" {
+						c.Name = name
+					}
+				}
+			}
+			p.seen[id] = c
+		}
+		out = append(out, &AppendixContributor{UserID: c.UserID, Name: c.Name, Active: c.Active})
+	}
+	return out
+}
+
+func firstNonEmpty(ss ...string) string {
+	for _, s := range ss {
+		if s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+func rfc3339(t *timestamppb.Timestamp) string {
+	if t == nil {
+		return ""
+	}
+	return t.AsTime().UTC().Format(time.RFC3339)
+}
+
+func rfc3339OrNil(t *timestamppb.Timestamp) *string { return nilIfEmpty(rfc3339(t)) }
+
+// appendixVersionToModel is one row. Editors get the contributors; an
+// obfuscating read decision scrambles the text.
+func appendixVersionToModel(ctx context.Context, people *appendixPeople, v *corev1.AppendixVersion, access appendixAccess) *AppendixVersion {
+	if v == nil {
+		return nil
+	}
+	state := AppendixStateDraft
+	if v.GetState() == corev1.AppendixVersionState_APPENDIX_VERSION_STATE_PUBLISHED {
+		state = AppendixStatePublished
+	}
+	content := v.GetContentJson()
+	if access.effect == authz.EffectObfuscate {
+		content = obfuscateContentJSON(content)
+	}
+	contributors := []*AppendixContributor{}
+	if access.editor {
+		contributors = people.of(ctx, v.GetContributorIds())
+	}
+	return &AppendixVersion{
+		Contributors: contributors, ID: v.GetId(), VersionNo: int(v.GetVersionNo()), State: state,
+		Title: v.GetTitle(), ContentJSON: content,
+		CreatedAt: rfc3339(v.GetCreatedAt()), CreatedBy: v.GetCreatedBy(),
+		UpdatedAt: rfc3339(v.GetUpdatedAt()), UpdatedBy: v.GetUpdatedBy(),
+		PublishedAt: rfc3339OrNil(v.GetPublishedAt()), PublishedBy: nilIfEmpty(v.GetPublishedBy()),
+	}
+}
+
+// shapePolicyAppendix turns core's appendix into what the caller may see: an
+// editor gets the draft, every row (the published rows newest first, and the
+// table oldest first with the draft last) and the contributors; anyone else
+// the latest published row alone.
+func shapePolicyAppendix(ctx context.Context, people *appendixPeople, a *corev1.PolicyAppendix, access appendixAccess) *PolicyAppendix {
+	out := &PolicyAppendix{
+		ID: a.GetId(), PolicyID: a.GetPolicyId(), Letter: nilIfEmpty(a.GetLetter()), OrderIndex: int(a.GetOrderIndex()),
+		RetiredAt: rfc3339OrNil(a.GetRetiredAt()),
+		// Core keeps no record of who retired an appendix, so there is nothing to show.
+		Published:         appendixVersionToModel(ctx, people, a.GetPublished(), access),
+		Versions:          []*AppendixVersion{},
+		PublishedVersions: []*AppendixVersion{},
+		Contributors:      []*AppendixContributor{},
+	}
+	out.CreatedAt, out.CreatedBy = appendixCreated(a)
+	if !access.editor {
+		if out.Published != nil {
+			out.Versions = append(out.Versions, out.Published)
+			out.PublishedVersions = append(out.PublishedVersions, out.Published)
+		}
+		return out
+	}
+	out.Draft = appendixVersionToModel(ctx, people, a.GetDraft(), access)
+	for _, v := range a.GetPublishedVersions() {
+		out.PublishedVersions = append(out.PublishedVersions, appendixVersionToModel(ctx, people, v, access))
+	}
+	table := slices.Clone(out.PublishedVersions)
+	slices.Reverse(table)
+	out.Versions = table
+	if out.Draft != nil {
+		out.Versions = append(out.Versions, out.Draft)
+	}
+	out.Contributors = people.of(ctx, a.GetContributorIds())
+	return out
+}
+
+// appendixCreated is when and by whom the first row was written. Core does not
+// send it on the appendix, so it is read off the first version.
+func appendixCreated(a *corev1.PolicyAppendix) (at, by string) {
+	rows := append([]*corev1.AppendixVersion{a.GetDraft()}, a.GetPublishedVersions()...)
+	var first *corev1.AppendixVersion
+	for _, v := range rows {
+		if v != nil && (first == nil || v.GetVersionNo() < first.GetVersionNo()) {
+			first = v
+		}
+	}
+	if first == nil {
+		return "", ""
+	}
+	return rfc3339(first.GetCreatedAt()), first.GetCreatedBy()
+}

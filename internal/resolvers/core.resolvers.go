@@ -295,7 +295,7 @@ func (r *mutationResolver) SetCategoryRuleset(ctx context.Context, categoryID st
 
 // Appendices is the resolver for the appendices field.
 func (r *policyVersionResolver) Appendices(ctx context.Context, obj *PolicyVersion) ([]*Appendix, error) {
-	return AppendicesForVersion(ctx, r.AppendixClient, obj.ID)
+	return r.AppendicesForVersionResolver(ctx, obj)
 }
 
 // Category is the resolver for the category field.

@@ -124,6 +124,16 @@ func (r *Resolver) authorizeThread(ctx context.Context, op, threadID string) (re
 	return access, versionID, nil
 }
 
+// markReviewedByReviewer moves the caller's snapshot after a thread act they
+// made as a seat holder (#115, the mock's reviewedBy). The author side holds no
+// seat and has no snapshot, so it moves nobody. A failed mark is a warning only.
+func (r *Resolver) markReviewedByReviewer(ctx context.Context, op, versionID string, access reviewAccess) {
+	if !access.seats[access.userID] {
+		return
+	}
+	markReviewedAfterAct(ctx, r.logger(), r.ReviewSnapshotClient, op, versionID, access.userID)
+}
+
 // ReviewThreadsResolver lists the threads of a version the caller may see: the
 // author side sees every thread, a seat holder only the threads with them, and
 // a reader who takes no part sees none. An obfuscated reader gets no bodies.
@@ -214,6 +224,7 @@ func (r *Resolver) AddReviewThreadResolver(ctx context.Context, versionID, quote
 	logger.Info("review thread added",
 		log.F("thread_id", resp.GetThread().GetId()), log.F("policy_version_id", versionID), log.F("side", access.side.String()),
 		log.F("approver", approver), log.F("has_suggestion", resp.GetThread().GetSuggestion() != nil), log.F("duration_ms", time.Since(started).Milliseconds()))
+	r.markReviewedByReviewer(ctx, "addReviewThread", versionID, access)
 	return reviewThreadFromProto(ctx, newLabelResolver(r.IdentityClient, nil, nil, nil), resp.GetThread(), access.effect), nil
 }
 
@@ -234,6 +245,7 @@ func (r *Resolver) ReplyReviewThreadResolver(ctx context.Context, threadID, body
 	}
 	logger.Info("review thread replied",
 		log.F("thread_id", threadID), log.F("policy_version_id", versionID), log.F("side", access.side.String()), log.F("duration_ms", time.Since(started).Milliseconds()))
+	r.markReviewedByReviewer(ctx, "replyReviewThread", versionID, access)
 	return reviewThreadFromProto(ctx, newLabelResolver(r.IdentityClient, nil, nil, nil), resp.GetThread(), access.effect), nil
 }
 
@@ -253,6 +265,7 @@ func (r *Resolver) SetReviewThreadResolvedResolver(ctx context.Context, threadID
 	}
 	logger.Info("review thread state changed",
 		log.F("thread_id", threadID), log.F("policy_version_id", versionID), log.F("side", access.side.String()), log.F("resolved", resolved), log.F("duration_ms", time.Since(started).Milliseconds()))
+	r.markReviewedByReviewer(ctx, "setReviewThreadResolved", versionID, access)
 	return reviewThreadFromProto(ctx, newLabelResolver(r.IdentityClient, nil, nil, nil), resp.GetThread(), access.effect), nil
 }
 

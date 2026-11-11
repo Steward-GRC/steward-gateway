@@ -194,6 +194,27 @@ type ComplexityRoot struct {
 		Title           func(childComplexity int) int
 	}
 
+	AppendixContributor struct {
+		Active func(childComplexity int) int
+		Name   func(childComplexity int) int
+		UserID func(childComplexity int) int
+	}
+
+	AppendixVersion struct {
+		ContentJSON  func(childComplexity int) int
+		Contributors func(childComplexity int) int
+		CreatedAt    func(childComplexity int) int
+		CreatedBy    func(childComplexity int) int
+		ID           func(childComplexity int) int
+		PublishedAt  func(childComplexity int) int
+		PublishedBy  func(childComplexity int) int
+		State        func(childComplexity int) int
+		Title        func(childComplexity int) int
+		UpdatedAt    func(childComplexity int) int
+		UpdatedBy    func(childComplexity int) int
+		VersionNo    func(childComplexity int) int
+	}
+
 	AssetKindSetting struct {
 		Enabled    func(childComplexity int) int
 		Extensions func(childComplexity int) int
@@ -485,6 +506,7 @@ type ComplexityRoot struct {
 	EffectiveWorkflow struct {
 		FirstUnstaffedStage func(childComplexity int) int
 		HasWorkflow         func(childComplexity int) int
+		Name                func(childComplexity int) int
 		Usable              func(childComplexity int) int
 		WorkflowDefID       func(childComplexity int) int
 	}
@@ -645,6 +667,7 @@ type ComplexityRoot struct {
 		CreateMagicLink               func(childComplexity int, policyVersionID string, sensitive bool) int
 		CreatePlatformGroup           func(childComplexity int, name string, parentID *string) int
 		CreatePolicy                  func(childComplexity int, homeCategoryID string, title string, sensitivity Sensitivity, templateID *string, documentType *DocumentType) int
+		CreatePolicyAppendix          func(childComplexity int, policyID string, title *string, contentJSON string) int
 		CreateReference               func(childComplexity int, input ReferenceInput) int
 		CreateTemplate                func(childComplexity int, name string, ownerCategoryID *string) int
 		CreateTemplateVersion         func(childComplexity int, templateID string, sections []*SectionInput) int
@@ -677,6 +700,7 @@ type ComplexityRoot struct {
 		MoveCategory                  func(childComplexity int, categoryID string, newParentID *string) int
 		MovePolicy                    func(childComplexity int, policyID string, homeCategoryID string) int
 		PostCaseMessage               func(childComplexity int, caseID string, body string) int
+		PublishAppendix               func(childComplexity int, id string) int
 		PublishDraft                  func(childComplexity int, policyID string) int
 		PublishTemplateVersion        func(childComplexity int, id string) int
 		ReassignUserPolicies          func(childComplexity int, fromUserID string, toUserID string) int
@@ -705,6 +729,8 @@ type ComplexityRoot struct {
 		RequestStepUpOtp              func(childComplexity int) int
 		ResendWelcomeEmail            func(childComplexity int, userID string) int
 		ResetUserPassword             func(childComplexity int, userID string, newPassword string) int
+		RestoreAppendix               func(childComplexity int, id string) int
+		RetireAppendix                func(childComplexity int, id string) int
 		RetirePolicy                  func(childComplexity int, id string) int
 		RetireTemplate                func(childComplexity int, id string) int
 		RevokeGroupManager            func(childComplexity int, userID string, groupID string) int
@@ -713,6 +739,7 @@ type ComplexityRoot struct {
 		RevokeRole                    func(childComplexity int, userID string, role string, category *string) int
 		RevokeRoot                    func(childComplexity int, userID string, otp string) int
 		RevokeUserSessions            func(childComplexity int, userID string, reason *string) int
+		SaveAppendixDraft             func(childComplexity int, id string, title string, contentJSON string) int
 		SaveDraft                     func(childComplexity int, policyID string, contentJSON string, templateVersionID *string) int
 		SendEnrollEmailOtp            func(childComplexity int) int
 		SetAIEnabled                  func(childComplexity int, enabled bool) int
@@ -885,6 +912,22 @@ type ComplexityRoot struct {
 		ViewerCan                 func(childComplexity int) int
 	}
 
+	PolicyAppendix struct {
+		Contributors      func(childComplexity int) int
+		CreatedAt         func(childComplexity int) int
+		CreatedBy         func(childComplexity int) int
+		Draft             func(childComplexity int) int
+		ID                func(childComplexity int) int
+		Letter            func(childComplexity int) int
+		OrderIndex        func(childComplexity int) int
+		PolicyID          func(childComplexity int) int
+		Published         func(childComplexity int) int
+		PublishedVersions func(childComplexity int) int
+		RetiredAt         func(childComplexity int) int
+		RetiredBy         func(childComplexity int) int
+		Versions          func(childComplexity int) int
+	}
+
 	PolicyDiff struct {
 		Sections func(childComplexity int) int
 	}
@@ -981,6 +1024,8 @@ type ComplexityRoot struct {
 		Policies                   func(childComplexity int, categoryID string, includeDescendants *bool, documentType *DocumentType) int
 		PoliciesByOwner            func(childComplexity int, userID string, includeRetired *bool) int
 		Policy                     func(childComplexity int, id string) int
+		PolicyAppendices           func(childComplexity int, policyID string, includeRetired *bool) int
+		PolicyAppendix             func(childComplexity int, id string) int
 		PolicyByNumber             func(childComplexity int, number string) int
 		PolicyContactBlocks        func(childComplexity int, policyID string) int
 		PolicyDefinitionCandidates func(childComplexity int, policyID string, includeArchived *bool) int
@@ -1483,6 +1528,11 @@ type MutationResolver interface {
 	AcceptAIDataNotice(ctx context.Context, noticeVersion string) (*AIDataNotice, error)
 	SetAIRetrievalConfig(ctx context.Context, topK int) (*AIRetrievalConfig, error)
 	SetUserAiQueryLimit(ctx context.Context, userID string, limit int) (*AIUserQueryLimit, error)
+	CreatePolicyAppendix(ctx context.Context, policyID string, title *string, contentJSON string) (*PolicyAppendix, error)
+	SaveAppendixDraft(ctx context.Context, id string, title string, contentJSON string) (*PolicyAppendix, error)
+	PublishAppendix(ctx context.Context, id string) (*PolicyAppendix, error)
+	RetireAppendix(ctx context.Context, id string) (*PolicyAppendix, error)
+	RestoreAppendix(ctx context.Context, id string) (*PolicyAppendix, error)
 	ShredAuditSubject(ctx context.Context, subjectKey string, reason string) (*AuditShredResult, error)
 	CreateAuditLegalHold(ctx context.Context, subjectFilter *string, groupFilter *string, reason string) (*AuditLegalHold, error)
 	ReleaseAuditLegalHold(ctx context.Context, holdUUID string) (*AuditLegalHold, error)
@@ -1648,6 +1698,8 @@ type QueryResolver interface {
 	AiEnabled(ctx context.Context) (bool, error)
 	AiConfig(ctx context.Context) (*AIConfig, error)
 	AiRetrievalConfig(ctx context.Context) (*AIRetrievalConfig, error)
+	PolicyAppendices(ctx context.Context, policyID string, includeRetired *bool) ([]*PolicyAppendix, error)
+	PolicyAppendix(ctx context.Context, id string) (*PolicyAppendix, error)
 	AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) (*AuditQueryPage, error)
 	AuditSegment(ctx context.Context, fromRecordID string, toRecordID string) (*AuditSegment, error)
 	VerifyAuditChain(ctx context.Context, fromRecordID string, toRecordID string) (*AuditChainVerification, error)
@@ -2290,6 +2342,98 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Appendix.Title(childComplexity), true
+
+	case "AppendixContributor.active":
+		if e.ComplexityRoot.AppendixContributor.Active == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixContributor.Active(childComplexity), true
+	case "AppendixContributor.name":
+		if e.ComplexityRoot.AppendixContributor.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixContributor.Name(childComplexity), true
+	case "AppendixContributor.userId":
+		if e.ComplexityRoot.AppendixContributor.UserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixContributor.UserID(childComplexity), true
+
+	case "AppendixVersion.contentJson":
+		if e.ComplexityRoot.AppendixVersion.ContentJSON == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.ContentJSON(childComplexity), true
+	case "AppendixVersion.contributors":
+		if e.ComplexityRoot.AppendixVersion.Contributors == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.Contributors(childComplexity), true
+	case "AppendixVersion.createdAt":
+		if e.ComplexityRoot.AppendixVersion.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.CreatedAt(childComplexity), true
+	case "AppendixVersion.createdBy":
+		if e.ComplexityRoot.AppendixVersion.CreatedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.CreatedBy(childComplexity), true
+	case "AppendixVersion.id":
+		if e.ComplexityRoot.AppendixVersion.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.ID(childComplexity), true
+	case "AppendixVersion.publishedAt":
+		if e.ComplexityRoot.AppendixVersion.PublishedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.PublishedAt(childComplexity), true
+	case "AppendixVersion.publishedBy":
+		if e.ComplexityRoot.AppendixVersion.PublishedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.PublishedBy(childComplexity), true
+	case "AppendixVersion.state":
+		if e.ComplexityRoot.AppendixVersion.State == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.State(childComplexity), true
+	case "AppendixVersion.title":
+		if e.ComplexityRoot.AppendixVersion.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.Title(childComplexity), true
+	case "AppendixVersion.updatedAt":
+		if e.ComplexityRoot.AppendixVersion.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.UpdatedAt(childComplexity), true
+	case "AppendixVersion.updatedBy":
+		if e.ComplexityRoot.AppendixVersion.UpdatedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.UpdatedBy(childComplexity), true
+	case "AppendixVersion.versionNo":
+		if e.ComplexityRoot.AppendixVersion.VersionNo == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AppendixVersion.VersionNo(childComplexity), true
 
 	case "AssetKindSetting.enabled":
 		if e.ComplexityRoot.AssetKindSetting.Enabled == nil {
@@ -3402,6 +3546,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.EffectiveWorkflow.HasWorkflow(childComplexity), true
+	case "EffectiveWorkflow.name":
+		if e.ComplexityRoot.EffectiveWorkflow.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EffectiveWorkflow.Name(childComplexity), true
 	case "EffectiveWorkflow.usable":
 		if e.ComplexityRoot.EffectiveWorkflow.Usable == nil {
 			break
@@ -4184,6 +4334,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreatePolicy(childComplexity, args["homeCategoryId"].(string), args["title"].(string), args["sensitivity"].(Sensitivity), args["templateId"].(*string), args["documentType"].(*DocumentType)), true
+	case "Mutation.createPolicyAppendix":
+		if e.ComplexityRoot.Mutation.CreatePolicyAppendix == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createPolicyAppendix_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreatePolicyAppendix(childComplexity, args["policyId"].(string), args["title"].(*string), args["contentJson"].(string)), true
 	case "Mutation.createReference":
 		if e.ComplexityRoot.Mutation.CreateReference == nil {
 			break
@@ -4526,6 +4687,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.PostCaseMessage(childComplexity, args["caseId"].(string), args["body"].(string)), true
+	case "Mutation.publishAppendix":
+		if e.ComplexityRoot.Mutation.PublishAppendix == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_publishAppendix_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.PublishAppendix(childComplexity, args["id"].(string)), true
 	case "Mutation.publishDraft":
 		if e.ComplexityRoot.Mutation.PublishDraft == nil {
 			break
@@ -4829,6 +5001,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ResetUserPassword(childComplexity, args["userId"].(string), args["newPassword"].(string)), true
+	case "Mutation.restoreAppendix":
+		if e.ComplexityRoot.Mutation.RestoreAppendix == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_restoreAppendix_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RestoreAppendix(childComplexity, args["id"].(string)), true
+	case "Mutation.retireAppendix":
+		if e.ComplexityRoot.Mutation.RetireAppendix == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_retireAppendix_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RetireAppendix(childComplexity, args["id"].(string)), true
 	case "Mutation.retirePolicy":
 		if e.ComplexityRoot.Mutation.RetirePolicy == nil {
 			break
@@ -4912,6 +5106,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RevokeUserSessions(childComplexity, args["userId"].(string), args["reason"].(*string)), true
+	case "Mutation.saveAppendixDraft":
+		if e.ComplexityRoot.Mutation.SaveAppendixDraft == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveAppendixDraft_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SaveAppendixDraft(childComplexity, args["id"].(string), args["title"].(string), args["contentJson"].(string)), true
 	case "Mutation.saveDraft":
 		if e.ComplexityRoot.Mutation.SaveDraft == nil {
 			break
@@ -6002,6 +6207,85 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Policy.ViewerCan(childComplexity), true
 
+	case "PolicyAppendix.contributors":
+		if e.ComplexityRoot.PolicyAppendix.Contributors == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.Contributors(childComplexity), true
+	case "PolicyAppendix.createdAt":
+		if e.ComplexityRoot.PolicyAppendix.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.CreatedAt(childComplexity), true
+	case "PolicyAppendix.createdBy":
+		if e.ComplexityRoot.PolicyAppendix.CreatedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.CreatedBy(childComplexity), true
+	case "PolicyAppendix.draft":
+		if e.ComplexityRoot.PolicyAppendix.Draft == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.Draft(childComplexity), true
+	case "PolicyAppendix.id":
+		if e.ComplexityRoot.PolicyAppendix.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.ID(childComplexity), true
+	case "PolicyAppendix.letter":
+		if e.ComplexityRoot.PolicyAppendix.Letter == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.Letter(childComplexity), true
+	case "PolicyAppendix.orderIndex":
+		if e.ComplexityRoot.PolicyAppendix.OrderIndex == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.OrderIndex(childComplexity), true
+	case "PolicyAppendix.policyId":
+		if e.ComplexityRoot.PolicyAppendix.PolicyID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.PolicyID(childComplexity), true
+	case "PolicyAppendix.published":
+		if e.ComplexityRoot.PolicyAppendix.Published == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.Published(childComplexity), true
+	case "PolicyAppendix.publishedVersions":
+		if e.ComplexityRoot.PolicyAppendix.PublishedVersions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.PublishedVersions(childComplexity), true
+	case "PolicyAppendix.retiredAt":
+		if e.ComplexityRoot.PolicyAppendix.RetiredAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.RetiredAt(childComplexity), true
+	case "PolicyAppendix.retiredBy":
+		if e.ComplexityRoot.PolicyAppendix.RetiredBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.RetiredBy(childComplexity), true
+	case "PolicyAppendix.versions":
+		if e.ComplexityRoot.PolicyAppendix.Versions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyAppendix.Versions(childComplexity), true
+
 	case "PolicyDiff.sections":
 		if e.ComplexityRoot.PolicyDiff.Sections == nil {
 			break
@@ -6668,6 +6952,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Policy(childComplexity, args["id"].(string)), true
+	case "Query.policyAppendices":
+		if e.ComplexityRoot.Query.PolicyAppendices == nil {
+			break
+		}
+
+		args, err := ec.field_Query_policyAppendices_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PolicyAppendices(childComplexity, args["policyId"].(string), args["includeRetired"].(*bool)), true
+	case "Query.policyAppendix":
+		if e.ComplexityRoot.Query.PolicyAppendix == nil {
+			break
+		}
+
+		args, err := ec.field_Query_policyAppendix_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PolicyAppendix(childComplexity, args["id"].(string)), true
 	case "Query.policyByNumber":
 		if e.ComplexityRoot.Query.PolicyByNumber == nil {
 			break
@@ -9547,6 +9853,96 @@ extend type Subscription {
 
 
 `, BuiltIn: false},
+	{Name: "../../graphql/appendix.graphqls", Input: `# --- Appendix life cycle ---
+# An appendix belongs to a policy or procedure, not to one of its versions, and has a version
+# table of its own: create gives a draft, publish makes the row readers see, an edit starts a new
+# draft beside it, and retire keeps the appendix with its history so it can be restored. Core
+# stores the rows and returns the published row and the draft side by side; the gateway decides
+# what the caller sees. Whoever may edit the policy sees the drafts, every row and the
+# contributors; anyone else who may read the policy sees only the latest published row of an
+# appendix that has one, and no contributors. A reader's write is refused as permission denied.
+# Appendices take no part in an approval. PolicyVersion.appendices keeps the older Appendix shape,
+# filled from the latest published row of each live appendix of the policy, on every version.
+
+enum AppendixState {
+  DRAFT
+  PUBLISHED
+}
+
+# Someone who saved or published an appendix. A user who was removed, or never found, stays
+# listed: the name is then the user id and active is false.
+type AppendixContributor {
+  userId: ID!
+  name: String!
+  active: Boolean!
+}
+
+# One row of an appendix's own version table (not a policy version).
+type AppendixVersion {
+  # Everyone who saved or published this row, in the order they first did. Editors only; empty
+  # for anyone else.
+  contributors: [AppendixContributor!]!
+  id: ID!
+  versionNo: Int!
+  state: AppendixState!
+  title: String!
+  contentJson: String!
+  createdAt: String!  # RFC-3339
+  createdBy: ID!
+  updatedAt: String!  # RFC-3339
+  updatedBy: ID!
+  publishedAt: String  # RFC-3339; null on a draft
+  publishedBy: ID
+}
+
+type PolicyAppendix {
+  id: ID!
+  policyId: ID!
+  # The place among the live appendices (A, B, C); null while retired.
+  letter: String
+  orderIndex: Int!
+  # When and by whom the first row was written.
+  createdAt: String!  # RFC-3339
+  createdBy: ID!
+  retiredAt: String  # RFC-3339; null while live
+  # Core does not record who retired an appendix yet, so this is always null.
+  retiredBy: ID
+  # The latest published row. Readers see only this.
+  published: AppendixVersion
+  # The author's work in progress. Editors only.
+  draft: AppendixVersion
+  # Every row, oldest first with the draft last. Readers get the published row only.
+  versions: [AppendixVersion!]!
+  # The published rows, newest first, for the Published tab drop-down. Readers get the latest only.
+  publishedVersions: [AppendixVersion!]!
+  # Everyone who ever saved or published the appendix, in the order they first did. Editors only;
+  # empty for anyone else.
+  contributors: [AppendixContributor!]!
+}
+
+extend type Query {
+  # Readers get the live appendices that have a published row. Editors also get the drafts, and
+  # the retired ones with includeRetired.
+  policyAppendices(policyId: ID!, includeRetired: Boolean): [PolicyAppendix!]!
+  # One appendix. A reader gets NotFound for one that is retired or has no published row.
+  policyAppendix(id: ID!): PolicyAppendix!
+}
+
+extend type Mutation {
+  # A blank or missing title becomes "Appendix A", "Appendix B", ...: the next name no other
+  # appendix of the policy uses. Editors only.
+  createPolicyAppendix(policyId: ID!, title: String, contentJson: String!): PolicyAppendix!
+  # Updates the open draft, or starts the next one beside the published row. A save equal to the
+  # published title and content, with no draft open, changes nothing. Editors only.
+  saveAppendixDraft(id: ID!, title: String!, contentJson: String!): PolicyAppendix!
+  # Promotes the draft to the next published version. Editors only.
+  publishAppendix(id: ID!): PolicyAppendix!
+  # Hides an appendix and keeps it with its history. Editors only.
+  retireAppendix(id: ID!): PolicyAppendix!
+  # Brings a retired appendix back, last in the order. Editors only.
+  restoreAppendix(id: ID!): PolicyAppendix!
+}
+`, BuiltIn: false},
 	{Name: "../../graphql/audit.graphqls", Input: `# --- Audit: query, export, verify ---
 # Backed by audit (AuditService). The gateway sends the signed-in caller as
 # the requester on every call. Record ids are surfaced as Strings to
@@ -11831,6 +12227,9 @@ type EffectiveWorkflow {
   # When usable=false, the name of the first stage lacking an approver (for a
   # human-readable notice, e.g. "The 'Approval' stage has no approver"); null otherwise.
   firstUnstaffedStage: String
+  # The resolved workflow's name, so an author can see which workflow applies; null
+  # when none resolves. Only people who can author the policy may read this query.
+  name: String
 }
 
 extend type Query {
@@ -12443,6 +12842,48 @@ func (ec *executionContext) childFields_Appendix(ctx context.Context, field grap
 	return nil, fmt.Errorf("no field named %q was found under type Appendix", field.Name)
 }
 
+func (ec *executionContext) childFields_AppendixContributor(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "userId":
+		return ec.fieldContext_AppendixContributor_userId(ctx, field)
+	case "name":
+		return ec.fieldContext_AppendixContributor_name(ctx, field)
+	case "active":
+		return ec.fieldContext_AppendixContributor_active(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AppendixContributor", field.Name)
+}
+
+func (ec *executionContext) childFields_AppendixVersion(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "contributors":
+		return ec.fieldContext_AppendixVersion_contributors(ctx, field)
+	case "id":
+		return ec.fieldContext_AppendixVersion_id(ctx, field)
+	case "versionNo":
+		return ec.fieldContext_AppendixVersion_versionNo(ctx, field)
+	case "state":
+		return ec.fieldContext_AppendixVersion_state(ctx, field)
+	case "title":
+		return ec.fieldContext_AppendixVersion_title(ctx, field)
+	case "contentJson":
+		return ec.fieldContext_AppendixVersion_contentJson(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_AppendixVersion_createdAt(ctx, field)
+	case "createdBy":
+		return ec.fieldContext_AppendixVersion_createdBy(ctx, field)
+	case "updatedAt":
+		return ec.fieldContext_AppendixVersion_updatedAt(ctx, field)
+	case "updatedBy":
+		return ec.fieldContext_AppendixVersion_updatedBy(ctx, field)
+	case "publishedAt":
+		return ec.fieldContext_AppendixVersion_publishedAt(ctx, field)
+	case "publishedBy":
+		return ec.fieldContext_AppendixVersion_publishedBy(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AppendixVersion", field.Name)
+}
+
 func (ec *executionContext) childFields_AssetKindSetting(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "kind":
@@ -13029,6 +13470,8 @@ func (ec *executionContext) childFields_EffectiveWorkflow(ctx context.Context, f
 		return ec.fieldContext_EffectiveWorkflow_usable(ctx, field)
 	case "firstUnstaffedStage":
 		return ec.fieldContext_EffectiveWorkflow_firstUnstaffedStage(ctx, field)
+	case "name":
+		return ec.fieldContext_EffectiveWorkflow_name(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type EffectiveWorkflow", field.Name)
 }
@@ -13499,6 +13942,38 @@ func (ec *executionContext) childFields_Policy(ctx context.Context, field graphq
 		return ec.fieldContext_Policy_retiredAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Policy", field.Name)
+}
+
+func (ec *executionContext) childFields_PolicyAppendix(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_PolicyAppendix_id(ctx, field)
+	case "policyId":
+		return ec.fieldContext_PolicyAppendix_policyId(ctx, field)
+	case "letter":
+		return ec.fieldContext_PolicyAppendix_letter(ctx, field)
+	case "orderIndex":
+		return ec.fieldContext_PolicyAppendix_orderIndex(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_PolicyAppendix_createdAt(ctx, field)
+	case "createdBy":
+		return ec.fieldContext_PolicyAppendix_createdBy(ctx, field)
+	case "retiredAt":
+		return ec.fieldContext_PolicyAppendix_retiredAt(ctx, field)
+	case "retiredBy":
+		return ec.fieldContext_PolicyAppendix_retiredBy(ctx, field)
+	case "published":
+		return ec.fieldContext_PolicyAppendix_published(ctx, field)
+	case "draft":
+		return ec.fieldContext_PolicyAppendix_draft(ctx, field)
+	case "versions":
+		return ec.fieldContext_PolicyAppendix_versions(ctx, field)
+	case "publishedVersions":
+		return ec.fieldContext_PolicyAppendix_publishedVersions(ctx, field)
+	case "contributors":
+		return ec.fieldContext_PolicyAppendix_contributors(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type PolicyAppendix", field.Name)
 }
 
 func (ec *executionContext) childFields_PolicyDiff(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -15279,6 +15754,36 @@ func (ec *executionContext) field_Mutation_createPlatformGroup_args(ctx context.
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createPolicyAppendix_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "title",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["title"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "contentJson",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["contentJson"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createPolicy_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -15857,6 +16362,20 @@ func (ec *executionContext) field_Mutation_postCaseMessage_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_publishAppendix_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_publishDraft_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -16403,6 +16922,34 @@ func (ec *executionContext) field_Mutation_resetUserPassword_args(ctx context.Co
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_restoreAppendix_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_retireAppendix_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_retirePolicy_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -16538,6 +17085,36 @@ func (ec *executionContext) field_Mutation_revokeUserSessions_args(ctx context.C
 		return nil, err
 	}
 	args["reason"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_saveAppendixDraft_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "title",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["title"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "contentJson",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["contentJson"] = arg2
 	return args, nil
 }
 
@@ -18558,6 +19135,42 @@ func (ec *executionContext) field_Query_policies_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["documentType"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_policyAppendices_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "includeRetired",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["includeRetired"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_policyAppendix_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -21275,6 +21888,360 @@ func (ec *executionContext) _Appendix_letter(ctx context.Context, field graphql.
 }
 func (ec *executionContext) fieldContext_Appendix_letter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Appendix", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixContributor_userId(ctx context.Context, field graphql.CollectedField, obj *AppendixContributor) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixContributor_userId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixContributor_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixContributor", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixContributor_name(ctx context.Context, field graphql.CollectedField, obj *AppendixContributor) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixContributor_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixContributor_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixContributor", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixContributor_active(ctx context.Context, field graphql.CollectedField, obj *AppendixContributor) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixContributor_active(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Active, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixContributor_active(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixContributor", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_contributors(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_contributors(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Contributors, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*AppendixContributor) graphql.Marshaler {
+			return ec.marshalNAppendixContributor2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixContributorᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_contributors(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AppendixVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AppendixContributor(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AppendixVersion_id(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_versionNo(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_versionNo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.VersionNo, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_versionNo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_state(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_state(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.State, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v AppendixState) graphql.Marshaler {
+			return ec.marshalNAppendixState2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixState(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type AppendixState does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_title(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_contentJson(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_contentJson(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ContentJSON, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_contentJson(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_createdAt(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_createdBy(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_createdBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_createdBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_updatedAt(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_updatedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_updatedBy(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_updatedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_updatedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_publishedAt(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_publishedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PublishedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_publishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AppendixVersion_publishedBy(ctx context.Context, field graphql.CollectedField, obj *AppendixVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AppendixVersion_publishedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PublishedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AppendixVersion_publishedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AppendixVersion", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
 func (ec *executionContext) _AssetKindSetting_kind(ctx context.Context, field graphql.CollectedField, obj *AssetKindSetting) (ret graphql.Marshaler) {
@@ -25566,6 +26533,29 @@ func (ec *executionContext) fieldContext_EffectiveWorkflow_firstUnstaffedStage(_
 	return graphql.NewScalarFieldContext("EffectiveWorkflow", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _EffectiveWorkflow_name(ctx context.Context, field graphql.CollectedField, obj *EffectiveWorkflow) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_EffectiveWorkflow_name(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_EffectiveWorkflow_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("EffectiveWorkflow", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _EmailServiceConfigStatus_apiKeySet(ctx context.Context, field graphql.CollectedField, obj *EmailServiceConfigStatus) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27724,6 +28714,226 @@ func (ec *executionContext) fieldContext_Mutation_setUserAiQueryLimit(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setUserAiQueryLimit_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createPolicyAppendix(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createPolicyAppendix(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreatePolicyAppendix(ctx, fc.Args["policyId"].(string), fc.Args["title"].(*string), fc.Args["contentJson"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyAppendix) graphql.Marshaler {
+			return ec.marshalNPolicyAppendix2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendix(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createPolicyAppendix(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyAppendix(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createPolicyAppendix_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_saveAppendixDraft(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_saveAppendixDraft(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SaveAppendixDraft(ctx, fc.Args["id"].(string), fc.Args["title"].(string), fc.Args["contentJson"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyAppendix) graphql.Marshaler {
+			return ec.marshalNPolicyAppendix2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendix(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_saveAppendixDraft(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyAppendix(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_saveAppendixDraft_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_publishAppendix(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_publishAppendix(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().PublishAppendix(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyAppendix) graphql.Marshaler {
+			return ec.marshalNPolicyAppendix2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendix(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_publishAppendix(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyAppendix(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_publishAppendix_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_retireAppendix(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_retireAppendix(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RetireAppendix(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyAppendix) graphql.Marshaler {
+			return ec.marshalNPolicyAppendix2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendix(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_retireAppendix(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyAppendix(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_retireAppendix_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_restoreAppendix(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_restoreAppendix(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RestoreAppendix(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyAppendix) graphql.Marshaler {
+			return ec.marshalNPolicyAppendix2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendix(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_restoreAppendix(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyAppendix(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_restoreAppendix_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -35763,6 +36973,350 @@ func (ec *executionContext) fieldContext_Policy_retiredAt(_ context.Context, fie
 	return graphql.NewScalarFieldContext("Policy", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _PolicyAppendix_id(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyAppendix", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyAppendix_policyId(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_policyId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PolicyID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_policyId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyAppendix", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyAppendix_letter(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_letter(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Letter, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_letter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyAppendix", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyAppendix_orderIndex(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_orderIndex(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.OrderIndex, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_orderIndex(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyAppendix", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyAppendix_createdAt(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyAppendix", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyAppendix_createdBy(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_createdBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_createdBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyAppendix", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyAppendix_retiredAt(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_retiredAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RetiredAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_retiredAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyAppendix", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyAppendix_retiredBy(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_retiredBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RetiredBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_retiredBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyAppendix", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyAppendix_published(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_published(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Published, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *AppendixVersion) graphql.Marshaler {
+			return ec.marshalOAppendixVersion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixVersion(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_published(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicyAppendix",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AppendixVersion(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PolicyAppendix_draft(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_draft(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Draft, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *AppendixVersion) graphql.Marshaler {
+			return ec.marshalOAppendixVersion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixVersion(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_draft(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicyAppendix",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AppendixVersion(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PolicyAppendix_versions(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_versions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Versions, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*AppendixVersion) graphql.Marshaler {
+			return ec.marshalNAppendixVersion2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixVersionᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_versions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicyAppendix",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AppendixVersion(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PolicyAppendix_publishedVersions(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_publishedVersions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PublishedVersions, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*AppendixVersion) graphql.Marshaler {
+			return ec.marshalNAppendixVersion2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixVersionᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_publishedVersions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicyAppendix",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AppendixVersion(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PolicyAppendix_contributors(ctx context.Context, field graphql.CollectedField, obj *PolicyAppendix) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyAppendix_contributors(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Contributors, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*AppendixContributor) graphql.Marshaler {
+			return ec.marshalNAppendixContributor2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixContributorᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyAppendix_contributors(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicyAppendix",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AppendixContributor(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PolicyDiff_sections(ctx context.Context, field graphql.CollectedField, obj *PolicyDiff) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36719,6 +38273,94 @@ func (ec *executionContext) fieldContext_Query_aiRetrievalConfig(_ context.Conte
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_AIRetrievalConfig(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_policyAppendices(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_policyAppendices(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PolicyAppendices(ctx, fc.Args["policyId"].(string), fc.Args["includeRetired"].(*bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*PolicyAppendix) graphql.Marshaler {
+			return ec.marshalNPolicyAppendix2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendixᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_policyAppendices(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyAppendix(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_policyAppendices_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_policyAppendix(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_policyAppendix(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PolicyAppendix(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *PolicyAppendix) graphql.Marshaler {
+			return ec.marshalNPolicyAppendix2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendix(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_policyAppendix(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PolicyAppendix(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_policyAppendix_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -51285,6 +52927,147 @@ func (ec *executionContext) _Appendix(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var appendixContributorImplementors = []string{"AppendixContributor"}
+
+func (ec *executionContext) _AppendixContributor(ctx context.Context, sel ast.SelectionSet, obj *AppendixContributor) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, appendixContributorImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AppendixContributor")
+		case "userId":
+			out.Values[i] = ec._AppendixContributor_userId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._AppendixContributor_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "active":
+			out.Values[i] = ec._AppendixContributor_active(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var appendixVersionImplementors = []string{"AppendixVersion"}
+
+func (ec *executionContext) _AppendixVersion(ctx context.Context, sel ast.SelectionSet, obj *AppendixVersion) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, appendixVersionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AppendixVersion")
+		case "contributors":
+			out.Values[i] = ec._AppendixVersion_contributors(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "id":
+			out.Values[i] = ec._AppendixVersion_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "versionNo":
+			out.Values[i] = ec._AppendixVersion_versionNo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "state":
+			out.Values[i] = ec._AppendixVersion_state(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._AppendixVersion_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "contentJson":
+			out.Values[i] = ec._AppendixVersion_contentJson(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._AppendixVersion_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdBy":
+			out.Values[i] = ec._AppendixVersion_createdBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._AppendixVersion_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedBy":
+			out.Values[i] = ec._AppendixVersion_updatedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "publishedAt":
+			out.Values[i] = ec._AppendixVersion_publishedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "publishedBy":
+			out.Values[i] = ec._AppendixVersion_publishedBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var assetKindSettingImplementors = []string{"AssetKindSetting"}
 
 func (ec *executionContext) _AssetKindSetting(ctx context.Context, sel ast.SelectionSet, obj *AssetKindSetting) graphql.Marshaler {
@@ -53423,6 +55206,11 @@ func (ec *executionContext) _EffectiveWorkflow(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
+		case "name":
+			out.Values[i] = ec._EffectiveWorkflow_name(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -54491,6 +56279,41 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setUserAiQueryLimit":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setUserAiQueryLimit(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createPolicyAppendix":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createPolicyAppendix(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "saveAppendixDraft":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_saveAppendixDraft(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "publishAppendix":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_publishAppendix(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "retireAppendix":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_retireAppendix(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "restoreAppendix":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_restoreAppendix(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -56326,6 +58149,104 @@ func (ec *executionContext) _Policy(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var policyAppendixImplementors = []string{"PolicyAppendix"}
+
+func (ec *executionContext) _PolicyAppendix(ctx context.Context, sel ast.SelectionSet, obj *PolicyAppendix) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, policyAppendixImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PolicyAppendix")
+		case "id":
+			out.Values[i] = ec._PolicyAppendix_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "policyId":
+			out.Values[i] = ec._PolicyAppendix_policyId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "letter":
+			out.Values[i] = ec._PolicyAppendix_letter(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "orderIndex":
+			out.Values[i] = ec._PolicyAppendix_orderIndex(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._PolicyAppendix_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdBy":
+			out.Values[i] = ec._PolicyAppendix_createdBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "retiredAt":
+			out.Values[i] = ec._PolicyAppendix_retiredAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "retiredBy":
+			out.Values[i] = ec._PolicyAppendix_retiredBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "published":
+			out.Values[i] = ec._PolicyAppendix_published(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "draft":
+			out.Values[i] = ec._PolicyAppendix_draft(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "versions":
+			out.Values[i] = ec._PolicyAppendix_versions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "publishedVersions":
+			out.Values[i] = ec._PolicyAppendix_publishedVersions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "contributors":
+			out.Values[i] = ec._PolicyAppendix_contributors(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var policyDiffImplementors = []string{"PolicyDiff"}
 
 func (ec *executionContext) _PolicyDiff(ctx context.Context, sel ast.SelectionSet, obj *PolicyDiff) graphql.Marshaler {
@@ -56901,6 +58822,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_aiRetrievalConfig(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "policyAppendices":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_policyAppendices(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "policyAppendix":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_policyAppendix(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -62830,6 +64795,68 @@ func (ec *executionContext) marshalNAppendix2ᚖgithubᚗcomᚋStewardᚑGRCᚋs
 	return ec._Appendix(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNAppendixContributor2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixContributorᚄ(ctx context.Context, sel ast.SelectionSet, v []*AppendixContributor) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAppendixContributor2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixContributor(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAppendixContributor2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixContributor(ctx context.Context, sel ast.SelectionSet, v *AppendixContributor) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AppendixContributor(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNAppendixState2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixState(ctx context.Context, v any) (AppendixState, error) {
+	var res AppendixState
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAppendixState2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixState(ctx context.Context, sel ast.SelectionSet, v AppendixState) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNAppendixVersion2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixVersionᚄ(ctx context.Context, sel ast.SelectionSet, v []*AppendixVersion) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAppendixVersion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixVersion(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAppendixVersion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixVersion(ctx context.Context, sel ast.SelectionSet, v *AppendixVersion) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AppendixVersion(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNApprovalStatus2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐApprovalStatus(ctx context.Context, v any) (ApprovalStatus, error) {
 	var res ApprovalStatus
 	err := res.UnmarshalGQL(v)
@@ -64646,6 +66673,36 @@ func (ec *executionContext) marshalNPolicy2ᚖgithubᚗcomᚋStewardᚑGRCᚋste
 	return ec._Policy(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNPolicyAppendix2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendix(ctx context.Context, sel ast.SelectionSet, v PolicyAppendix) graphql.Marshaler {
+	return ec._PolicyAppendix(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPolicyAppendix2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendixᚄ(ctx context.Context, sel ast.SelectionSet, v []*PolicyAppendix) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPolicyAppendix2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendix(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPolicyAppendix2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyAppendix(ctx context.Context, sel ast.SelectionSet, v *PolicyAppendix) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PolicyAppendix(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPolicyDiff2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPolicyDiff(ctx context.Context, sel ast.SelectionSet, v PolicyDiff) graphql.Marshaler {
 	return ec._PolicyDiff(ctx, sel, &v)
 }
@@ -66356,6 +68413,13 @@ func (ec *executionContext) marshalOAckTrigger2ᚖgithubᚗcomᚋStewardᚑGRC�
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalOAppendixVersion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐAppendixVersion(ctx context.Context, sel ast.SelectionSet, v *AppendixVersion) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._AppendixVersion(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {

@@ -38,7 +38,7 @@ func TestResolveEffectiveWorkflow_WalksLineageAndDelegates(t *testing.T) {
 	}}
 	wf := &fakeWorkflowClient{resolveResp: &workflowv1.ResolveWorkflowResponse{WorkflowDefId: "def-cat"}}
 
-	ew, err := resolvers.ResolveEffectiveWorkflowResolver(context.Background(), pol, grp, wf, "pol-1")
+	ew, err := resolvers.ResolveEffectiveWorkflowResolver(adminCtx(t), log.Nop(), pol, grp, wf, "pol-1")
 	if err != nil {
 		t.Fatalf("ResolveEffectiveWorkflowResolver: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestResolveEffectiveWorkflow_WalksLineageAndDelegates(t *testing.T) {
 
 	// No workflow attached/inherited → not submittable.
 	wf.resolveResp = &workflowv1.ResolveWorkflowResponse{WorkflowDefId: ""}
-	ew, err = resolvers.ResolveEffectiveWorkflowResolver(context.Background(), pol, grp, wf, "pol-1")
+	ew, err = resolvers.ResolveEffectiveWorkflowResolver(adminCtx(t), log.Nop(), pol, grp, wf, "pol-1")
 	if err != nil {
 		t.Fatalf("ResolveEffectiveWorkflowResolver(empty): %v", err)
 	}
@@ -83,7 +83,7 @@ func TestResolveEffectiveWorkflow_Usable_AllStagesStaffed(t *testing.T) {
 		}},
 	}
 
-	ew, err := resolvers.ResolveEffectiveWorkflowResolver(context.Background(), pol, grp, wf, "pol-1")
+	ew, err := resolvers.ResolveEffectiveWorkflowResolver(adminCtx(t), log.Nop(), pol, grp, wf, "pol-1")
 	if err != nil {
 		t.Fatalf("ResolveEffectiveWorkflowResolver: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestResolveEffectiveWorkflow_Unusable_UnstaffedStage(t *testing.T) {
 		}},
 	}
 
-	ew, err := resolvers.ResolveEffectiveWorkflowResolver(context.Background(), pol, grp, wf, "pol-1")
+	ew, err := resolvers.ResolveEffectiveWorkflowResolver(adminCtx(t), log.Nop(), pol, grp, wf, "pol-1")
 	if err != nil {
 		t.Fatalf("ResolveEffectiveWorkflowResolver: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestResolveEffectiveWorkflow_NoWorkflow_Usable(t *testing.T) {
 		getDefErr:   errors.New("GetWorkflowDef must not be called when hasWorkflow=false"),
 	}
 
-	ew, err := resolvers.ResolveEffectiveWorkflowResolver(context.Background(), pol, grp, wf, "pol-1")
+	ew, err := resolvers.ResolveEffectiveWorkflowResolver(adminCtx(t), log.Nop(), pol, grp, wf, "pol-1")
 	if err != nil {
 		t.Fatalf("ResolveEffectiveWorkflowResolver: %v", err)
 	}
@@ -154,6 +154,94 @@ func TestResolveEffectiveWorkflow_NoWorkflow_Usable(t *testing.T) {
 	}
 	if !ew.Usable || ew.FirstUnstaffedStage != nil {
 		t.Fatalf("expected usable=true + no unstaffed stage when no workflow, got %+v", ew)
+	}
+}
+
+// TestResolveEffectiveWorkflow_NameReturnedToAuthor verifies the resolved
+// definition's name is returned to the policy's primary author.
+func TestResolveEffectiveWorkflow_NameReturnedToAuthor(t *testing.T) {
+	pc, gc := coAuthMatrixEnv("u-1", nil, nil)
+	wf := &fakeWorkflowClient{
+		resolveResp: &workflowv1.ResolveWorkflowResponse{WorkflowDefId: "def-1"},
+		getDefResp: &workflowv1.GetWorkflowDefResponse{Def: &workflowv1.WorkflowDef{
+			Id: "def-1", Name: "Standard review",
+			Stages: []*workflowv1.WorkflowStage{{Id: "s1", Name: "Review", ApproverIds: []string{"u2"}}},
+		}},
+	}
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-1", RolesValue: []string{"policy-author"}})
+	ew, err := resolvers.ResolveEffectiveWorkflowResolver(ctx, log.Nop(), pc, gc, wf, "pol")
+	if err != nil {
+		t.Fatalf("ResolveEffectiveWorkflowResolver: %v", err)
+	}
+	if ew.Name == nil || *ew.Name != "Standard review" {
+		t.Fatalf("expected name Standard review, got %v", ew.Name)
+	}
+}
+
+// TestResolveEffectiveWorkflow_NonAuthorDenied verifies a caller who cannot
+// author the policy is refused with PermissionDenied before the workflow
+// service is asked anything.
+func TestResolveEffectiveWorkflow_NonAuthorDenied(t *testing.T) {
+	pc, gc := coAuthMatrixEnv("creator-other", nil,
+		[]*corev1.CategoryRule{authorRule("someone-else", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
+	wf := &fakeWorkflowClient{resolveResp: &workflowv1.ResolveWorkflowResponse{WorkflowDefId: "def-1"}}
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-9", RolesValue: []string{"policy-author"}})
+	ew, err := resolvers.ResolveEffectiveWorkflowResolver(ctx, log.Nop(), pc, gc, wf, "pol")
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("want PermissionDenied, got %v", err)
+	}
+	if ew != nil {
+		t.Fatalf("expected no result, got %+v", ew)
+	}
+	if wf.lastResolve != nil {
+		t.Fatal("must not call the workflow service for a non-author")
+	}
+}
+
+// TestResolveEffectiveWorkflow_Unauthenticated verifies a call with no
+// authenticated user is refused and reaches nothing.
+func TestResolveEffectiveWorkflow_Unauthenticated(t *testing.T) {
+	pc, gc := coAuthMatrixEnv("u-1", nil, nil)
+	wf := &fakeWorkflowClient{}
+	if _, err := resolvers.ResolveEffectiveWorkflowResolver(context.Background(), log.Nop(), pc, gc, wf, "pol"); err == nil {
+		t.Fatal("expected an error with no authenticated user")
+	}
+	if wf.lastResolve != nil {
+		t.Fatal("must not call the workflow service without a caller")
+	}
+}
+
+// TestResolveEffectiveWorkflow_NoWorkflow_NoName verifies that when no
+// workflow resolves the name is left empty.
+func TestResolveEffectiveWorkflow_NoWorkflow_NoName(t *testing.T) {
+	pol := &fakePolicyClient{policies: map[string]*corev1.Policy{"pol-1": {Id: "pol-1", HomeCategoryId: "root"}}}
+	grp := &fakeCategoryClient{groups: map[string]*corev1.Category{"root": {Id: "root"}}}
+	wf := &fakeWorkflowClient{resolveResp: &workflowv1.ResolveWorkflowResponse{WorkflowDefId: ""}}
+	ew, err := resolvers.ResolveEffectiveWorkflowResolver(adminCtx(t), log.Nop(), pol, grp, wf, "pol-1")
+	if err != nil {
+		t.Fatalf("ResolveEffectiveWorkflowResolver: %v", err)
+	}
+	if ew.Name != nil {
+		t.Fatalf("expected no name, got %q", *ew.Name)
+	}
+}
+
+// TestResolveEffectiveWorkflow_GetDefFailure_Errors verifies a failed
+// GetWorkflowDef is still returned as an error, as before the name was added,
+// and no half-filled result is handed back.
+func TestResolveEffectiveWorkflow_GetDefFailure_Errors(t *testing.T) {
+	pol := &fakePolicyClient{policies: map[string]*corev1.Policy{"pol-1": {Id: "pol-1", HomeCategoryId: "root"}}}
+	grp := &fakeCategoryClient{groups: map[string]*corev1.Category{"root": {Id: "root"}}}
+	wf := &fakeWorkflowClient{
+		resolveResp: &workflowv1.ResolveWorkflowResponse{WorkflowDefId: "def-1"},
+		getDefErr:   status.Error(codes.Unavailable, "workflow down"),
+	}
+	ew, err := resolvers.ResolveEffectiveWorkflowResolver(adminCtx(t), log.Nop(), pol, grp, wf, "pol-1")
+	if err == nil {
+		t.Fatal("expected the get-def failure")
+	}
+	if ew != nil {
+		t.Fatalf("expected no result, got %+v", ew)
 	}
 }
 
@@ -265,7 +353,7 @@ func TestBulkDecideResolver_ForwardsDecisions(t *testing.T) {
 		},
 	}
 	out, err := resolvers.BulkDecideResolver(
-		ctxWithClaims(t, "u1", "site-admin"), c,
+		ctxWithClaims(t, "u1", "site-admin"), log.Nop(), c, nil,
 		resolvers.BulkDecideInput{
 			Decisions: []*resolvers.DecisionInput{
 				{
@@ -291,7 +379,7 @@ func TestBulkDecideResolver_ForwardsDecisions(t *testing.T) {
 
 func TestBulkDecideResolver_Unauthenticated(t *testing.T) {
 	c := &fakeWorkflowClient{}
-	_, err := resolvers.BulkDecideResolver(context.Background(), c, resolvers.BulkDecideInput{})
+	_, err := resolvers.BulkDecideResolver(context.Background(), log.Nop(), c, nil, resolvers.BulkDecideInput{})
 	if err == nil {
 		t.Fatal("expected unauthenticated")
 	}
@@ -304,7 +392,7 @@ func TestBulkDecideResolver_Unauthenticated(t *testing.T) {
 // assignment. So the request must reach the workflow service.
 func TestBulkDecideResolver_ForwardsWithoutApproveCapability(t *testing.T) {
 	c := &fakeWorkflowClient{bulkResp: &workflowv1.BulkDecideResponse{BulkBatchId: "b"}}
-	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "reader"), c, resolvers.BulkDecideInput{
+	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "reader"), log.Nop(), c, nil, resolvers.BulkDecideInput{
 		Decisions: []*resolvers.DecisionInput{
 			{
 				PolicyVersionID: "pv-1", StageIndex: 0,
@@ -322,7 +410,7 @@ func TestBulkDecideResolver_ForwardsWithoutApproveCapability(t *testing.T) {
 
 func TestBulkDecideResolver_AllowsApprover(t *testing.T) {
 	c := &fakeWorkflowClient{bulkResp: &workflowv1.BulkDecideResponse{BulkBatchId: "b"}}
-	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "approver"), c, resolvers.BulkDecideInput{})
+	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "approver"), log.Nop(), c, nil, resolvers.BulkDecideInput{})
 	if err != nil {
 		t.Fatalf("approver should pass: %v", err)
 	}
@@ -330,7 +418,7 @@ func TestBulkDecideResolver_AllowsApprover(t *testing.T) {
 
 func TestBulkDecideResolver_PropagatesError(t *testing.T) {
 	c := &fakeWorkflowClient{bulkErr: errors.New("svc down")}
-	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "site-admin"), c, resolvers.BulkDecideInput{})
+	_, err := resolvers.BulkDecideResolver(ctxWithClaims(t, "u1", "site-admin"), log.Nop(), c, nil, resolvers.BulkDecideInput{})
 	if err == nil {
 		t.Fatal("expected error to propagate")
 	}
@@ -414,7 +502,7 @@ func TestAssignmentHistoryResolver_OwnerInheritedAllowed(t *testing.T) {
 func TestSignalWorkflowResolver_ForwardsComment(t *testing.T) {
 	c := &fakeWorkflowClient{}
 	_, err := resolvers.SignalWorkflowResolver(
-		ctxWithClaims(t, "u1"), c, "pv1", "r1", "t1",
+		ctxWithClaims(t, "u1"), log.Nop(), c, nil, "pv1", "r1", "t1",
 		resolvers.SignalTypeSignalTypeApprove, "lgtm",
 	)
 	if err != nil {
@@ -431,7 +519,7 @@ func TestSignalWorkflowResolver_ForwardsComment(t *testing.T) {
 func TestSignalWorkflowResolver_Unauthenticated(t *testing.T) {
 	c := &fakeWorkflowClient{}
 	_, err := resolvers.SignalWorkflowResolver(
-		context.Background(), c, "pv1", "r1", "t1",
+		context.Background(), log.Nop(), c, nil, "pv1", "r1", "t1",
 		resolvers.SignalTypeSignalTypeApprove, "lgtm",
 	)
 	if err == nil {

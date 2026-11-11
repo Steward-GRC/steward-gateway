@@ -607,6 +607,7 @@ type ComplexityRoot struct {
 		AddCaseNotice                 func(childComplexity int, caseID string, recipient NoticeRecipient, label *string, method *string) int
 		AddGroupMapping               func(childComplexity int, connectionID string, idpGroupClaimValue string, targetGroupID string) int
 		AddOrganization               func(childComplexity int, input AddOrganizationInput) int
+		AddReviewThread               func(childComplexity int, policyVersionID string, quote string, occurrence int, body string, suggestedText *string, toUserID *string) int
 		AddUserToGroup                func(childComplexity int, userID string, groupID string) int
 		ApproveHardReset              func(childComplexity int, requestID string) int
 		ArchiveWorkflowDef            func(childComplexity int, id string) int
@@ -638,6 +639,7 @@ type ComplexityRoot struct {
 		DeleteOrganization            func(childComplexity int, domain string) int
 		DeletePolicy                  func(childComplexity int, id string) int
 		DeleteReference               func(childComplexity int, id string) int
+		DeleteReviewThread            func(childComplexity int, threadID string) int
 		DeleteTemplate                func(childComplexity int, id string) int
 		DeleteUser                    func(childComplexity int, userID string) int
 		DisableOrganization           func(childComplexity int, domain string) int
@@ -677,6 +679,7 @@ type ComplexityRoot struct {
 		RenameUserMfaFactor           func(childComplexity int, userID string, methodID string, label string) int
 		ReorderAppendices             func(childComplexity int, policyVersionID string, orderedIds []string) int
 		ReorderCategories             func(childComplexity int, parentID *string, orderedIds []string) int
+		ReplyReviewThread             func(childComplexity int, threadID string, body string) int
 		ReplyToMyReport               func(childComplexity int, caseID string, body string) int
 		ReplyToReport                 func(childComplexity int, caseCode string, passphrase string, body string) int
 		RequestHardReset              func(childComplexity int, module string, reason string) int
@@ -719,6 +722,7 @@ type ComplexityRoot struct {
 		SetPolicyTemplate             func(childComplexity int, policyID string, templateID *string, none bool) int
 		SetReferenceArchived          func(childComplexity int, id string, archived bool) int
 		SetRelatedPolicies            func(childComplexity int, policyID string, relatedPolicyIds []string) int
+		SetReviewThreadResolved       func(childComplexity int, threadID string, resolved bool) int
 		SetTypeCadence                func(childComplexity int, kind string, cadence NotifCadence) int
 		SetUserAiQueryLimit           func(childComplexity int, userID string, limit int) int
 		SetUserPolicyOverride         func(childComplexity int, userID string, policyNumber string, effect *OverrideEffect) int
@@ -976,6 +980,7 @@ type ComplexityRoot struct {
 		ReportCase                 func(childComplexity int, caseID string) int
 		ReportCases                func(childComplexity int, statuses []CaseStatus, assigneeUserID *string) int
 		ResolveUserLabels          func(childComplexity int, ids []string) int
+		ReviewThreads              func(childComplexity int, policyVersionID string) int
 		SearchAndAnswer            func(childComplexity int, question string, categoryID *string) int
 		SearchUsers                func(childComplexity int, query string, limit *int) int
 		SimulateCategory           func(childComplexity int, categoryID string, userID string, draftRules []*RaciRuleInput) int
@@ -1113,6 +1118,36 @@ type ComplexityRoot struct {
 		Thread     func(childComplexity int) int
 	}
 
+	ReviewMessage struct {
+		AuthorName   func(childComplexity int) int
+		AuthorUserID func(childComplexity int) int
+		Body         func(childComplexity int) int
+		CreatedAt    func(childComplexity int) int
+		ID           func(childComplexity int) int
+	}
+
+	ReviewSuggestion struct {
+		ClosedBy   func(childComplexity int) int
+		ClosedText func(childComplexity int) int
+		Outcome    func(childComplexity int) int
+		Reason     func(childComplexity int) int
+		Rounds     func(childComplexity int) int
+		Text       func(childComplexity int) int
+		Turn       func(childComplexity int) int
+	}
+
+	ReviewThread struct {
+		ApproverUserID  func(childComplexity int) int
+		CreatedAt       func(childComplexity int) int
+		ID              func(childComplexity int) int
+		Messages        func(childComplexity int) int
+		Occurrence      func(childComplexity int) int
+		PolicyVersionID func(childComplexity int) int
+		Quote           func(childComplexity int) int
+		Resolved        func(childComplexity int) int
+		Suggestion      func(childComplexity int) int
+	}
+
 	RiskAssessment struct {
 		DecidedAt       func(childComplexity int) int
 		DecidedByUserID func(childComplexity int) int
@@ -1226,6 +1261,13 @@ type ComplexityRoot struct {
 	Subscription struct {
 		AiJobResult func(childComplexity int, jobID string) int
 		LiveEvents  func(childComplexity int, topics []string) int
+	}
+
+	SuggestionRound struct {
+		By        func(childComplexity int) int
+		CreatedAt func(childComplexity int) int
+		Text      func(childComplexity int) int
+		UserID    func(childComplexity int) int
 	}
 
 	SwapAssigneeResult struct {
@@ -1537,6 +1579,10 @@ type MutationResolver interface {
 	AddCaseNotice(ctx context.Context, caseID string, recipient NoticeRecipient, label *string, method *string) (*CaseNotice, error)
 	UpdateCaseNotice(ctx context.Context, caseID string, noticeID string, status NoticeStatus, sentOn *string) (*CaseNotice, error)
 	CloseCase(ctx context.Context, caseID string, outcome CaseOutcome, correctiveActions []*CorrectiveActionInput, closingMessage *string) (*ReportCase, error)
+	AddReviewThread(ctx context.Context, policyVersionID string, quote string, occurrence int, body string, suggestedText *string, toUserID *string) (*ReviewThread, error)
+	ReplyReviewThread(ctx context.Context, threadID string, body string) (*ReviewThread, error)
+	SetReviewThreadResolved(ctx context.Context, threadID string, resolved bool) (*ReviewThread, error)
+	DeleteReviewThread(ctx context.Context, threadID string) (bool, error)
 	MarkVersionReviewed(ctx context.Context, policyVersionID string) (bool, error)
 	AddOrganization(ctx context.Context, input AddOrganizationInput) (*Organization, error)
 	StartDomainVerification(ctx context.Context, domain string, rotate *bool) (*DomainVerification, error)
@@ -1643,6 +1689,7 @@ type QueryResolver interface {
 	ReportCases(ctx context.Context, statuses []CaseStatus, assigneeUserID *string) (*CaseQueue, error)
 	ReportCase(ctx context.Context, caseID string) (*ReportCase, error)
 	ReportAttachment(ctx context.Context, caseID string, attachmentID string) (*ReportAttachmentContent, error)
+	ReviewThreads(ctx context.Context, policyVersionID string) ([]*ReviewThread, error)
 	VersionChangesSinceReview(ctx context.Context, policyVersionID string) ([]*SectionDiff, error)
 	Organizations(ctx context.Context) ([]*Organization, error)
 	Organization(ctx context.Context, domain string) (*Organization, error)
@@ -3803,6 +3850,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddOrganization(childComplexity, args["input"].(AddOrganizationInput)), true
+	case "Mutation.addReviewThread":
+		if e.ComplexityRoot.Mutation.AddReviewThread == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addReviewThread_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AddReviewThread(childComplexity, args["policyVersionId"].(string), args["quote"].(string), args["occurrence"].(int), args["body"].(string), args["suggestedText"].(*string), args["toUserId"].(*string)), true
 	case "Mutation.addUserToGroup":
 		if e.ComplexityRoot.Mutation.AddUserToGroup == nil {
 			break
@@ -4144,6 +4202,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteReference(childComplexity, args["id"].(string)), true
+	case "Mutation.deleteReviewThread":
+		if e.ComplexityRoot.Mutation.DeleteReviewThread == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteReviewThread_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteReviewThread(childComplexity, args["threadId"].(string)), true
 	case "Mutation.deleteTemplate":
 		if e.ComplexityRoot.Mutation.DeleteTemplate == nil {
 			break
@@ -4563,6 +4632,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ReorderCategories(childComplexity, args["parentId"].(*string), args["orderedIds"].([]string)), true
+	case "Mutation.replyReviewThread":
+		if e.ComplexityRoot.Mutation.ReplyReviewThread == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_replyReviewThread_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ReplyReviewThread(childComplexity, args["threadId"].(string), args["body"].(string)), true
 	case "Mutation.replyToMyReport":
 		if e.ComplexityRoot.Mutation.ReplyToMyReport == nil {
 			break
@@ -5010,6 +5090,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetRelatedPolicies(childComplexity, args["policyId"].(string), args["relatedPolicyIds"].([]string)), true
+	case "Mutation.setReviewThreadResolved":
+		if e.ComplexityRoot.Mutation.SetReviewThreadResolved == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setReviewThreadResolved_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetReviewThreadResolved(childComplexity, args["threadId"].(string), args["resolved"].(bool)), true
 	case "Mutation.setTypeCadence":
 		if e.ComplexityRoot.Mutation.SetTypeCadence == nil {
 			break
@@ -6655,6 +6746,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.ResolveUserLabels(childComplexity, args["ids"].([]string)), true
+	case "Query.reviewThreads":
+		if e.ComplexityRoot.Query.ReviewThreads == nil {
+			break
+		}
+
+		args, err := ec.field_Query_reviewThreads_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.ReviewThreads(childComplexity, args["policyVersionId"].(string)), true
 	case "Query.searchAndAnswer":
 		if e.ComplexityRoot.Query.SearchAndAnswer == nil {
 			break
@@ -7293,6 +7395,135 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ReporterView.Thread(childComplexity), true
 
+	case "ReviewMessage.authorName":
+		if e.ComplexityRoot.ReviewMessage.AuthorName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewMessage.AuthorName(childComplexity), true
+	case "ReviewMessage.authorUserId":
+		if e.ComplexityRoot.ReviewMessage.AuthorUserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewMessage.AuthorUserID(childComplexity), true
+	case "ReviewMessage.body":
+		if e.ComplexityRoot.ReviewMessage.Body == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewMessage.Body(childComplexity), true
+	case "ReviewMessage.createdAt":
+		if e.ComplexityRoot.ReviewMessage.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewMessage.CreatedAt(childComplexity), true
+	case "ReviewMessage.id":
+		if e.ComplexityRoot.ReviewMessage.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewMessage.ID(childComplexity), true
+
+	case "ReviewSuggestion.closedBy":
+		if e.ComplexityRoot.ReviewSuggestion.ClosedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewSuggestion.ClosedBy(childComplexity), true
+	case "ReviewSuggestion.closedText":
+		if e.ComplexityRoot.ReviewSuggestion.ClosedText == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewSuggestion.ClosedText(childComplexity), true
+	case "ReviewSuggestion.outcome":
+		if e.ComplexityRoot.ReviewSuggestion.Outcome == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewSuggestion.Outcome(childComplexity), true
+	case "ReviewSuggestion.reason":
+		if e.ComplexityRoot.ReviewSuggestion.Reason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewSuggestion.Reason(childComplexity), true
+	case "ReviewSuggestion.rounds":
+		if e.ComplexityRoot.ReviewSuggestion.Rounds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewSuggestion.Rounds(childComplexity), true
+	case "ReviewSuggestion.text":
+		if e.ComplexityRoot.ReviewSuggestion.Text == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewSuggestion.Text(childComplexity), true
+	case "ReviewSuggestion.turn":
+		if e.ComplexityRoot.ReviewSuggestion.Turn == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewSuggestion.Turn(childComplexity), true
+
+	case "ReviewThread.approverUserId":
+		if e.ComplexityRoot.ReviewThread.ApproverUserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewThread.ApproverUserID(childComplexity), true
+	case "ReviewThread.createdAt":
+		if e.ComplexityRoot.ReviewThread.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewThread.CreatedAt(childComplexity), true
+	case "ReviewThread.id":
+		if e.ComplexityRoot.ReviewThread.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewThread.ID(childComplexity), true
+	case "ReviewThread.messages":
+		if e.ComplexityRoot.ReviewThread.Messages == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewThread.Messages(childComplexity), true
+	case "ReviewThread.occurrence":
+		if e.ComplexityRoot.ReviewThread.Occurrence == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewThread.Occurrence(childComplexity), true
+	case "ReviewThread.policyVersionId":
+		if e.ComplexityRoot.ReviewThread.PolicyVersionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewThread.PolicyVersionID(childComplexity), true
+	case "ReviewThread.quote":
+		if e.ComplexityRoot.ReviewThread.Quote == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewThread.Quote(childComplexity), true
+	case "ReviewThread.resolved":
+		if e.ComplexityRoot.ReviewThread.Resolved == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewThread.Resolved(childComplexity), true
+	case "ReviewThread.suggestion":
+		if e.ComplexityRoot.ReviewThread.Suggestion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ReviewThread.Suggestion(childComplexity), true
+
 	case "RiskAssessment.decidedAt":
 		if e.ComplexityRoot.RiskAssessment.DecidedAt == nil {
 			break
@@ -7737,6 +7968,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Subscription.LiveEvents(childComplexity, args["topics"].([]string)), true
+
+	case "SuggestionRound.by":
+		if e.ComplexityRoot.SuggestionRound.By == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SuggestionRound.By(childComplexity), true
+	case "SuggestionRound.createdAt":
+		if e.ComplexityRoot.SuggestionRound.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SuggestionRound.CreatedAt(childComplexity), true
+	case "SuggestionRound.text":
+		if e.ComplexityRoot.SuggestionRound.Text == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SuggestionRound.Text(childComplexity), true
+	case "SuggestionRound.userId":
+		if e.ComplexityRoot.SuggestionRound.UserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SuggestionRound.UserID(childComplexity), true
 
 	case "SwapAssigneeResult.newAssignmentId":
 		if e.ComplexityRoot.SwapAssigneeResult.NewAssignmentID == nil {
@@ -10968,6 +11224,102 @@ extend type Mutation {
   closeCase(caseId: ID!, outcome: CaseOutcome!, correctiveActions: [CorrectiveActionInput!], closingMessage: String): ReportCase!
 }
 `, BuiltIn: false},
+	{Name: "../../graphql/review.graphqls", Input: `# --- Review threads ---
+# Inline comments on a policy version (#79). An approver comments on text in the version under
+# review; the drafter sees the threads on the highlighted text, replies and resolves. A rejected
+# version keeps its open threads as the feedback. Anchors are the quoted text plus which match of
+# it (counting from 1), so a client can place the highlight again in the stored document. Core
+# keeps the threads; the gateway decides the caller's side (author, or reviewer with a seat on
+# the version's run), who may see a thread, and hides message bodies from an obfuscated reader.
+
+extend type Query {
+  # The threads on a version the caller may read: an approver gets only their own, the authors
+  # and site admins all of them. An obfuscated reader gets no message bodies.
+  reviewThreads(policyVersionId: ID!): [ReviewThread!]!
+}
+
+extend type Mutation {
+  # Starts a thread with its first message. Approvers on the version's run, its authors and site
+  # admins only.
+  # suggestedText proposes replacement text for the quote; it opens a suggestion on the other
+  # side's turn. Text equal to the quote is a plain comment. Suggestions are not served yet, so
+  # text that differs from the quote is refused.
+  # toUserId is for the author: the one approver the thread is with. An approver's own thread is
+  # with that approver and the author.
+  addReviewThread(policyVersionId: ID!, quote: String!, occurrence: Int!, body: String!, suggestedText: String, toUserId: ID): ReviewThread!
+  # Appends a message to a thread.
+  replyReviewThread(threadId: ID!, body: String!): ReviewThread!
+  # Resolves a thread, or reopens it with resolved: false.
+  setReviewThreadResolved(threadId: ID!, resolved: Boolean!): ReviewThread!
+  # Deletes a thread; only the person who started it.
+  deleteReviewThread(threadId: ID!): Boolean!
+}
+
+type ReviewThread {
+  id: ID!
+  policyVersionId: ID!
+  # The text the thread was made on.
+  quote: String!
+  # Which match of the quote in the version's text, counting from 1.
+  occurrence: Int!
+  resolved: Boolean!
+  createdAt: DateTime!
+  # The approver the thread is with. Only that approver and the policy's authors see it.
+  approverUserId: ID!
+  messages: [ReviewMessage!]!
+  # Present when someone proposed replacement text for the quote. Always empty until suggestions
+  # are served.
+  suggestion: ReviewSuggestion
+}
+
+type ReviewMessage {
+  id: ID!
+  authorUserId: ID!
+  authorName: String
+  # Empty for a reader whose view of the policy is obfuscated.
+  body: String!
+  createdAt: DateTime!
+}
+
+# Who is acting on a suggestion: the policy's authors, or a reviewer on its run.
+enum SuggestionSide {
+  AUTHOR
+  REVIEWER
+}
+
+enum SuggestionOutcome {
+  # The author took the text. Closes on the author's turn.
+  CHANGED
+  # The reviewer accepted the author's counter. Closes on the reviewer's turn.
+  AGREED
+  # The author dropped the note without changing the text. Closes on the author's turn.
+  REMOVED
+  # The side that proposed first took it back, while it was not their turn.
+  WITHDRAWN
+  # The side whose turn it was ended it, with a reason.
+  NOT_AGREED
+}
+
+type ReviewSuggestion {
+  # The text now proposed.
+  text: String!
+  # Whose turn it is to answer.
+  turn: SuggestionSide!
+  rounds: [SuggestionRound!]!
+  # Set once it has ended.
+  outcome: SuggestionOutcome
+  reason: String
+  closedBy: ID
+  closedText: String
+}
+
+type SuggestionRound {
+  by: SuggestionSide!
+  text: String!
+  userId: ID!
+  createdAt: DateTime!
+}
+`, BuiltIn: false},
 	{Name: "../../graphql/review_snapshot.graphqls", Input: `# --- Review snapshots ---
 # What an approver has changed to look at since they last reviewed a version. Core keeps one
 # snapshot of the text per approver and version; only the gateway reads or moves it, on behalf of
@@ -13195,6 +13547,66 @@ func (ec *executionContext) childFields_ReporterView(ctx context.Context, field 
 	return nil, fmt.Errorf("no field named %q was found under type ReporterView", field.Name)
 }
 
+func (ec *executionContext) childFields_ReviewMessage(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_ReviewMessage_id(ctx, field)
+	case "authorUserId":
+		return ec.fieldContext_ReviewMessage_authorUserId(ctx, field)
+	case "authorName":
+		return ec.fieldContext_ReviewMessage_authorName(ctx, field)
+	case "body":
+		return ec.fieldContext_ReviewMessage_body(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_ReviewMessage_createdAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ReviewMessage", field.Name)
+}
+
+func (ec *executionContext) childFields_ReviewSuggestion(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "text":
+		return ec.fieldContext_ReviewSuggestion_text(ctx, field)
+	case "turn":
+		return ec.fieldContext_ReviewSuggestion_turn(ctx, field)
+	case "rounds":
+		return ec.fieldContext_ReviewSuggestion_rounds(ctx, field)
+	case "outcome":
+		return ec.fieldContext_ReviewSuggestion_outcome(ctx, field)
+	case "reason":
+		return ec.fieldContext_ReviewSuggestion_reason(ctx, field)
+	case "closedBy":
+		return ec.fieldContext_ReviewSuggestion_closedBy(ctx, field)
+	case "closedText":
+		return ec.fieldContext_ReviewSuggestion_closedText(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ReviewSuggestion", field.Name)
+}
+
+func (ec *executionContext) childFields_ReviewThread(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_ReviewThread_id(ctx, field)
+	case "policyVersionId":
+		return ec.fieldContext_ReviewThread_policyVersionId(ctx, field)
+	case "quote":
+		return ec.fieldContext_ReviewThread_quote(ctx, field)
+	case "occurrence":
+		return ec.fieldContext_ReviewThread_occurrence(ctx, field)
+	case "resolved":
+		return ec.fieldContext_ReviewThread_resolved(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_ReviewThread_createdAt(ctx, field)
+	case "approverUserId":
+		return ec.fieldContext_ReviewThread_approverUserId(ctx, field)
+	case "messages":
+		return ec.fieldContext_ReviewThread_messages(ctx, field)
+	case "suggestion":
+		return ec.fieldContext_ReviewThread_suggestion(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ReviewThread", field.Name)
+}
+
 func (ec *executionContext) childFields_RiskAssessment(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "factors":
@@ -13413,6 +13825,20 @@ func (ec *executionContext) childFields_SubmitPolicyReviewResult(ctx context.Con
 		return ec.fieldContext_SubmitPolicyReviewResult_jobId(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type SubmitPolicyReviewResult", field.Name)
+}
+
+func (ec *executionContext) childFields_SuggestionRound(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "by":
+		return ec.fieldContext_SuggestionRound_by(ctx, field)
+	case "text":
+		return ec.fieldContext_SuggestionRound_text(ctx, field)
+	case "userId":
+		return ec.fieldContext_SuggestionRound_userId(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_SuggestionRound_createdAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type SuggestionRound", field.Name)
 }
 
 func (ec *executionContext) childFields_SwapAssigneeResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -14032,6 +14458,60 @@ func (ec *executionContext) field_Mutation_addOrganization_args(ctx context.Cont
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_addReviewThread_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyVersionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "quote",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["quote"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "occurrence",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["occurrence"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "body",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["body"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "suggestedText",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["suggestedText"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "toUserId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["toUserId"] = arg5
 	return args, nil
 }
 
@@ -14722,6 +15202,20 @@ func (ec *executionContext) field_Mutation_deleteReference_args(ctx context.Cont
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteReviewThread_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "threadId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["threadId"] = arg0
 	return args, nil
 }
 
@@ -15440,6 +15934,28 @@ func (ec *executionContext) field_Mutation_reorderCategories_args(ctx context.Co
 		return nil, err
 	}
 	args["orderedIds"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_replyReviewThread_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "threadId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["threadId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "body",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["body"] = arg1
 	return args, nil
 }
 
@@ -16306,6 +16822,28 @@ func (ec *executionContext) field_Mutation_setRelatedPolicies_args(ctx context.C
 		return nil, err
 	}
 	args["relatedPolicyIds"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setReviewThreadResolved_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "threadId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["threadId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "resolved",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["resolved"] = arg1
 	return args, nil
 }
 
@@ -18006,6 +18544,20 @@ func (ec *executionContext) field_Query_resolveUserLabels_args(ctx context.Conte
 		return nil, err
 	}
 	args["ids"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_reviewThreads_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyVersionId"] = arg0
 	return args, nil
 }
 
@@ -31799,6 +32351,182 @@ func (ec *executionContext) fieldContext_Mutation_closeCase(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_addReviewThread(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_addReviewThread(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AddReviewThread(ctx, fc.Args["policyVersionId"].(string), fc.Args["quote"].(string), fc.Args["occurrence"].(int), fc.Args["body"].(string), fc.Args["suggestedText"].(*string), fc.Args["toUserId"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ReviewThread) graphql.Marshaler {
+			return ec.marshalNReviewThread2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewThread(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_addReviewThread(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ReviewThread(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addReviewThread_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_replyReviewThread(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_replyReviewThread(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ReplyReviewThread(ctx, fc.Args["threadId"].(string), fc.Args["body"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ReviewThread) graphql.Marshaler {
+			return ec.marshalNReviewThread2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewThread(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_replyReviewThread(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ReviewThread(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_replyReviewThread_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setReviewThreadResolved(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setReviewThreadResolved(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetReviewThreadResolved(ctx, fc.Args["threadId"].(string), fc.Args["resolved"].(bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ReviewThread) graphql.Marshaler {
+			return ec.marshalNReviewThread2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewThread(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setReviewThreadResolved(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ReviewThread(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setReviewThreadResolved_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteReviewThread(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_deleteReviewThread(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().DeleteReviewThread(ctx, fc.Args["threadId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_deleteReviewThread(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteReviewThread_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_markVersionReviewed(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -38103,6 +38831,50 @@ func (ec *executionContext) fieldContext_Query_reportAttachment(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_reviewThreads(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_reviewThreads(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().ReviewThreads(ctx, fc.Args["policyVersionId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*ReviewThread) graphql.Marshaler {
+			return ec.marshalNReviewThread2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewThreadᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_reviewThreads(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ReviewThread(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_reviewThreads_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_versionChangesSinceReview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -40547,6 +41319,516 @@ func (ec *executionContext) fieldContext_ReporterView_receivedAt(_ context.Conte
 	return graphql.NewScalarFieldContext("ReporterView", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _ReviewMessage_id(ctx context.Context, field graphql.CollectedField, obj *ReviewMessage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewMessage_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewMessage_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewMessage", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewMessage_authorUserId(ctx context.Context, field graphql.CollectedField, obj *ReviewMessage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewMessage_authorUserId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AuthorUserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewMessage_authorUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewMessage", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewMessage_authorName(ctx context.Context, field graphql.CollectedField, obj *ReviewMessage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewMessage_authorName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AuthorName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewMessage_authorName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewMessage", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewMessage_body(ctx context.Context, field graphql.CollectedField, obj *ReviewMessage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewMessage_body(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Body, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewMessage_body(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewMessage", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewMessage_createdAt(ctx context.Context, field graphql.CollectedField, obj *ReviewMessage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewMessage_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNDateTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewMessage_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewMessage", field, false, false, errors.New("field of type DateTime does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewSuggestion_text(ctx context.Context, field graphql.CollectedField, obj *ReviewSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewSuggestion_text(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Text, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewSuggestion_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewSuggestion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewSuggestion_turn(ctx context.Context, field graphql.CollectedField, obj *ReviewSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewSuggestion_turn(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Turn, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v SuggestionSide) graphql.Marshaler {
+			return ec.marshalNSuggestionSide2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionSide(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewSuggestion_turn(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewSuggestion", field, false, false, errors.New("field of type SuggestionSide does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewSuggestion_rounds(ctx context.Context, field graphql.CollectedField, obj *ReviewSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewSuggestion_rounds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Rounds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*SuggestionRound) graphql.Marshaler {
+			return ec.marshalNSuggestionRound2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionRoundᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewSuggestion_rounds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ReviewSuggestion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SuggestionRound(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ReviewSuggestion_outcome(ctx context.Context, field graphql.CollectedField, obj *ReviewSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewSuggestion_outcome(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Outcome, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *SuggestionOutcome) graphql.Marshaler {
+			return ec.marshalOSuggestionOutcome2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionOutcome(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewSuggestion_outcome(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewSuggestion", field, false, false, errors.New("field of type SuggestionOutcome does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewSuggestion_reason(ctx context.Context, field graphql.CollectedField, obj *ReviewSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewSuggestion_reason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewSuggestion_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewSuggestion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewSuggestion_closedBy(ctx context.Context, field graphql.CollectedField, obj *ReviewSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewSuggestion_closedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ClosedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewSuggestion_closedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewSuggestion", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewSuggestion_closedText(ctx context.Context, field graphql.CollectedField, obj *ReviewSuggestion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewSuggestion_closedText(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ClosedText, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewSuggestion_closedText(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewSuggestion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewThread_id(ctx context.Context, field graphql.CollectedField, obj *ReviewThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewThread_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewThread_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewThread", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewThread_policyVersionId(ctx context.Context, field graphql.CollectedField, obj *ReviewThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewThread_policyVersionId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PolicyVersionID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewThread_policyVersionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewThread", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewThread_quote(ctx context.Context, field graphql.CollectedField, obj *ReviewThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewThread_quote(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Quote, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewThread_quote(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewThread", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewThread_occurrence(ctx context.Context, field graphql.CollectedField, obj *ReviewThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewThread_occurrence(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Occurrence, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewThread_occurrence(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewThread", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewThread_resolved(ctx context.Context, field graphql.CollectedField, obj *ReviewThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewThread_resolved(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Resolved, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewThread_resolved(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewThread", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewThread_createdAt(ctx context.Context, field graphql.CollectedField, obj *ReviewThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewThread_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNDateTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewThread_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewThread", field, false, false, errors.New("field of type DateTime does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewThread_approverUserId(ctx context.Context, field graphql.CollectedField, obj *ReviewThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewThread_approverUserId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ApproverUserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewThread_approverUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ReviewThread", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ReviewThread_messages(ctx context.Context, field graphql.CollectedField, obj *ReviewThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewThread_messages(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Messages, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*ReviewMessage) graphql.Marshaler {
+			return ec.marshalNReviewMessage2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewMessageᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewThread_messages(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ReviewThread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ReviewMessage(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ReviewThread_suggestion(ctx context.Context, field graphql.CollectedField, obj *ReviewThread) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ReviewThread_suggestion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Suggestion, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ReviewSuggestion) graphql.Marshaler {
+			return ec.marshalOReviewSuggestion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewSuggestion(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_ReviewThread_suggestion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ReviewThread",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ReviewSuggestion(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RiskAssessment_factors(ctx context.Context, field graphql.CollectedField, obj *RiskAssessment) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -42242,6 +43524,98 @@ func (ec *executionContext) fieldContext_Subscription_liveEvents(ctx context.Con
 		return fc, err
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _SuggestionRound_by(ctx context.Context, field graphql.CollectedField, obj *SuggestionRound) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SuggestionRound_by(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.By, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v SuggestionSide) graphql.Marshaler {
+			return ec.marshalNSuggestionSide2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionSide(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SuggestionRound_by(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SuggestionRound", field, false, false, errors.New("field of type SuggestionSide does not have child fields"))
+}
+
+func (ec *executionContext) _SuggestionRound_text(ctx context.Context, field graphql.CollectedField, obj *SuggestionRound) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SuggestionRound_text(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Text, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SuggestionRound_text(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SuggestionRound", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _SuggestionRound_userId(ctx context.Context, field graphql.CollectedField, obj *SuggestionRound) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SuggestionRound_userId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SuggestionRound_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SuggestionRound", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _SuggestionRound_createdAt(ctx context.Context, field graphql.CollectedField, obj *SuggestionRound) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_SuggestionRound_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNDateTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_SuggestionRound_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("SuggestionRound", field, false, false, errors.New("field of type DateTime does not have child fields"))
 }
 
 func (ec *executionContext) _SwapAssigneeResult_newAssignmentId(ctx context.Context, field graphql.CollectedField, obj *SwapAssigneeResult) (ret graphql.Marshaler) {
@@ -52943,6 +54317,34 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "addReviewThread":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addReviewThread(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "replyReviewThread":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_replyReviewThread(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setReviewThreadResolved":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setReviewThreadResolved(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteReviewThread":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteReviewThread(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "markVersionReviewed":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_markVersionReviewed(ctx, field)
@@ -55998,6 +57400,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "reviewThreads":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_reviewThreads(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "versionChangesSinceReview":
 			field := field
 
@@ -57178,6 +58602,210 @@ func (ec *executionContext) _ReporterView(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var reviewMessageImplementors = []string{"ReviewMessage"}
+
+func (ec *executionContext) _ReviewMessage(ctx context.Context, sel ast.SelectionSet, obj *ReviewMessage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, reviewMessageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ReviewMessage")
+		case "id":
+			out.Values[i] = ec._ReviewMessage_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "authorUserId":
+			out.Values[i] = ec._ReviewMessage_authorUserId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "authorName":
+			out.Values[i] = ec._ReviewMessage_authorName(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "body":
+			out.Values[i] = ec._ReviewMessage_body(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._ReviewMessage_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var reviewSuggestionImplementors = []string{"ReviewSuggestion"}
+
+func (ec *executionContext) _ReviewSuggestion(ctx context.Context, sel ast.SelectionSet, obj *ReviewSuggestion) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, reviewSuggestionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ReviewSuggestion")
+		case "text":
+			out.Values[i] = ec._ReviewSuggestion_text(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "turn":
+			out.Values[i] = ec._ReviewSuggestion_turn(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rounds":
+			out.Values[i] = ec._ReviewSuggestion_rounds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "outcome":
+			out.Values[i] = ec._ReviewSuggestion_outcome(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._ReviewSuggestion_reason(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "closedBy":
+			out.Values[i] = ec._ReviewSuggestion_closedBy(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "closedText":
+			out.Values[i] = ec._ReviewSuggestion_closedText(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var reviewThreadImplementors = []string{"ReviewThread"}
+
+func (ec *executionContext) _ReviewThread(ctx context.Context, sel ast.SelectionSet, obj *ReviewThread) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, reviewThreadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ReviewThread")
+		case "id":
+			out.Values[i] = ec._ReviewThread_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "policyVersionId":
+			out.Values[i] = ec._ReviewThread_policyVersionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "quote":
+			out.Values[i] = ec._ReviewThread_quote(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "occurrence":
+			out.Values[i] = ec._ReviewThread_occurrence(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resolved":
+			out.Values[i] = ec._ReviewThread_resolved(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._ReviewThread_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "approverUserId":
+			out.Values[i] = ec._ReviewThread_approverUserId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "messages":
+			out.Values[i] = ec._ReviewThread_messages(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "suggestion":
+			out.Values[i] = ec._ReviewThread_suggestion(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var riskAssessmentImplementors = []string{"RiskAssessment"}
 
 func (ec *executionContext) _RiskAssessment(ctx context.Context, sel ast.SelectionSet, obj *RiskAssessment) graphql.Marshaler {
@@ -58000,6 +59628,59 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 	default:
 		panic("unknown field " + strconv.Quote(fields[0].Name))
 	}
+}
+
+var suggestionRoundImplementors = []string{"SuggestionRound"}
+
+func (ec *executionContext) _SuggestionRound(ctx context.Context, sel ast.SelectionSet, obj *SuggestionRound) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, suggestionRoundImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SuggestionRound")
+		case "by":
+			out.Values[i] = ec._SuggestionRound_by(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "text":
+			out.Values[i] = ec._SuggestionRound_text(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "userId":
+			out.Values[i] = ec._SuggestionRound_userId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._SuggestionRound_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
 }
 
 var swapAssigneeResultImplementors = []string{"SwapAssigneeResult"}
@@ -62274,6 +63955,62 @@ func (ec *executionContext) marshalNReviewCadence2githubᚗcomᚋStewardᚑGRC�
 	return v
 }
 
+func (ec *executionContext) marshalNReviewMessage2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewMessageᚄ(ctx context.Context, sel ast.SelectionSet, v []*ReviewMessage) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNReviewMessage2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewMessage(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNReviewMessage2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewMessage(ctx context.Context, sel ast.SelectionSet, v *ReviewMessage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ReviewMessage(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNReviewThread2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewThread(ctx context.Context, sel ast.SelectionSet, v ReviewThread) graphql.Marshaler {
+	return ec._ReviewThread(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNReviewThread2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewThreadᚄ(ctx context.Context, sel ast.SelectionSet, v []*ReviewThread) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNReviewThread2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewThread(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNReviewThread2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewThread(ctx context.Context, sel ast.SelectionSet, v *ReviewThread) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ReviewThread(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNRiskAssessment2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRiskAssessment(ctx context.Context, sel ast.SelectionSet, v RiskAssessment) graphql.Marshaler {
 	return ec._RiskAssessment(ctx, sel, &v)
 }
@@ -62776,6 +64513,42 @@ func (ec *executionContext) unmarshalNSubmitPolicyReviewSectionInput2ᚖgithub�
 func (ec *executionContext) unmarshalNSubmitPolicyRevisionInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSubmitPolicyRevisionInput(ctx context.Context, v any) (SubmitPolicyRevisionInput, error) {
 	res, err := ec.unmarshalInputSubmitPolicyRevisionInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSuggestionRound2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionRoundᚄ(ctx context.Context, sel ast.SelectionSet, v []*SuggestionRound) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSuggestionRound2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionRound(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSuggestionRound2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionRound(ctx context.Context, sel ast.SelectionSet, v *SuggestionRound) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SuggestionRound(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSuggestionSide2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionSide(ctx context.Context, v any) (SuggestionSide, error) {
+	var res SuggestionSide
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSuggestionSide2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionSide(ctx context.Context, sel ast.SelectionSet, v SuggestionSide) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNSwapAssigneeInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSwapAssigneeInput(ctx context.Context, v any) (SwapAssigneeInput, error) {
@@ -63876,6 +65649,13 @@ func (ec *executionContext) unmarshalOReportAttachmentInput2ᚕᚖgithubᚗcom�
 	return res, nil
 }
 
+func (ec *executionContext) marshalOReviewSuggestion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReviewSuggestion(ctx context.Context, sel ast.SelectionSet, v *ReviewSuggestion) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ReviewSuggestion(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalORiskAssessment2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRiskAssessment(ctx context.Context, sel ast.SelectionSet, v *RiskAssessment) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -63998,6 +65778,22 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	_ = ctx
 	res := graphql.MarshalString(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOSuggestionOutcome2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionOutcome(ctx context.Context, v any) (*SuggestionOutcome, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(SuggestionOutcome)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOSuggestionOutcome2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSuggestionOutcome(ctx context.Context, sel ast.SelectionSet, v *SuggestionOutcome) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOTemplateVersion2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐTemplateVersion(ctx context.Context, sel ast.SelectionSet, v *TemplateVersion) graphql.Marshaler {

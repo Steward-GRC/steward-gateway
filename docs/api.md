@@ -114,6 +114,27 @@ the caller is seated on the version's approval run, in any stage and in any stat
 workflow's `GetStatus`. The author, anyone else, and a version with no run get `PermissionDenied`
 and core is never asked. The user id core receives is always the signed-in user's.
 
+## Inline review threads
+
+`reviewThreads(policyVersionId)`, `addReviewThread`, `replyReviewThread`, `setReviewThreadResolved`
+and `deleteReviewThread` keep a discussion tied to a quoted piece of a version's text. Core stores the
+threads; the gateway decides the rest. Each call applies the version read decision first (a denied
+read is `NotFound`), then reads the seats on the version's run from workflow's `GetStatus`:
+
+- **Author side:** whoever may edit the policy and holds no seat. Core is told `AUTHOR`. The author
+  lists every thread and starts one for a single named approver, who must hold a seat
+  (`InvalidArgument` otherwise).
+- **Reviewer side:** anyone with a seat, a site admin on the approvers included. Core is told
+  `REVIEWER`, and the thread is always with the reviewer. A reviewer lists only their own threads
+  and core refuses them on another approver's thread.
+- Anyone else is `PermissionDenied` on a write and gets an empty list; core is never asked.
+- An obfuscated reader gets every message without its body. Message authors are named from
+  identity. Blank text and an occurrence below 1 are `InvalidArgument`.
+- `suggestedText` is accepted so the web's operations validate; text that differs from the quote
+  is refused with `Unimplemented` until suggestions are served.
+- Replying to, resolving and deleting a thread name only the thread, so the gateway reads it from
+  core (`GetReviewThread`) first to find its version; an unknown thread is `NotFound`.
+
 ## Break-glass reads
 
 A site admin who sees a document obfuscated can ask for a time-boxed reveal of that one document

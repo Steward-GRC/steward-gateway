@@ -1042,6 +1042,36 @@ type ReporterView struct {
 	ReceivedAt string           `json:"receivedAt"`
 }
 
+type ReviewMessage struct {
+	ID           string    `json:"id"`
+	AuthorUserID string    `json:"authorUserId"`
+	AuthorName   *string   `json:"authorName,omitempty"`
+	Body         string    `json:"body"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
+type ReviewSuggestion struct {
+	Text       string             `json:"text"`
+	Turn       SuggestionSide     `json:"turn"`
+	Rounds     []*SuggestionRound `json:"rounds"`
+	Outcome    *SuggestionOutcome `json:"outcome,omitempty"`
+	Reason     *string            `json:"reason,omitempty"`
+	ClosedBy   *string            `json:"closedBy,omitempty"`
+	ClosedText *string            `json:"closedText,omitempty"`
+}
+
+type ReviewThread struct {
+	ID              string            `json:"id"`
+	PolicyVersionID string            `json:"policyVersionId"`
+	Quote           string            `json:"quote"`
+	Occurrence      int               `json:"occurrence"`
+	Resolved        bool              `json:"resolved"`
+	CreatedAt       time.Time         `json:"createdAt"`
+	ApproverUserID  string            `json:"approverUserId"`
+	Messages        []*ReviewMessage  `json:"messages"`
+	Suggestion      *ReviewSuggestion `json:"suggestion,omitempty"`
+}
+
 type RiskAssessment struct {
 	Factors         *RiskFactors    `json:"factors"`
 	Suggestion      *RiskSuggestion `json:"suggestion,omitempty"`
@@ -1226,6 +1256,13 @@ type SubmitPolicyRevisionInput struct {
 }
 
 type Subscription struct {
+}
+
+type SuggestionRound struct {
+	By        SuggestionSide `json:"by"`
+	Text      string         `json:"text"`
+	UserID    string         `json:"userId"`
+	CreatedAt time.Time      `json:"createdAt"`
 }
 
 type SwapAssigneeInput struct {
@@ -3521,6 +3558,122 @@ func (e *SignalType) UnmarshalJSON(b []byte) error {
 }
 
 func (e SignalType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type SuggestionOutcome string
+
+const (
+	SuggestionOutcomeChanged   SuggestionOutcome = "CHANGED"
+	SuggestionOutcomeAgreed    SuggestionOutcome = "AGREED"
+	SuggestionOutcomeRemoved   SuggestionOutcome = "REMOVED"
+	SuggestionOutcomeWithdrawn SuggestionOutcome = "WITHDRAWN"
+	SuggestionOutcomeNotAgreed SuggestionOutcome = "NOT_AGREED"
+)
+
+var AllSuggestionOutcome = []SuggestionOutcome{
+	SuggestionOutcomeChanged,
+	SuggestionOutcomeAgreed,
+	SuggestionOutcomeRemoved,
+	SuggestionOutcomeWithdrawn,
+	SuggestionOutcomeNotAgreed,
+}
+
+func (e SuggestionOutcome) IsValid() bool {
+	switch e {
+	case SuggestionOutcomeChanged, SuggestionOutcomeAgreed, SuggestionOutcomeRemoved, SuggestionOutcomeWithdrawn, SuggestionOutcomeNotAgreed:
+		return true
+	}
+	return false
+}
+
+func (e SuggestionOutcome) String() string {
+	return string(e)
+}
+
+func (e *SuggestionOutcome) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SuggestionOutcome(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SuggestionOutcome", str)
+	}
+	return nil
+}
+
+func (e SuggestionOutcome) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SuggestionOutcome) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SuggestionOutcome) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type SuggestionSide string
+
+const (
+	SuggestionSideAuthor   SuggestionSide = "AUTHOR"
+	SuggestionSideReviewer SuggestionSide = "REVIEWER"
+)
+
+var AllSuggestionSide = []SuggestionSide{
+	SuggestionSideAuthor,
+	SuggestionSideReviewer,
+}
+
+func (e SuggestionSide) IsValid() bool {
+	switch e {
+	case SuggestionSideAuthor, SuggestionSideReviewer:
+		return true
+	}
+	return false
+}
+
+func (e SuggestionSide) String() string {
+	return string(e)
+}
+
+func (e *SuggestionSide) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SuggestionSide(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SuggestionSide", str)
+	}
+	return nil
+}
+
+func (e SuggestionSide) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SuggestionSide) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SuggestionSide) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

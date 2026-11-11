@@ -25,19 +25,26 @@ import (
 
 // fakeAssetClient is a stub AssetServiceClient.
 type fakeAssetClient struct {
+	corev1.AssetServiceClient
 	uploadResp *corev1.UploadAssetResponse
 	uploadErr  error
 	getResp    *corev1.GetAssetResponse
 	getErr     error
 	gotUpload  *corev1.UploadAssetRequest
+	uploadOpts []grpc.CallOption
+	getOpts    []grpc.CallOption
+	uploads    int
 }
 
-func (f *fakeAssetClient) UploadAsset(_ context.Context, in *corev1.UploadAssetRequest, _ ...grpc.CallOption) (*corev1.UploadAssetResponse, error) {
+func (f *fakeAssetClient) UploadAsset(_ context.Context, in *corev1.UploadAssetRequest, opts ...grpc.CallOption) (*corev1.UploadAssetResponse, error) {
 	f.gotUpload = in
+	f.uploads++
+	f.uploadOpts = opts
 	return f.uploadResp, f.uploadErr
 }
 
-func (f *fakeAssetClient) GetAsset(_ context.Context, _ *corev1.GetAssetRequest, _ ...grpc.CallOption) (*corev1.GetAssetResponse, error) {
+func (f *fakeAssetClient) GetAsset(_ context.Context, _ *corev1.GetAssetRequest, opts ...grpc.CallOption) (*corev1.GetAssetResponse, error) {
+	f.getOpts = opts
 	return f.getResp, f.getErr
 }
 

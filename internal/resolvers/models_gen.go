@@ -210,6 +210,31 @@ type Appendix struct {
 	Letter          string `json:"letter"`
 }
 
+// One switch of the setting: a kind of file the File card may accept.
+type AssetKindSetting struct {
+	// pdf, image, video, word, text, markdown or office.
+	Kind  string `json:"kind"`
+	Label string `json:"label"`
+	// The extensions the kind covers, without the dot.
+	Extensions []string `json:"extensions"`
+	Enabled    bool     `json:"enabled"`
+	// The hard size cap for the kind, in bytes.
+	MaxBytes int `json:"maxBytes"`
+}
+
+type AssetSettings struct {
+	// Every kind that has a switch, in display order.
+	Kinds []*AssetKindSetting `json:"kinds"`
+	// Extensions that are always refused and have no switch.
+	RefusedExtensions []string `json:"refusedExtensions"`
+	// The largest cap of any kind, in bytes (the upload limit).
+	MaxFileBytes int `json:"maxFileBytes"`
+	// The user id of the admin who last changed it; empty until first changed.
+	UpdatedBy string `json:"updatedBy"`
+	// RFC 3339; empty until first changed.
+	UpdatedAt string `json:"updatedAt"`
+}
+
 type AssignmentHistoryEntry struct {
 	ID               string  `json:"id"`
 	AssignmentID     string  `json:"assignmentId"`

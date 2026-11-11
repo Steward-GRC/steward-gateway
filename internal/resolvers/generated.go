@@ -652,6 +652,7 @@ type ComplexityRoot struct {
 		GrantRole                     func(childComplexity int, userID string, role string, category *string) int
 		GrantRoot                     func(childComplexity int, userID string, otp string) int
 		IssueCollabToken              func(childComplexity int, input IssueCollabTokenInput) int
+		MarkVersionReviewed           func(childComplexity int, policyVersionID string) int
 		MergeAccounts                 func(childComplexity int, sourceUserID string, targetUserID string, confirmPrivileged *bool, idempotencyKey *string) int
 		MoveCategory                  func(childComplexity int, categoryID string, newParentID *string) int
 		MovePolicy                    func(childComplexity int, policyID string, homeCategoryID string) int
@@ -988,6 +989,7 @@ type ComplexityRoot struct {
 		UserFactors                func(childComplexity int, userID string) int
 		Users                      func(childComplexity int, search *string, pageSize *int, pageToken *string, includeDeleted *bool) int
 		VerifyAuditChain           func(childComplexity int, fromRecordID string, toRecordID string) int
+		VersionChangesSinceReview  func(childComplexity int, policyVersionID string) int
 		ViewerIsApprover           func(childComplexity int) int
 		WorkflowDef                func(childComplexity int, id string) int
 		WorkflowDefs               func(childComplexity int) int
@@ -1535,6 +1537,7 @@ type MutationResolver interface {
 	AddCaseNotice(ctx context.Context, caseID string, recipient NoticeRecipient, label *string, method *string) (*CaseNotice, error)
 	UpdateCaseNotice(ctx context.Context, caseID string, noticeID string, status NoticeStatus, sentOn *string) (*CaseNotice, error)
 	CloseCase(ctx context.Context, caseID string, outcome CaseOutcome, correctiveActions []*CorrectiveActionInput, closingMessage *string) (*ReportCase, error)
+	MarkVersionReviewed(ctx context.Context, policyVersionID string) (bool, error)
 	AddOrganization(ctx context.Context, input AddOrganizationInput) (*Organization, error)
 	StartDomainVerification(ctx context.Context, domain string, rotate *bool) (*DomainVerification, error)
 	VerifyDomain(ctx context.Context, domain string) (*Organization, error)
@@ -1640,6 +1643,7 @@ type QueryResolver interface {
 	ReportCases(ctx context.Context, statuses []CaseStatus, assigneeUserID *string) (*CaseQueue, error)
 	ReportCase(ctx context.Context, caseID string) (*ReportCase, error)
 	ReportAttachment(ctx context.Context, caseID string, attachmentID string) (*ReportAttachmentContent, error)
+	VersionChangesSinceReview(ctx context.Context, policyVersionID string) ([]*SectionDiff, error)
 	Organizations(ctx context.Context) ([]*Organization, error)
 	Organization(ctx context.Context, domain string) (*Organization, error)
 	SpCertificate(ctx context.Context) (*SpCertificate, error)
@@ -4284,6 +4288,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.IssueCollabToken(childComplexity, args["input"].(IssueCollabTokenInput)), true
+	case "Mutation.markVersionReviewed":
+		if e.ComplexityRoot.Mutation.MarkVersionReviewed == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_markVersionReviewed_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.MarkVersionReviewed(childComplexity, args["policyVersionId"].(string)), true
 	case "Mutation.mergeAccounts":
 		if e.ComplexityRoot.Mutation.MergeAccounts == nil {
 			break
@@ -6768,6 +6783,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.VerifyAuditChain(childComplexity, args["fromRecordId"].(string), args["toRecordId"].(string)), true
+	case "Query.versionChangesSinceReview":
+		if e.ComplexityRoot.Query.VersionChangesSinceReview == nil {
+			break
+		}
+
+		args, err := ec.field_Query_versionChangesSinceReview_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.VersionChangesSinceReview(childComplexity, args["policyVersionId"].(string)), true
 	case "Query.viewerIsApprover":
 		if e.ComplexityRoot.Query.ViewerIsApprover == nil {
 			break
@@ -10942,6 +10968,25 @@ extend type Mutation {
   closeCase(caseId: ID!, outcome: CaseOutcome!, correctiveActions: [CorrectiveActionInput!], closingMessage: String): ReportCase!
 }
 `, BuiltIn: false},
+	{Name: "../../graphql/review_snapshot.graphqls", Input: `# --- Review snapshots ---
+# What an approver has changed to look at since they last reviewed a version. Core keeps one
+# snapshot of the text per approver and version; only the gateway reads or moves it, on behalf of
+# the signed-in user. Both fields are refused unless the caller holds a seat on the version's run,
+# so the author and anyone outside the run are turned away.
+
+extend type Query {
+  # What changed in each section of the version since the caller, an approver on its run, last
+  # reviewed it: when they last commented, replied, voted, sent comments or marked it reviewed.
+  # Sections that did not change are left out. A reader who sees the policy obfuscated gets no
+  # word diffs.
+  versionChangesSinceReview(policyVersionId: ID!): [SectionDiff!]!
+}
+
+extend type Mutation {
+  # The caller, an approver on the version's run, has reviewed the version as it is now.
+  markVersionReviewed(policyVersionId: ID!): Boolean!
+}
+`, BuiltIn: false},
 	{Name: "../../graphql/schema.graphqls", Input: `# The root operation types. Every domain file extends them; one file per
 # backend area keeps the resolvers split the same way (gqlgen follow-schema).
 type Query {
@@ -14880,6 +14925,20 @@ func (ec *executionContext) field_Mutation_issueCollabToken_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_markVersionReviewed_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyVersionId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_mergeAccounts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -18159,6 +18218,20 @@ func (ec *executionContext) field_Query_verifyAuditChain_args(ctx context.Contex
 		return nil, err
 	}
 	args["toRecordId"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_versionChangesSinceReview_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyVersionId"] = arg0
 	return args, nil
 }
 
@@ -31726,6 +31799,50 @@ func (ec *executionContext) fieldContext_Mutation_closeCase(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_markVersionReviewed(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_markVersionReviewed(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().MarkVersionReviewed(ctx, fc.Args["policyVersionId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_markVersionReviewed(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_markVersionReviewed_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_addOrganization(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -37980,6 +38097,50 @@ func (ec *executionContext) fieldContext_Query_reportAttachment(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_reportAttachment_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_versionChangesSinceReview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_versionChangesSinceReview(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().VersionChangesSinceReview(ctx, fc.Args["policyVersionId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*SectionDiff) graphql.Marshaler {
+			return ec.marshalNSectionDiff2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSectionDiffᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_versionChangesSinceReview(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SectionDiff(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_versionChangesSinceReview_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -52782,6 +52943,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "markVersionReviewed":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_markVersionReviewed(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "addOrganization":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addOrganization(ctx, field)
@@ -55818,6 +55986,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_reportAttachment(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "versionChangesSinceReview":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_versionChangesSinceReview(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

@@ -102,6 +102,18 @@ wins. No backend is asked for content the caller may not read.
 job, read from the signed-in user the gateway passes on every call; anyone else gets `NotFound`, the
 same as for an unknown job.
 
+## Changes since the approver last reviewed
+
+`versionChangesSinceReview(policyVersionId)` returns the sections of a version that changed since
+the caller last reviewed it, and `markVersionReviewed(policyVersionId)` moves the caller's snapshot
+to the version as it is now. Core keeps one snapshot per approver and version and lists every
+section; the gateway returns only the changed ones (an empty list when nothing changed, and on the
+first read, which takes the snapshot). Both fields apply the version read decision first (a denied
+read is `NotFound`; an obfuscated reader gets the sections without word diffs), then require that
+the caller is seated on the version's approval run, in any stage and in any state, read from
+workflow's `GetStatus`. The author, anyone else, and a version with no run get `PermissionDenied`
+and core is never asked. The user id core receives is always the signed-in user's.
+
 ## Break-glass reads
 
 A site admin who sees a document obfuscated can ask for a time-boxed reveal of that one document

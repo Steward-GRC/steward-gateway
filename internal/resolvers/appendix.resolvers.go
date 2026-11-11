@@ -50,3 +50,8 @@ func (r *queryResolver) PolicyAppendices(ctx context.Context, policyID string, i
 func (r *queryResolver) PolicyAppendix(ctx context.Context, id string) (*PolicyAppendix, error) {
 	return r.PolicyAppendixResolver(ctx, id)
 }
+
+// AppendixDiff is the resolver for the appendixDiff field.
+func (r *queryResolver) AppendixDiff(ctx context.Context, id string, contentJSON *string) ([]*SectionDiff, error) {
+	return r.AppendixDiffResolver(ctx, id, contentJSON)
+}

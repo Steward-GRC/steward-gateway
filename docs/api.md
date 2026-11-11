@@ -198,7 +198,15 @@ whether the caller may edit the policy:
   for an editor, with the new letters. A list that misses, repeats, or adds a foreign or retired
   appendix is core's `InvalidArgument` and leaves the order as it was. It makes no draft. The older
   `reorderAppendices` (by policy version) is unchanged.
-- Not served yet: deleting for good, the draft diff and the co-editing token.
+- `appendixDiff(id, contentJson)` diffs the appendix against its latest published row, section by
+  section, through core's `DiffPolicyAppendix`. It diffs the open draft, or `contentJson` (what the
+  author is typing, not saved) when one is passed; the text goes to core as it is and an unreadable
+  one is core's `InvalidArgument`. It writes nothing and starts no draft. Only whoever may edit the
+  policy (the same check as the drafts, a site admin included) may ask; anyone else is
+  `PermissionDenied`, an unknown id is `NotFound`. An obfuscated reader gets the section shape
+  without the word diff and with scrambled titles, as for `diffVersions`. The mock's compliance
+  reader waits on the access model.
+- Not served yet: deleting for good and the co-editing token.
 
 ## Library links per policy version
 
@@ -272,7 +280,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - core RelationService: ListRelatedPolicies, SetRelatedPolicies
 - core DefinitionLibraryService: ListDefinitionEntries, ListPolicyDefinitionCandidates, CreateDefinitionEntry, UpdateDefinitionEntry, DeleteDefinitionEntry, SetDefinitionEntryArchived, ListPolicyDefinitionEntries, SetPolicyDefinitionEntries
 - core AppendixService: ListAppendices, AddAppendix, UpdateAppendix, ReorderAppendices, DeleteAppendix
-- core PolicyAppendixService: ListPolicyAppendices, GetPolicyAppendix, CreatePolicyAppendix, SaveAppendixDraft, PublishAppendix, RetireAppendix, RestoreAppendix, ReorderPolicyAppendices
+- core PolicyAppendixService: ListPolicyAppendices, GetPolicyAppendix, CreatePolicyAppendix, SaveAppendixDraft, PublishAppendix, RetireAppendix, RestoreAppendix, ReorderPolicyAppendices, DiffPolicyAppendix
 - core ContactService: ListContactBlocks, CreateContactBlock, UpdateContactBlock, DeleteContactBlock, SetContactBlockArchived, ListPolicyContactBlocks, SetPolicyContactBlocks
 - core SettingsService: GetGlobalSettings, SetGlobalSettings, SetEmailServiceConfig, EmailServiceConfigStatus
 - core ReferenceService: ListReferences, CreateReference, UpdateReference, DeleteReference, SetReferenceArchived, ListPolicyReferences, SetPolicyReferences

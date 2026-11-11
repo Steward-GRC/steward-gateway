@@ -1024,6 +1024,7 @@ type ComplexityRoot struct {
 		AiJob                      func(childComplexity int, jobID string) int
 		AiJobResultContent         func(childComplexity int, resultRef string) int
 		AiRetrievalConfig          func(childComplexity int) int
+		AppendixDiff               func(childComplexity int, id string, contentJSON *string) int
 		AssetSettings              func(childComplexity int) int
 		AssignmentHistory          func(childComplexity int, policyVersionID string, stageIndex int) int
 		AuditLegalHolds            func(childComplexity int, includeReleased *bool) int
@@ -1790,6 +1791,7 @@ type QueryResolver interface {
 	AiRetrievalConfig(ctx context.Context) (*AIRetrievalConfig, error)
 	PolicyAppendices(ctx context.Context, policyID string, includeRetired *bool) ([]*PolicyAppendix, error)
 	PolicyAppendix(ctx context.Context, id string) (*PolicyAppendix, error)
+	AppendixDiff(ctx context.Context, id string, contentJSON *string) ([]*SectionDiff, error)
 	AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) (*AuditQueryPage, error)
 	AuditSegment(ctx context.Context, fromRecordID string, toRecordID string) (*AuditSegment, error)
 	VerifyAuditChain(ctx context.Context, fromRecordID string, toRecordID string) (*AuditChainVerification, error)
@@ -6829,6 +6831,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.AiRetrievalConfig(childComplexity), true
+	case "Query.appendixDiff":
+		if e.ComplexityRoot.Query.AppendixDiff == nil {
+			break
+		}
+
+		args, err := ec.field_Query_appendixDiff_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.AppendixDiff(childComplexity, args["id"].(string), args["contentJson"].(*string)), true
 	case "Query.assetSettings":
 		if e.ComplexityRoot.Query.AssetSettings == nil {
 			break
@@ -10416,6 +10429,11 @@ extend type Query {
   policyAppendices(policyId: ID!, includeRetired: Boolean): [PolicyAppendix!]!
   # One appendix. A reader gets NotFound for one that is retired or has no published row.
   policyAppendix(id: ID!): PolicyAppendix!
+  # The appendix's text against its latest published row, section by section: the open draft, or
+  # the given contentJson (what the author is typing, not saved) when one is passed. Writes
+  # nothing and starts no draft. Editors only, decided as for the appendix drafts; anyone else is
+  # PermissionDenied. An unreadable contentJson is InvalidArgument.
+  appendixDiff(id: ID!, contentJson: String): [SectionDiff!]!
 }
 
 extend type Mutation {
@@ -19586,6 +19604,28 @@ func (ec *executionContext) field_Query_aiJob_args(ctx context.Context, rawArgs 
 		return nil, err
 	}
 	args["jobId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_appendixDiff_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "contentJson",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["contentJson"] = arg1
 	return args, nil
 }
 
@@ -40350,6 +40390,50 @@ func (ec *executionContext) fieldContext_Query_policyAppendix(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_policyAppendix_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_appendixDiff(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_appendixDiff(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().AppendixDiff(ctx, fc.Args["id"].(string), fc.Args["contentJson"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*SectionDiff) graphql.Marshaler {
+			return ec.marshalNSectionDiff2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSectionDiffᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_appendixDiff(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SectionDiff(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_appendixDiff_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -61887,6 +61971,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_policyAppendix(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "appendixDiff":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_appendixDiff(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

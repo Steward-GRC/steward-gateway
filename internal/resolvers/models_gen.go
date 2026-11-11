@@ -1127,12 +1127,14 @@ type SpCertificate struct {
 }
 
 type StageAssignee struct {
-	UserID    string  `json:"userId"`
-	Name      *string `json:"name,omitempty"`
-	State     string  `json:"state"`
-	Comment   *string `json:"comment,omitempty"`
-	DecidedAt *string `json:"decidedAt,omitempty"`
-	GroupID   *string `json:"groupId,omitempty"`
+	UserID             string  `json:"userId"`
+	Name               *string `json:"name,omitempty"`
+	State              string  `json:"state"`
+	Comment            *string `json:"comment,omitempty"`
+	DecidedAt          *string `json:"decidedAt,omitempty"`
+	GroupID            *string `json:"groupId,omitempty"`
+	ChangesRequested   *string `json:"changesRequested,omitempty"`
+	ChangesRequestedAt *string `json:"changesRequestedAt,omitempty"`
 }
 
 type StageEligibleAssignees struct {

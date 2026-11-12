@@ -623,6 +623,33 @@ func UpdateUserProfileResolver(ctx context.Context, admin identityv1.IdentityAdm
 	return userToGraphQL(resp.GetUser()), nil
 }
 
+// UpdateUserPreferencesResolver sets another person's language (admin action,
+// issue #84). The tag is validated and canonicalized here, as for
+// updateMyProfile, so a malformed value never reaches identity; an omitted
+// locale stays omitted (no-op) and a blank one is forwarded as an empty string,
+// which clears it.
+func UpdateUserPreferencesResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, userID string, locale *string) (*User, error) {
+	if err := authorizeOp(ctx, authz.UserManage); err != nil {
+		return nil, err
+	}
+	if admin == nil {
+		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
+	}
+	req := &identityv1.UpdateUserPreferencesRequest{UserId: userID}
+	if locale != nil {
+		norm, err := normalizeLocale(*locale)
+		if err != nil {
+			return nil, err
+		}
+		req.Locale = &norm
+	}
+	resp, err := admin.UpdateUserPreferences(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return userToGraphQL(resp.GetUser()), nil
+}
+
 // SetUserPolicyOverrideResolver upserts a per-policy override.
 func SetUserPolicyOverrideResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, userID, policyNumber string, effect *OverrideEffect) (*User, error) {
 	if err := authorizeOp(ctx, authz.RoleManage); err != nil {

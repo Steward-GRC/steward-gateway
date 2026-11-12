@@ -759,6 +759,24 @@ type MagicLink struct {
 	ExpiresAt string `json:"expiresAt"`
 }
 
+type MagicLinkInfo struct {
+	Token           string  `json:"token"`
+	Fingerprint     string  `json:"fingerprint"`
+	PolicyVersionID string  `json:"policyVersionId"`
+	CreatedByUserID string  `json:"createdByUserId"`
+	Sensitive       bool    `json:"sensitive"`
+	Status          string  `json:"status"`
+	CreatedAt       string  `json:"createdAt"`
+	ExpiresAt       string  `json:"expiresAt"`
+	RevokedAt       *string `json:"revokedAt,omitempty"`
+	RevokedByUserID *string `json:"revokedByUserId,omitempty"`
+}
+
+type MagicLinkPage struct {
+	Links         []*MagicLinkInfo `json:"links"`
+	NextPageToken *string          `json:"nextPageToken,omitempty"`
+}
+
 type Maintenance struct {
 	Enabled bool   `json:"enabled"`
 	Message string `json:"message"`

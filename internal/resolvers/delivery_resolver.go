@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	authz "github.com/Steward-GRC/steward-authz"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
@@ -152,4 +153,69 @@ func RevokeMagicLinkResolver(ctx context.Context, client deliveryv1.DeliveryServ
 		return false, fmt.Errorf("delivery revoke magic link: %w", err)
 	}
 	return resp.GetRevoked(), nil
+}
+
+// formatMagicTime renders a delivery timestamp as RFC 3339 UTC, empty when unset.
+func formatMagicTime(t *timestamppb.Timestamp) string {
+	if t == nil {
+		return ""
+	}
+	return t.AsTime().UTC().Format(time.RFC3339)
+}
+
+// ListMagicLinksResolver lists the issued magic links, optionally limited to some policy versions.
+// The results hold bearer tokens, so only a site admin may read them (the same gate as revoke).
+// Delivery's errors, including its bad-page-token InvalidRequest, are relayed untouched.
+func ListMagicLinksResolver(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyVersionIDs []string, pageSize *int, pageToken *string) (*MagicLinkPage, error) {
+	if err := authorizeOp(ctx, authz.DeliveryManage); err != nil {
+		return nil, err
+	}
+	req := &deliveryv1.ListMagicLinksRequest{PolicyVersionIds: policyVersionIDs}
+	if pageSize != nil {
+		req.PageSize = toInt32(*pageSize)
+	}
+	if pageToken != nil {
+		req.PageToken = *pageToken
+	}
+	resp, err := client.ListMagicLinks(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	links := make([]*MagicLinkInfo, 0, len(resp.GetLinks()))
+	for _, l := range resp.GetLinks() {
+		links = append(links, &MagicLinkInfo{
+			Token:           l.GetToken(),
+			Fingerprint:     l.GetFingerprint(),
+			PolicyVersionID: l.GetPolicyVersionId(),
+			CreatedByUserID: l.GetCreatedByUserId(),
+			Sensitive:       l.GetSensitive(),
+			Status:          l.GetStatus(),
+			CreatedAt:       formatMagicTime(l.GetCreatedAt()),
+			ExpiresAt:       formatMagicTime(l.GetExpiresAt()),
+			RevokedAt:       nilIfEmpty(formatMagicTime(l.GetRevokedAt())),
+			RevokedByUserID: nilIfEmpty(l.GetRevokedByUserId()),
+		})
+	}
+	return &MagicLinkPage{Links: links, NextPageToken: nilIfEmpty(resp.GetNextPageToken())}, nil
+}
+
+// RemoveMagicLinkResolver deletes a revoked or expired magic link from the registry. Delivery
+// refuses an active link (MAGIC_LINK_ACTIVE) and an unknown one (MAGIC_LINK_NOT_FOUND); both are
+// relayed untouched.
+func RemoveMagicLinkResolver(ctx context.Context, client deliveryv1.DeliveryServiceClient, token string) (bool, error) {
+	if err := authorizeOp(ctx, authz.DeliveryManage); err != nil {
+		return false, err
+	}
+	claims, ok := principal.FromContext(ctx)
+	if !ok || claims.UserID() == "" {
+		return false, fmt.Errorf("unauthenticated")
+	}
+	resp, err := client.RemoveMagicLink(ctx, &deliveryv1.RemoveMagicLinkRequest{
+		Token:           token,
+		RemovedByUserId: claims.UserID(),
+	})
+	if err != nil {
+		return false, err
+	}
+	return resp.GetRemoved(), nil
 }

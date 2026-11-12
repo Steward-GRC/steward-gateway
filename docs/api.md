@@ -365,7 +365,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - core ReferenceService: ListReferences, CreateReference, UpdateReference, DeleteReference, SetReferenceArchived, ListPolicyReferences, SetPolicyReferences
 - core CategoryService: CreateCategory, GetCategory, ListCategoryChildren, SetCategoryDefaults, RenameCategory, DeleteCategory, MoveCategory, ReorderCategories, SetGovernance, GetEffectiveGovernance, GetCategoryRuleset, SetCategoryRuleset
 - core PolicyService: CreatePolicy, GetPolicy, GetPolicyByNumber, ListPolicies, GetPolicyVersion, ListPolicyVersions, SaveDraft, PublishDraft, DiscardDraft, DeletePolicy, RetirePolicy, RecordBreakGlassRead, SetPolicyOwner, ListPoliciesByOwner, ReassignUserPolicies, MovePolicy, PreviewMovePolicies, MovePolicies, DiffVersions, GetEffectiveTemplate, SetPolicyTemplate, SetPolicySensitivity, RenamePolicy, SetAck, ReindexPolicy, ReindexPolicyVersion
-- delivery DeliveryService: GetRenderedContent, GetDiff, RequestPDFExport, GetPDFDownloadLink, CreateMagicLink, RevokeMagicLink
+- delivery DeliveryService: GetRenderedContent, GetDiff, RequestPDFExport, GetPDFDownloadLink, CreateMagicLink, RevokeMagicLink, ListMagicLinks, RemoveMagicLink
 - reporting IntakeService: SubmitAnonymousReport, CheckReport, ReplyToReport, SubmitNamedReport, ListMyReports, GetMyReport, ReplyToMyReport
 - reporting CaseService: ListCases, GetCase, GetAttachment, PostMessage, AddNote, AssignCase, SetCaseStatus, SetDiscoveryDate, RecordRiskAssessment, AddNotice, UpdateNotice, CloseCase
 - every service: `grpc.health.v1.Health/Check` (readiness and diagnostics)

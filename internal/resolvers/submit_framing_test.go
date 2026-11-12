@@ -4,13 +4,24 @@
 package resolvers_test
 
 import (
+	"context"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 
+	log "github.com/Bugs5382/go-log"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
+	"github.com/Steward-GRC/steward-gateway/internal/server"
 )
+
+func nopLogger() log.Logger {
+	return log.NewLoggerWithOptions("gateway", log.WithOutput(io.Discard))
+}
 
 type framingPayload struct {
 	Framing       *string `json:"framing"`
@@ -39,18 +50,23 @@ func framingCases() []framingCase {
 		{name: "custom at limit", framing: framingPtr(resolvers.DraftFramingCustom), custom: strPtr(strings.Repeat("é", 500)), wantFrame: "CUSTOM", wantCustom: strings.Repeat("é", 500)},
 		{name: "wording ignored without custom", framing: framingPtr(resolvers.DraftFramingPlain), custom: strPtr("ignore me"), wantFrame: "PLAIN"},
 		{name: "wording alone is ignored", framing: nil, custom: strPtr("ignore me")},
-		{name: "custom missing wording", framing: framingPtr(resolvers.DraftFramingCustom), wantErr: "custom framing needs wording"},
-		{name: "custom blank wording", framing: framingPtr(resolvers.DraftFramingCustom), custom: strPtr("  \n "), wantErr: "custom framing needs wording"},
-		{name: "custom too long", framing: framingPtr(resolvers.DraftFramingCustom), custom: strPtr(strings.Repeat("a", 501)), wantErr: "limit is 500"},
-		{name: "unknown framing", framing: framingPtr(resolvers.DraftFraming("LOUD")), wantErr: "unknown framing"},
+		{name: "custom missing wording", framing: framingPtr(resolvers.DraftFramingCustom), wantErr: "Custom framing needs wording."},
+		{name: "custom blank wording", framing: framingPtr(resolvers.DraftFramingCustom), custom: strPtr("  \n "), wantErr: "Custom framing needs wording."},
+		{name: "custom too long", framing: framingPtr(resolvers.DraftFramingCustom), custom: strPtr(strings.Repeat("a", 501)), wantErr: "Custom wording is 501 characters; the limit is 500."},
+		{name: "unknown framing", framing: framingPtr(resolvers.DraftFraming("LOUD")), wantErr: "Unknown framing \"LOUD\"."},
 	}
 }
 
 func checkFraming(t *testing.T, c framingCase, client *fakeAIClient, err error) {
 	t.Helper()
 	if c.wantErr != "" {
-		if err == nil || !strings.Contains(err.Error(), c.wantErr) {
-			t.Fatalf("want error containing %q, got %v", c.wantErr, err)
+		st, ok := status.FromError(err)
+		if err == nil || !ok || st.Code() != codes.InvalidArgument || st.Message() != c.wantErr {
+			t.Fatalf("want InvalidArgument %q, got %v", c.wantErr, err)
+		}
+		pres := server.ErrorPresenter(nopLogger())(context.Background(), err)
+		if pres.Message != c.wantErr || pres.Extensions["code"] != "InvalidArgument" || pres.Extensions["kind"] != "business" {
+			t.Fatalf("presented %q %v, want the refusal message, code InvalidArgument, kind business", pres.Message, pres.Extensions)
 		}
 		if client.lastSubmitReq != nil {
 			t.Fatal("job submitted despite invalid framing")

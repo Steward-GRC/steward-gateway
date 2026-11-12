@@ -1438,6 +1438,8 @@ type SubmitDraftGenerationInput struct {
 	ReferenceHints     []string                             `json:"referenceHints,omitempty"`
 	ReferenceDocuments []*ReferenceDocumentInput            `json:"referenceDocuments,omitempty"`
 	EnrichmentOptOut   *EnrichmentOptOutInput               `json:"enrichmentOptOut,omitempty"`
+	Framing            *DraftFraming                        `json:"framing,omitempty"`
+	CustomFraming      *string                              `json:"customFraming,omitempty"`
 }
 
 type SubmitDraftGenerationResult struct {
@@ -1493,6 +1495,8 @@ type SubmitPolicyRevisionInput struct {
 	Instruction      string                        `json:"instruction"`
 	Sections         []*PolicyRevisionSectionInput `json:"sections"`
 	EnrichmentOptOut *EnrichmentOptOutInput        `json:"enrichmentOptOut,omitempty"`
+	Framing          *DraftFraming                 `json:"framing,omitempty"`
+	CustomFraming    *string                       `json:"customFraming,omitempty"`
 }
 
 type Subscription struct {
@@ -2537,6 +2541,71 @@ func (e *DocumentType) UnmarshalJSON(b []byte) error {
 }
 
 func (e DocumentType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// How a generated or revised draft should read. Omitting the framing keeps the
+// default formal, clear tone of organizational policy documents.
+type DraftFraming string
+
+const (
+	// Plain language at about a 5th-grade reading level.
+	DraftFramingPlain DraftFraming = "PLAIN"
+	// A professional, standard business register.
+	DraftFramingProfessional DraftFraming = "PROFESSIONAL"
+	// A formal, legal register.
+	DraftFramingFormal DraftFraming = "FORMAL"
+	// The author's own wording, in customFraming.
+	DraftFramingCustom DraftFraming = "CUSTOM"
+)
+
+var AllDraftFraming = []DraftFraming{
+	DraftFramingPlain,
+	DraftFramingProfessional,
+	DraftFramingFormal,
+	DraftFramingCustom,
+}
+
+func (e DraftFraming) IsValid() bool {
+	switch e {
+	case DraftFramingPlain, DraftFramingProfessional, DraftFramingFormal, DraftFramingCustom:
+		return true
+	}
+	return false
+}
+
+func (e DraftFraming) String() string {
+	return string(e)
+}
+
+func (e *DraftFraming) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = DraftFraming(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid DraftFraming", str)
+	}
+	return nil
+}
+
+func (e DraftFraming) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *DraftFraming) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e DraftFraming) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

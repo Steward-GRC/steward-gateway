@@ -144,6 +144,8 @@ type draftJobInput struct {
 	Enrichments        *enrichmentContextJSON           `json:"enrichments,omitempty"`
 	EnrichmentOptOut   enrichmentOptOutJSON             `json:"enrichmentOptOut"`
 	EnrichmentLibrary  *enrichmentLibraryJSON           `json:"enrichmentLibrary,omitempty"`
+	Framing            string                           `json:"framing,omitempty"`
+	CustomFraming      string                           `json:"customFraming,omitempty"`
 }
 
 // SubmitDraftGenerationResolver submits whole-draft generation as an async job and returns
@@ -159,6 +161,11 @@ func SubmitDraftGenerationResolver(ctx context.Context, client aiv1.AiServiceCli
 	}
 	gid := derefOrEmpty(input.CategoryID)
 	if err := authorizeAICategoryScope(ctx, categoryClient, claims, gid, aiScopeAuthor); err != nil {
+		return nil, err
+	}
+
+	framing, customFraming, err := resolveFraming(input.Framing, input.CustomFraming)
+	if err != nil {
 		return nil, err
 	}
 
@@ -191,6 +198,8 @@ func SubmitDraftGenerationResolver(ctx context.Context, client aiv1.AiServiceCli
 		ReferenceHints:     input.ReferenceHints,
 		ReferenceDocuments: referenceDocuments,
 		EnrichmentOptOut:   optOutJSONFromInput(input.EnrichmentOptOut),
+		Framing:            framing,
+		CustomFraming:      customFraming,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("encode draft job input: %w", err)
@@ -300,6 +309,8 @@ type revisionJobInput struct {
 	Enrichments       *enrichmentContextJSON    `json:"enrichments,omitempty"`
 	EnrichmentOptOut  enrichmentOptOutJSON      `json:"enrichmentOptOut"`
 	EnrichmentLibrary *enrichmentLibraryJSON    `json:"enrichmentLibrary,omitempty"`
+	Framing           string                    `json:"framing,omitempty"`
+	CustomFraming     string                    `json:"customFraming,omitempty"`
 }
 
 // SubmitPolicyRevisionResolver submits a targeted revision of an existing policy as an async job
@@ -315,6 +326,11 @@ func SubmitPolicyRevisionResolver(ctx context.Context, client aiv1.AiServiceClie
 	}
 	gid := ""
 	if err := authorizeAICategoryScope(ctx, categoryClient, claims, gid, aiScopeAuthor); err != nil {
+		return nil, err
+	}
+
+	framing, customFraming, err := resolveFraming(input.Framing, input.CustomFraming)
+	if err != nil {
 		return nil, err
 	}
 
@@ -339,6 +355,8 @@ func SubmitPolicyRevisionResolver(ctx context.Context, client aiv1.AiServiceClie
 		Enrichments:       ingest,
 		EnrichmentOptOut:  optOutJSONFromInput(input.EnrichmentOptOut),
 		EnrichmentLibrary: library,
+		Framing:           framing,
+		CustomFraming:     customFraming,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("encode revision job input: %w", err)

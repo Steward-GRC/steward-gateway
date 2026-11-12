@@ -200,23 +200,28 @@ func levelsFor(rs ordered.RuleSet, category string) []*corev1.EffectiveLevel {
 	return out
 }
 
+// What the vendored vectors hold and how many of them core can store. A change
+// to the vectors moves these numbers on purpose: update them in the same change.
+// The skipped cases name a role or a capability matcher in a row, which core
+// cannot store (a row is a user, a group or Everyone); the engine's own tests
+// run them.
+const (
+	wantVectorCases  = 74
+	wantCasesRun     = 61
+	wantCasesSkipped = 13
+	wantVectorPools  = 5
+	wantPoolsRun     = 4
+	wantPoolsSkipped = 1
+)
+
 func TestOrderedVectorsThroughTheMapping(t *testing.T) {
 	v := loadVectors(t)
-	// The vectors' seat also exempts root from Approve. The gateway's does not
-	// (the owner's rule: Approve follows the rows), so it must be the vectors'
-	// seat without approve; the vectors run under their own seat so the engine
-	// and the mapping are still checked against the shared expectations.
-	wantSeat := &ordered.Superusers{Subjects: v.Options.Superusers.Subjects}
-	for _, a := range v.Options.Superusers.Actions {
-		if a != actApprove {
-			wantSeat.Actions = append(wantSeat.Actions, a)
-		}
+	// The gateway's seat is the vectors' seat: root is exempt for read, author
+	// and manage only.
+	if !reflect.DeepEqual(v.Options.Superusers, accessModel().Superusers) {
+		t.Fatalf("the gateway's superuser seat %+v is not the vectors' %+v", accessModel().Superusers, v.Options.Superusers)
 	}
-	if !reflect.DeepEqual(wantSeat, accessModel().Superusers) {
-		t.Fatalf("the gateway's superuser seat %+v is not the vectors' %+v without approve", accessModel().Superusers, v.Options.Superusers)
-	}
-	vectorModel := accessModel()
-	vectorModel.Superusers = v.Options.Superusers
+	model := accessModel()
 	ran, skipped := 0, 0
 	for _, c := range v.Cases {
 		if !representable(c.RuleSet) {
@@ -226,7 +231,7 @@ func TestOrderedVectorsThroughTheMapping(t *testing.T) {
 		ran++
 		t.Run(c.Name, func(t *testing.T) {
 			access := newCategoryAccess(levelsFor(c.RuleSet, c.Category))
-			d := vectorModel.Decide(access.rs, c.Person, access.leaf, c.Action)
+			d := model.Decide(access.rs, c.Person, access.leaf, c.Action)
 			if d.Allowed != c.Expect.Allowed || d.Reason != c.Expect.Reason || d.GatedBy != c.Expect.GatedBy {
 				t.Fatalf("decision = %+v, want allowed=%v reason=%q gatedBy=%q", d, c.Expect.Allowed, c.Expect.Reason, c.Expect.GatedBy)
 			}
@@ -238,21 +243,18 @@ func TestOrderedVectorsThroughTheMapping(t *testing.T) {
 			}
 		})
 	}
-	t.Logf("vector cases run through the mapping: %d of %d (%d use a subject core cannot hold)", ran, len(v.Cases), skipped)
-	// The ten left out name a role or a capability matcher in a row, which core
-	// cannot store (a row is a user, a group or Everyone); the engine's own
-	// tests run them.
-	if ran != 59 || skipped != 10 {
-		t.Fatalf("ran %d and skipped %d vector cases, want 59 and 10", ran, skipped)
+	t.Logf("vector cases through the mapping: %d run, %d skipped (a role or capability matcher core cannot store), %d total", ran, skipped, len(v.Cases))
+	if len(v.Cases) != wantVectorCases || ran != wantCasesRun || skipped != wantCasesSkipped {
+		t.Fatalf("vector cases: %d total, %d run, %d skipped; want %d, %d and %d", len(v.Cases), ran, skipped, wantVectorCases, wantCasesRun, wantCasesSkipped)
 	}
 }
 
 func TestOrderedPoolVectorsThroughTheMapping(t *testing.T) {
 	v := loadVectors(t)
-	ran := 0
-	defer func() { t.Logf("pool vectors run through the mapping: %d of %d", ran, len(v.Pools)) }()
+	ran, skipped := 0, 0
 	for _, p := range v.Pools {
 		if !representable(p.RuleSet) {
+			skipped++
 			continue
 		}
 		ran++
@@ -263,6 +265,10 @@ func TestOrderedPoolVectorsThroughTheMapping(t *testing.T) {
 				t.Fatalf("pool = %+v, want %+v", got, p.Expect)
 			}
 		})
+	}
+	t.Logf("pool vectors through the mapping: %d run, %d skipped, %d total", ran, skipped, len(v.Pools))
+	if len(v.Pools) != wantVectorPools || ran != wantPoolsRun || skipped != wantPoolsSkipped {
+		t.Fatalf("pool vectors: %d total, %d run, %d skipped; want %d, %d and %d", len(v.Pools), ran, skipped, wantVectorPools, wantPoolsRun, wantPoolsSkipped)
 	}
 }
 

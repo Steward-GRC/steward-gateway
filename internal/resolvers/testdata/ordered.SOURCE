@@ -1,4 +1,4 @@
 repo: Bugs5382/go-authz
-commit: f425f850c4aa
+commit: 28a16d9c1832334ee5ee7378fa17bd5d123b4007
 path: testdata/ordered.json
-note: the shared ordered-model vectors, vendored with one case name changed (a person's name replaced by Sam in the name, a user id and a subject); refresh when the go-authz pin moves.
+date: 2026-11-12

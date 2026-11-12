@@ -782,6 +782,7 @@ type ComplexityRoot struct {
 		RecordPolicyExport            func(childComplexity int, policyID string, kind PolicyExportKind, includeHistory bool) int
 		RecordRiskAssessment          func(childComplexity int, caseID string, factors RiskFactorsInput, decision BreachDecision, reason string) int
 		RecordView                    func(childComplexity int, policyVersionID string) int
+		RegenerateVersionSummary      func(childComplexity int, versionID string) int
 		ReindexPolicy                 func(childComplexity int, policyID string) int
 		ReindexPolicyVersion          func(childComplexity int, policyVersionID string) int
 		ReleaseAuditLegalHold         func(childComplexity int, holdUUID string) int
@@ -871,6 +872,7 @@ type ComplexityRoot struct {
 		SubmitPolicyReview            func(childComplexity int, input SubmitPolicyReviewInput) int
 		SubmitPolicyRevision          func(childComplexity int, input SubmitPolicyRevisionInput) int
 		SubmitWorkflow                func(childComplexity int, policyVersionID string, policyID string, categoryID string, ancestorCategoryIds []string) int
+		SummarizeChanges              func(childComplexity int, fromVersionID string, toVersionID string, regenerate *bool) int
 		SwapAssignee                  func(childComplexity int, input SwapAssigneeInput) int
 		TestAIProvider                func(childComplexity int) int
 		UpdateAppendix                func(childComplexity int, id string, title string, contentJSON string) int
@@ -1722,6 +1724,8 @@ type MutationResolver interface {
 	SubmitPolicyReview(ctx context.Context, input SubmitPolicyReviewInput) (*SubmitPolicyReviewResult, error)
 	SubmitPolicyRevision(ctx context.Context, input SubmitPolicyRevisionInput) (*SubmitDraftGenerationResult, error)
 	SubmitEnrichmentSuggestions(ctx context.Context, input SubmitEnrichmentSuggestionsInput) (*SubmitDraftGenerationResult, error)
+	SummarizeChanges(ctx context.Context, fromVersionID string, toVersionID string, regenerate *bool) (*SubmitDraftGenerationResult, error)
+	RegenerateVersionSummary(ctx context.Context, versionID string) (*SubmitDraftGenerationResult, error)
 	SetAIEnabled(ctx context.Context, enabled bool) (bool, error)
 	SetAIProviderConfig(ctx context.Context, input AIProviderConfigInput) (*AIConfig, error)
 	SetAIProviderCredential(ctx context.Context, credential string) (*AICredentialStatus, error)
@@ -5316,6 +5320,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RecordView(childComplexity, args["policyVersionId"].(string)), true
+	case "Mutation.regenerateVersionSummary":
+		if e.ComplexityRoot.Mutation.RegenerateVersionSummary == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_regenerateVersionSummary_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RegenerateVersionSummary(childComplexity, args["versionId"].(string)), true
 	case "Mutation.reindexPolicy":
 		if e.ComplexityRoot.Mutation.ReindexPolicy == nil {
 			break
@@ -6275,6 +6290,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SubmitWorkflow(childComplexity, args["policyVersionId"].(string), args["policyId"].(string), args["categoryId"].(string), args["ancestorCategoryIds"].([]string)), true
+	case "Mutation.summarizeChanges":
+		if e.ComplexityRoot.Mutation.SummarizeChanges == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_summarizeChanges_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SummarizeChanges(childComplexity, args["fromVersionId"].(string), args["toVersionId"].(string), args["regenerate"].(*bool)), true
 	case "Mutation.swapAssignee":
 		if e.ComplexityRoot.Mutation.SwapAssignee == nil {
 			break
@@ -10801,6 +10827,38 @@ extend type Mutation {
   aiJobResultContent — the suggestions ride in resultJson. Never auto-applied.
   """
   submitEnrichmentSuggestions(input: SubmitEnrichmentSuggestionsInput!): SubmitDraftGenerationResult!
+}
+
+# --- SUMMARIZE jobs: summary of the changes between two versions, and of one version ---
+# Both ride the async job framework (SUMMARIZE operation) and return a jobId;
+# poll aiJob(jobId) or subscribe to aiJobResult, then fetch the result via
+# aiJobResultContent. resultJson is
+#   changes scope: {"scope":"changes","bullets":["..."],"generatedAt":"RFC3339","cached":bool}
+#   version scope: {"scope":"version","summaryText":"- ...","generatedAt":"RFC3339","cached":bool}
+# cached is true when the stored summary was returned instead of a new one
+# being made. The read checks run here; obfuscated content is never sent to
+# the AI service.
+
+extend type Mutation {
+  """
+  Summarise the changes between two versions of a policy as an async job and
+  return immediately with a jobId. The caller must be able to read both
+  versions with their real content (an unreadable version is NotFound, an
+  obfuscated read is PermissionDenied). A repeat request for the same pair
+  and diff is answered from the stored summary (cached: true in the result)
+  unless regenerate is true. Versions with no differences are refused
+  (FailedPrecondition). When AI is off or down the submit fails, with the
+  reasons aiHealth reports.
+  """
+  summarizeChanges(fromVersionId: ID!, toVersionId: ID!, regenerate: Boolean): SubmitDraftGenerationResult!
+  """
+  Regenerate one version's stored summary as an async job and return
+  immediately with a jobId; the new summary replaces the stored one and the
+  result says cached: false. Needs the same read of the version as
+  policyVersionSummary (real content). When AI is off or down it fails and
+  the stored summary stays.
+  """
+  regenerateVersionSummary(versionId: ID!): SubmitDraftGenerationResult!
 }
 
 # --- aiJobResultContent: fetch async AI job content by resultRef ---
@@ -18606,6 +18664,20 @@ func (ec *executionContext) field_Mutation_recordView_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_regenerateVersionSummary_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "versionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["versionId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_reindexPolicyVersion_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -20449,6 +20521,36 @@ func (ec *executionContext) field_Mutation_submitWorkflow_args(ctx context.Conte
 		return nil, err
 	}
 	args["ancestorCategoryIds"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_summarizeChanges_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "fromVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["fromVersionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "toVersionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["toVersionId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "regenerate",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["regenerate"] = arg2
 	return args, nil
 }
 
@@ -31988,6 +32090,94 @@ func (ec *executionContext) fieldContext_Mutation_submitEnrichmentSuggestions(ct
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_submitEnrichmentSuggestions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_summarizeChanges(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_summarizeChanges(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SummarizeChanges(ctx, fc.Args["fromVersionId"].(string), fc.Args["toVersionId"].(string), fc.Args["regenerate"].(*bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *SubmitDraftGenerationResult) graphql.Marshaler {
+			return ec.marshalNSubmitDraftGenerationResult2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSubmitDraftGenerationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_summarizeChanges(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SubmitDraftGenerationResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_summarizeChanges_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_regenerateVersionSummary(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_regenerateVersionSummary(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RegenerateVersionSummary(ctx, fc.Args["versionId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *SubmitDraftGenerationResult) graphql.Marshaler {
+			return ec.marshalNSubmitDraftGenerationResult2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSubmitDraftGenerationResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_regenerateVersionSummary(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_SubmitDraftGenerationResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_regenerateVersionSummary_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -63240,6 +63430,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "submitEnrichmentSuggestions":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_submitEnrichmentSuggestions(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "summarizeChanges":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_summarizeChanges(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "regenerateVersionSummary":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_regenerateVersionSummary(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

@@ -336,6 +336,38 @@ extend type Mutation {
   submitEnrichmentSuggestions(input: SubmitEnrichmentSuggestionsInput!): SubmitDraftGenerationResult!
 }
 
+# --- SUMMARIZE jobs: summary of the changes between two versions, and of one version ---
+# Both ride the async job framework (SUMMARIZE operation) and return a jobId;
+# poll aiJob(jobId) or subscribe to aiJobResult, then fetch the result via
+# aiJobResultContent. resultJson is
+#   changes scope: {"scope":"changes","bullets":["..."],"generatedAt":"RFC3339","cached":bool}
+#   version scope: {"scope":"version","summaryText":"- ...","generatedAt":"RFC3339","cached":bool}
+# cached is true when the stored summary was returned instead of a new one
+# being made. The read checks run here; obfuscated content is never sent to
+# the AI service.
+
+extend type Mutation {
+  """
+  Summarise the changes between two versions of a policy as an async job and
+  return immediately with a jobId. The caller must be able to read both
+  versions with their real content (an unreadable version is NotFound, an
+  obfuscated read is PermissionDenied). A repeat request for the same pair
+  and diff is answered from the stored summary (cached: true in the result)
+  unless regenerate is true. Versions with no differences are refused
+  (FailedPrecondition). When AI is off or down the submit fails, with the
+  reasons aiHealth reports.
+  """
+  summarizeChanges(fromVersionId: ID!, toVersionId: ID!, regenerate: Boolean): SubmitDraftGenerationResult!
+  """
+  Regenerate one version's stored summary as an async job and return
+  immediately with a jobId; the new summary replaces the stored one and the
+  result says cached: false. Needs the same read of the version as
+  policyVersionSummary (real content). When AI is off or down it fails and
+  the stored summary stays.
+  """
+  regenerateVersionSummary(versionId: ID!): SubmitDraftGenerationResult!
+}
+
 # --- aiJobResultContent: fetch async AI job content by resultRef ---
 # This is the fetch-by-resultRef query the AIJobStatus/AIJobResult doc
 # comments above point to. Content is kept out of AIJobStatus/

@@ -7,6 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
+	"regexp"
+	"strings"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	authz "github.com/Steward-GRC/steward-authz"
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
@@ -550,4 +556,187 @@ func AuthoringAssistResolver(ctx context.Context, client aiv1.AiServiceClient, i
 		Suggestion:  resp.GetSuggestion(),
 		OperationID: resp.GetOperationId(),
 	}, nil
+}
+
+// summaryJobInput mirrors the ai service's generation.SummaryJobInput JSON shape: the payload
+// carried in SubmitAIJobRequest.input_json for a SUMMARIZE job.
+type summaryJobInput struct {
+	Scope         string `json:"scope"`
+	Regenerate    bool   `json:"regenerate,omitempty"`
+	FromVersionID string `json:"fromVersionId,omitempty"`
+	ToVersionID   string `json:"toVersionId,omitempty"`
+	Diff          string `json:"diff,omitempty"`
+	VersionID     string `json:"versionId,omitempty"`
+	PolicyID      string `json:"policyId,omitempty"`
+	PolicyTitle   string `json:"policyTitle,omitempty"`
+	Text          string `json:"text,omitempty"`
+}
+
+var (
+	wordDiffDelRE = regexp.MustCompile(`(?s)<del>(.*?)</del>`)
+	wordDiffInsRE = regexp.MustCompile(`(?s)<ins>(.*?)</ins>`)
+)
+
+// diffText renders the changed sections as plain text for the model: a "## title" line per
+// section, then the removed words on one "- " line and the added words on one "+ " line.
+func diffText(diffs []*corev1.SectionDiff) string {
+	var sb strings.Builder
+	for _, d := range diffs {
+		if d.GetChangeType() == "unchanged" || d.GetWordDiffHtml() == "" {
+			continue
+		}
+		join := func(re *regexp.Regexp) string {
+			var words []string
+			for _, m := range re.FindAllStringSubmatch(d.GetWordDiffHtml(), -1) {
+				words = append(words, strings.TrimSpace(html.UnescapeString(m[1])))
+			}
+			return strings.Join(words, " ")
+		}
+		removed, added := join(wordDiffDelRE), join(wordDiffInsRE)
+		if removed == "" && added == "" {
+			continue
+		}
+		fmt.Fprintf(&sb, "## %s (%s)\n", d.GetSectionTitle(), d.GetChangeType())
+		if removed != "" {
+			fmt.Fprintf(&sb, "- %s\n", removed)
+		}
+		if added != "" {
+			fmt.Fprintf(&sb, "+ %s\n", added)
+		}
+	}
+	return sb.String()
+}
+
+// lexicalPlainText joins the text of a Lexical content document, one line per block.
+func lexicalPlainText(raw string) string {
+	var doc struct {
+		Root *lexicalTextNode `json:"root"`
+	}
+	if err := json.Unmarshal([]byte(raw), &doc); err != nil || doc.Root == nil {
+		return ""
+	}
+	var lines []string
+	collectBlocks(doc.Root, &lines)
+	return strings.Join(lines, "\n")
+}
+
+type lexicalTextNode struct {
+	Type     string            `json:"type"`
+	Text     string            `json:"text"`
+	Children []lexicalTextNode `json:"children"`
+}
+
+// collectBlocks appends one line per block node that holds text; inline children join into it.
+func collectBlocks(n *lexicalTextNode, lines *[]string) {
+	hasBlock := false
+	for i := range n.Children {
+		if len(n.Children[i].Children) > 0 {
+			hasBlock = true
+		}
+	}
+	if hasBlock {
+		for i := range n.Children {
+			collectBlocks(&n.Children[i], lines)
+		}
+		return
+	}
+	var sb strings.Builder
+	for _, c := range n.Children {
+		sb.WriteString(c.Text)
+	}
+	sb.WriteString(n.Text)
+	if t := strings.TrimSpace(sb.String()); t != "" {
+		*lines = append(*lines, t)
+	}
+}
+
+// submitSummaryJob sends a SUMMARIZE job under the caller's read scope.
+func submitSummaryJob(ctx context.Context, client aiv1.AiServiceClient, categoryClient corev1.CategoryServiceClient, policyID, versionID string, in summaryJobInput) (*SubmitDraftGenerationResult, error) {
+	scope, err := aiReadScope(ctx, categoryClient)
+	if err != nil {
+		return nil, err
+	}
+	payload, err := json.Marshal(in)
+	if err != nil {
+		return nil, fmt.Errorf("encode summary job input: %w", err)
+	}
+	resp, err := client.SubmitAIJob(ctx, &aiv1.SubmitAIJobRequest{
+		Scope:     scope,
+		PolicyId:  policyID,
+		VersionId: versionID,
+		Operation: aiv1.JobOperation_JOB_OPERATION_SUMMARIZE,
+		InputJson: string(payload),
+	})
+	if err != nil {
+		// The status passes through so the caller can tell AI being down (Unavailable) from the rest.
+		return nil, fmt.Errorf("ai submit summary job: %w", err)
+	}
+	return &SubmitDraftGenerationResult{JobID: resp.GetJobId()}, nil
+}
+
+// SummarizeChangesResolver submits a SUMMARIZE job for the changes between two versions. The caller
+// must be able to read both with their real content: authorizeVersionReads refuses an unreadable
+// version (NotFound) and an obfuscated one is refused here, so the AI service never sees content
+// the caller may not read.
+func SummarizeChangesResolver(ctx context.Context, client aiv1.AiServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, fromID, toID string, regenerate *bool) (*SubmitDraftGenerationResult, error) {
+	claims, ok := principal.FromContext(ctx)
+	if !ok || claims == nil || claims.UserID() == "" {
+		return nil, fmt.Errorf("unauthenticated")
+	}
+	reads, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, workflow, fromID, toID)
+	if err != nil {
+		return nil, err
+	}
+	if effect != authz.EffectAllow {
+		return nil, status.Error(codes.PermissionDenied, "obfuscated content is not summarised")
+	}
+	diff, err := policyClient.DiffVersions(ctx, &corev1.DiffVersionsRequest{FromVersionId: fromID, ToVersionId: toID})
+	if err != nil {
+		return nil, err
+	}
+	text := diffText(diff.GetDiffs())
+	if text == "" {
+		return nil, status.Error(codes.FailedPrecondition, "the versions have no differences to summarise")
+	}
+	return submitSummaryJob(ctx, client, categoryClient, reads[1].version.PolicyID, toID, summaryJobInput{
+		Scope:         "changes",
+		Regenerate:    regenerate != nil && *regenerate,
+		FromVersionID: fromID,
+		ToVersionID:   toID,
+		Diff:          text,
+	})
+}
+
+// RegenerateVersionSummaryResolver submits a SUMMARIZE job that replaces one version's stored
+// summary. It takes the same read decision as PolicyVersionSummaryResolver (real content only); no
+// author-only rule is added here, that waits on the access model.
+func RegenerateVersionSummaryResolver(ctx context.Context, client aiv1.AiServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, versionID string) (*SubmitDraftGenerationResult, error) {
+	claims, ok := principal.FromContext(ctx)
+	if !ok || claims == nil || claims.UserID() == "" {
+		return nil, fmt.Errorf("unauthenticated")
+	}
+	reads, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, workflow, versionID)
+	if err != nil {
+		return nil, err
+	}
+	if effect != authz.EffectAllow {
+		return nil, status.Error(codes.PermissionDenied, "obfuscated content is not summarised")
+	}
+	v := reads[0].version
+	pol, err := policyClient.GetPolicy(ctx, &corev1.GetPolicyRequest{Id: v.PolicyID})
+	if err != nil {
+		return nil, err
+	}
+	text := lexicalPlainText(v.ContentJSON)
+	if text == "" {
+		return nil, status.Error(codes.FailedPrecondition, "the version has no text to summarise")
+	}
+	return submitSummaryJob(ctx, client, categoryClient, v.PolicyID, versionID, summaryJobInput{
+		Scope:       "version",
+		Regenerate:  true,
+		VersionID:   versionID,
+		PolicyID:    v.PolicyID,
+		PolicyTitle: pol.GetPolicy().GetTitle(),
+		Text:        text,
+	})
 }

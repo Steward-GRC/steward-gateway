@@ -86,12 +86,21 @@ type TypePref { kind: String! category: NotifCategory! cadence: NotifCadence! ma
 type NotifTypeDef { kind: String! category: NotifCategory! mandatory: Boolean! delivery: NotifDelivery! }
 # The user's digest delivery anchor: local hour [0,23], ISO day-of-week [1,7].
 type DigestWindow { dailyHour: Int! weeklyDow: Int! }
+# A daily window of local hours in which email and push are held. start is the first
+# hour held and end the first hour not held, both [0,23] in timezone (an IANA name);
+# end below start is a window across midnight. In-app notices are never held, and
+# security, transactional and critical-severity kinds bypass the window. A held
+# notice is not sent later.
+type QuietHours { start: Int! end: Int! timezone: String! }
 
 type NotificationSettings {
   channels: NotificationPref!         # existing email/inApp/push master switches
   categories: [CategoryPref!]!        # the primary control
   overrides: [TypePref!]!             # advanced per-type overrides
   digest: DigestWindow!
+  # The caller's quiet hours, or null when none is stored (clearing returns to that state;
+  # obligations then applies its default window of 22:00 to 07:00).
+  quietHours: QuietHours
 }
 
 type OverdueEntry { userId: ID! email: String! userName: String dueAt: String }
@@ -150,6 +159,10 @@ extend type Mutation {
   setCategoryCadence(category: NotifCategory!, cadence: NotifCadence!): NotificationSettings!
   setTypeCadence(kind: String!, cadence: NotifCadence!): NotificationSettings!
   setDigestWindow(dailyHour: Int!, weeklyDow: Int!): NotificationSettings!
+  # Neither start nor end clears the stored window. One without the other, an hour
+  # outside [0,23], start equal to end, or a timezone that is not an IANA name is
+  # NOTIFY_PREF_INVALID. timezone defaults to UTC.
+  setQuietHours(start: Int, end: Int, timezone: String): NotificationSettings!
   setNotificationChannels(input: NotificationPrefInput!): NotificationSettings!
   recordView(policyVersionId: ID!): Boolean!
 }

@@ -31,6 +31,7 @@ type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 type ResolverRoot interface {
 	Mutation() MutationResolver
+	NotificationSettings() NotificationSettingsResolver
 	PolicyVersion() PolicyVersionResolver
 	Query() QueryResolver
 	Subscription() SubscriptionResolver
@@ -821,6 +822,7 @@ type ComplexityRoot struct {
 		SetPolicyReferences           func(childComplexity int, policyID string, referenceIds []string) int
 		SetPolicySensitivity          func(childComplexity int, policyID string, sensitivity Sensitivity) int
 		SetPolicyTemplate             func(childComplexity int, policyID string, templateID *string, none bool) int
+		SetQuietHours                 func(childComplexity int, start *int, end *int, timezone *string) int
 		SetReferenceArchived          func(childComplexity int, id string, archived bool) int
 		SetRelatedPolicies            func(childComplexity int, policyID string, relatedPolicyIds []string) int
 		SetReviewThreadResolved       func(childComplexity int, threadID string, resolved bool) int
@@ -915,6 +917,7 @@ type ComplexityRoot struct {
 		Channels   func(childComplexity int) int
 		Digest     func(childComplexity int) int
 		Overrides  func(childComplexity int) int
+		QuietHours func(childComplexity int) int
 	}
 
 	Obligation struct {
@@ -1186,6 +1189,12 @@ type ComplexityRoot struct {
 		WorkflowDef                func(childComplexity int, id string) int
 		WorkflowDefs               func(childComplexity int) int
 		WorkflowStatus             func(childComplexity int, policyVersionID string) int
+	}
+
+	QuietHours struct {
+		End      func(childComplexity int) int
+		Start    func(childComplexity int) int
+		Timezone func(childComplexity int) int
 	}
 
 	RaciDecision struct {
@@ -1808,6 +1817,7 @@ type MutationResolver interface {
 	SetCategoryCadence(ctx context.Context, category NotifCategory, cadence NotifCadence) (*NotificationSettings, error)
 	SetTypeCadence(ctx context.Context, kind string, cadence NotifCadence) (*NotificationSettings, error)
 	SetDigestWindow(ctx context.Context, dailyHour int, weeklyDow int) (*NotificationSettings, error)
+	SetQuietHours(ctx context.Context, start *int, end *int, timezone *string) (*NotificationSettings, error)
 	SetNotificationChannels(ctx context.Context, input NotificationPrefInput) (*NotificationSettings, error)
 	RecordView(ctx context.Context, policyVersionID string) (bool, error)
 	MovePolicies(ctx context.Context, policyIds []string, homeCategoryID string) (*MovePoliciesResult, error)
@@ -1855,6 +1865,9 @@ type MutationResolver interface {
 	UpdateWorkflowDef(ctx context.Context, id string, name string, description *string, stages []*WorkflowStageInput) (*WorkflowDef, error)
 	ArchiveWorkflowDef(ctx context.Context, id string) (bool, error)
 	SetWorkflowVetoEnabled(ctx context.Context, id string, enabled bool) (*WorkflowDef, error)
+}
+type NotificationSettingsResolver interface {
+	QuietHours(ctx context.Context, obj *NotificationSettings) (*QuietHours, error)
 }
 type PolicyVersionResolver interface {
 	Appendices(ctx context.Context, obj *PolicyVersion) ([]*Appendix, error)
@@ -5830,6 +5843,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetPolicyTemplate(childComplexity, args["policyId"].(string), args["templateId"].(*string), args["none"].(bool)), true
+	case "Mutation.setQuietHours":
+		if e.ComplexityRoot.Mutation.SetQuietHours == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setQuietHours_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetQuietHours(childComplexity, args["start"].(*int), args["end"].(*int), args["timezone"].(*string)), true
 	case "Mutation.setReferenceArchived":
 		if e.ComplexityRoot.Mutation.SetReferenceArchived == nil {
 			break
@@ -6443,6 +6467,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.NotificationSettings.Overrides(childComplexity), true
+	case "NotificationSettings.quietHours":
+		if e.ComplexityRoot.NotificationSettings.QuietHours == nil {
+			break
+		}
+
+		return e.ComplexityRoot.NotificationSettings.QuietHours(childComplexity), true
 
 	case "Obligation.dueAt":
 		if e.ComplexityRoot.Obligation.DueAt == nil {
@@ -8147,6 +8177,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.WorkflowStatus(childComplexity, args["policyVersionId"].(string)), true
+
+	case "QuietHours.end":
+		if e.ComplexityRoot.QuietHours.End == nil {
+			break
+		}
+
+		return e.ComplexityRoot.QuietHours.End(childComplexity), true
+	case "QuietHours.start":
+		if e.ComplexityRoot.QuietHours.Start == nil {
+			break
+		}
+
+		return e.ComplexityRoot.QuietHours.Start(childComplexity), true
+	case "QuietHours.timezone":
+		if e.ComplexityRoot.QuietHours.Timezone == nil {
+			break
+		}
+
+		return e.ComplexityRoot.QuietHours.Timezone(childComplexity), true
 
 	case "RaciDecision.ack":
 		if e.ComplexityRoot.RaciDecision.Ack == nil {
@@ -12634,12 +12683,21 @@ type TypePref { kind: String! category: NotifCategory! cadence: NotifCadence! ma
 type NotifTypeDef { kind: String! category: NotifCategory! mandatory: Boolean! delivery: NotifDelivery! }
 # The user's digest delivery anchor: local hour [0,23], ISO day-of-week [1,7].
 type DigestWindow { dailyHour: Int! weeklyDow: Int! }
+# A daily window of local hours in which email and push are held. start is the first
+# hour held and end the first hour not held, both [0,23] in timezone (an IANA name);
+# end below start is a window across midnight. In-app notices are never held, and
+# security, transactional and critical-severity kinds bypass the window. A held
+# notice is not sent later.
+type QuietHours { start: Int! end: Int! timezone: String! }
 
 type NotificationSettings {
   channels: NotificationPref!         # existing email/inApp/push master switches
   categories: [CategoryPref!]!        # the primary control
   overrides: [TypePref!]!             # advanced per-type overrides
   digest: DigestWindow!
+  # The caller's quiet hours, or null when none is stored (clearing returns to that state;
+  # obligations then applies its default window of 22:00 to 07:00).
+  quietHours: QuietHours
 }
 
 type OverdueEntry { userId: ID! email: String! userName: String dueAt: String }
@@ -12698,6 +12756,10 @@ extend type Mutation {
   setCategoryCadence(category: NotifCategory!, cadence: NotifCadence!): NotificationSettings!
   setTypeCadence(kind: String!, cadence: NotifCadence!): NotificationSettings!
   setDigestWindow(dailyHour: Int!, weeklyDow: Int!): NotificationSettings!
+  # Neither start nor end clears the stored window. One without the other, an hour
+  # outside [0,23], start equal to end, or a timezone that is not an IANA name is
+  # NOTIFY_PREF_INVALID. timezone defaults to UTC.
+  setQuietHours(start: Int, end: Int, timezone: String): NotificationSettings!
   setNotificationChannels(input: NotificationPrefInput!): NotificationSettings!
   recordView(policyVersionId: ID!): Boolean!
 }
@@ -15225,6 +15287,8 @@ func (ec *executionContext) childFields_NotificationSettings(ctx context.Context
 		return ec.fieldContext_NotificationSettings_overrides(ctx, field)
 	case "digest":
 		return ec.fieldContext_NotificationSettings_digest(ctx, field)
+	case "quietHours":
+		return ec.fieldContext_NotificationSettings_quietHours(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type NotificationSettings", field.Name)
 }
@@ -15539,6 +15603,18 @@ func (ec *executionContext) childFields_PolicyViewerCan(ctx context.Context, fie
 		return ec.fieldContext_PolicyViewerCan_ack(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PolicyViewerCan", field.Name)
+}
+
+func (ec *executionContext) childFields_QuietHours(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "start":
+		return ec.fieldContext_QuietHours_start(ctx, field)
+	case "end":
+		return ec.fieldContext_QuietHours_end(ctx, field)
+	case "timezone":
+		return ec.fieldContext_QuietHours_timezone(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type QuietHours", field.Name)
 }
 
 func (ec *executionContext) childFields_RaciDecision(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -19410,6 +19486,36 @@ func (ec *executionContext) field_Mutation_setPolicyTemplate_args(ctx context.Co
 		return nil, err
 	}
 	args["none"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setQuietHours_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "start",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["start"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "end",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["end"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "timezone",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["timezone"] = arg2
 	return args, nil
 }
 
@@ -36416,6 +36522,50 @@ func (ec *executionContext) fieldContext_Mutation_setDigestWindow(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_setQuietHours(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setQuietHours(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetQuietHours(ctx, fc.Args["start"].(*int), fc.Args["end"].(*int), fc.Args["timezone"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *NotificationSettings) graphql.Marshaler {
+			return ec.marshalNNotificationSettings2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐNotificationSettings(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setQuietHours(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_NotificationSettings(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setQuietHours_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_setNotificationChannels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -39220,6 +39370,38 @@ func (ec *executionContext) fieldContext_NotificationSettings_digest(_ context.C
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_DigestWindow(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NotificationSettings_quietHours(ctx context.Context, field graphql.CollectedField, obj *NotificationSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_NotificationSettings_quietHours(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.NotificationSettings().QuietHours(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *QuietHours) graphql.Marshaler {
+			return ec.marshalOQuietHours2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐQuietHours(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_NotificationSettings_quietHours(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NotificationSettings",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_QuietHours(ctx, field)
 		},
 	}
 	return fc, nil
@@ -46306,6 +46488,75 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _QuietHours_start(ctx context.Context, field graphql.CollectedField, obj *QuietHours) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_QuietHours_start(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Start, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_QuietHours_start(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("QuietHours", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _QuietHours_end(ctx context.Context, field graphql.CollectedField, obj *QuietHours) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_QuietHours_end(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.End, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_QuietHours_end(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("QuietHours", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _QuietHours_timezone(ctx context.Context, field graphql.CollectedField, obj *QuietHours) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_QuietHours_timezone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Timezone, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_QuietHours_timezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("QuietHours", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _RaciDecision_read(ctx context.Context, field graphql.CollectedField, obj *RaciDecision) (ret graphql.Marshaler) {
@@ -62526,6 +62777,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setQuietHours":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setQuietHours(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setNotificationChannels":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setNotificationChannels(ctx, field)
@@ -63252,23 +63510,61 @@ func (ec *executionContext) _NotificationSettings(ctx context.Context, sel ast.S
 		case "channels":
 			out.Values[i] = ec._NotificationSettings_channels(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "categories":
 			out.Values[i] = ec._NotificationSettings_categories(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "overrides":
 			out.Values[i] = ec._NotificationSettings_overrides(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "digest":
 			out.Values[i] = ec._NotificationSettings_digest(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "quietHours":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._NotificationSettings_quietHours(ctx, field, obj)
+				if res == graphql.RequiredNull {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.IsDeferred() {
+				deferredFieldSet.AddField(field)
+				fieldIndex := len(deferredFieldSet.Values) - 1
+				deferredFieldSet.Concurrently(fieldIndex, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, deferredFieldSet)
+				})
+
+				for _, deferrable := range field.Deferrables {
+					view, ok := deferLabelToView[deferrable.Label]
+					if !ok {
+						view = deferredFieldSet.NewView()
+						deferLabelToView[deferrable.Label] = view
+					}
+					view.AddIndices(fieldIndex)
+				}
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -66924,6 +67220,54 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			})
 			if out.Values[i] == graphql.RequiredNull {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var quietHoursImplementors = []string{"QuietHours"}
+
+func (ec *executionContext) _QuietHours(ctx context.Context, sel ast.SelectionSet, obj *QuietHours) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, quietHoursImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("QuietHours")
+		case "start":
+			out.Values[i] = ec._QuietHours_start(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "end":
+			out.Values[i] = ec._QuietHours_end(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "timezone":
+			out.Values[i] = ec._QuietHours_timezone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -75684,6 +76028,13 @@ func (ec *executionContext) marshalOPolicyVersion2ᚖgithubᚗcomᚋStewardᚑGR
 		return graphql.Null
 	}
 	return ec._PolicyVersion(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOQuietHours2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐQuietHours(ctx context.Context, sel ast.SelectionSet, v *QuietHours) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._QuietHours(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalORaciRuleInput2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciRuleInputᚄ(ctx context.Context, v any) ([]*RaciRuleInput, error) {

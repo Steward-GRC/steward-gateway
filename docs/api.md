@@ -341,7 +341,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 
 - obligations AckService: RecordAck, RecordView, GetAckStatus
 - obligations ObligationService: GetMyObligations, GetObligatedAudienceCount, MyAckSummary
-- obligations NotifPrefService: UpsertNotifPref, GetNotifPref, ListNotifTypes, GetNotificationSettings, SetCategoryCadence, SetTypeCadence, SetDigestWindow
+- obligations NotifPrefService: UpsertNotifPref, GetNotifPref, ListNotifTypes, GetNotificationSettings, SetCategoryCadence, SetTypeCadence, SetDigestWindow, GetQuietHours, SetQuietHours
 - obligations WelcomeService: ResendWelcome
 - obligations ReportingService: GetCompletionReport, GetAckRoster, GetAckActivity, ExportAcks
 - audit AuditService: QueryAuditLog, ExportAuditSegment, VerifyAuditChain, ShredSubject, CreateLegalHold, ListLegalHolds, ReleaseLegalHold

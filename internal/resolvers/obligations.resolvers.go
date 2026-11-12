@@ -36,6 +36,11 @@ func (r *mutationResolver) SetDigestWindow(ctx context.Context, dailyHour int, w
 	return SetDigestWindowResolver(ctx, r.NotifPrefClient, dailyHour, weeklyDow)
 }
 
+// SetQuietHours is the resolver for the setQuietHours field.
+func (r *mutationResolver) SetQuietHours(ctx context.Context, start *int, end *int, timezone *string) (*NotificationSettings, error) {
+	return SetQuietHoursResolver(ctx, r.NotifPrefClient, start, end, timezone)
+}
+
 // SetNotificationChannels is the resolver for the setNotificationChannels field.
 func (r *mutationResolver) SetNotificationChannels(ctx context.Context, input NotificationPrefInput) (*NotificationSettings, error) {
 	return SetNotificationChannelsResolver(ctx, r.NotifPrefClient, input)
@@ -44,6 +49,11 @@ func (r *mutationResolver) SetNotificationChannels(ctx context.Context, input No
 // RecordView is the resolver for the recordView field.
 func (r *mutationResolver) RecordView(ctx context.Context, policyVersionID string) (bool, error) {
 	return RecordViewResolver(ctx, r.AckClient, policyVersionID)
+}
+
+// QuietHours is the resolver for the quietHours field.
+func (r *notificationSettingsResolver) QuietHours(ctx context.Context, obj *NotificationSettings) (*QuietHours, error) {
+	return QuietHoursResolver(ctx, r.NotifPrefClient)
 }
 
 // MyObligations is the resolver for the myObligations field.
@@ -105,3 +115,10 @@ func (r *queryResolver) AckRoster(ctx context.Context, policyVersionID string, g
 func (r *queryResolver) AckActivity(ctx context.Context, policyVersionID string, groupID *string, days int) ([]*AckActivityDay, error) {
 	return AckActivityResolver(ctx, r.ReportingClient, policyVersionID, groupID, days)
 }
+
+// NotificationSettings returns NotificationSettingsResolver implementation.
+func (r *Resolver) NotificationSettings() NotificationSettingsResolver {
+	return &notificationSettingsResolver{r}
+}
+
+type notificationSettingsResolver struct{ *Resolver }

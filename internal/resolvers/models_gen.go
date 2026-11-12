@@ -888,6 +888,7 @@ type NotificationSettings struct {
 	Categories []*CategoryPref   `json:"categories"`
 	Overrides  []*TypePref       `json:"overrides"`
 	Digest     *DigestWindow     `json:"digest"`
+	QuietHours *QuietHours       `json:"quietHours,omitempty"`
 }
 
 type Obligation struct {
@@ -1054,6 +1055,12 @@ type PolicyViewerCan struct {
 }
 
 type Query struct {
+}
+
+type QuietHours struct {
+	Start    int    `json:"start"`
+	End      int    `json:"end"`
+	Timezone string `json:"timezone"`
 }
 
 type RaciDecision struct {

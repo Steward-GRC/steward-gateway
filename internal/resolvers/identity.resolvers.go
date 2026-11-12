@@ -129,6 +129,11 @@ func (r *mutationResolver) RevokeMySessions(ctx context.Context) (int, error) {
 	return RevokeMySessionsResolver(ctx, r.IdentityClient)
 }
 
+// RevokeMySession is the resolver for the revokeMySession field.
+func (r *mutationResolver) RevokeMySession(ctx context.Context, sessionID string) (int, error) {
+	return RevokeMySessionResolver(ctx, r.logger(), r.IdentityClient, sessionID)
+}
+
 // CreateLocalUser is the resolver for the createLocalUser field.
 func (r *mutationResolver) CreateLocalUser(ctx context.Context, username string, email string, name string, password string) (*User, error) {
 	return CreateLocalUserResolver(ctx, r.IdentityAdminClient, username, email, name, password)
@@ -284,6 +289,11 @@ func (r *queryResolver) MyManagedGroups(ctx context.Context) ([]*PlatformGroup, 
 // ListUserSessions is the resolver for the listUserSessions field.
 func (r *queryResolver) ListUserSessions(ctx context.Context, userID string) ([]*Session, error) {
 	return ListUserSessionsResolver(ctx, r.IdentityAdminClient, userID)
+}
+
+// MySessions is the resolver for the mySessions field.
+func (r *queryResolver) MySessions(ctx context.Context) ([]*Session, error) {
+	return ListMySessionsResolver(ctx, r.logger(), r.IdentityClient)
 }
 
 // MyFactors is the resolver for the myFactors field.

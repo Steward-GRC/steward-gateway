@@ -360,13 +360,28 @@ type Session {
   # When the session was last used for a signed-in request (RFC 3339, to within
   # identity's throttle window); null when it was never seen.
   lastSeenAt: String
+  # True on the session this request runs on (mySessions only); always false
+  # in the admin listing.
+  current: Boolean!
 }
 
-extend type Query { listUserSessions(userId: ID!): [Session!]! }
+extend type Query {
+  listUserSessions(userId: ID!): [Session!]!
+  # mySessions -> IdentityReadService.ListMySessions: the signed-in caller's
+  # active sessions, newest first, with the one this request runs on marked
+  # current. Self-service (any authenticated user).
+  mySessions: [Session!]!
+}
 
 extend type Mutation {
   revokeUserSessions(userId: ID!, reason: String): Int!
   revokeMySessions: Int!
+  # revokeMySession -> IdentityReadService.RevokeMySession: signs out one of
+  # the caller's OTHER sessions. Returns 1 when it was active and is now ended,
+  # 0 when it had already ended. The current session is refused (use
+  # revokeMySessions to end everything) and a session that is not the
+  # caller's reads as unknown. Self-service.
+  revokeMySession(sessionId: ID!): Int!
 }
 
 # --- Local accounts ---

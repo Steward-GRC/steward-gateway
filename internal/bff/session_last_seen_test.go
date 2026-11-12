@@ -108,3 +108,23 @@ func TestClaimsForUserFromIdentity_RecordsNoSession(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, id.lastGetUser.GetSessionId(), "an act-as target lookup must not mark a session as used")
 }
+
+func TestKratosSessionIDContextRoundTrip(t *testing.T) {
+	_, ok := KratosSessionIDFromContext(context.Background())
+	require.False(t, ok)
+	ctx := WithKratosSessionID(context.Background(), testKratosSessionID)
+	got, ok := KratosSessionIDFromContext(ctx)
+	require.True(t, ok)
+	require.Equal(t, testKratosSessionID, got)
+}
+
+func TestAuthenticate_PutsKratosSessionIDOnContext(t *testing.T) {
+	h := newTestHandler(t, okAuth())
+	_ = h.Store.Create(context.Background(), "sid1", Session{AccessToken: "AT", CSRFToken: "csrf", UserID: "u1", KratosSessionID: testKratosSessionID, ExpiresAt: time.Now().Add(5 * time.Minute)})
+	var got string
+	next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		got, _ = KratosSessionIDFromContext(r.Context())
+	})
+	h.Authenticate(next).ServeHTTP(httptest.NewRecorder(), authedRequest(http.MethodPost, "/query", "sid1", "csrf"))
+	require.Equal(t, testKratosSessionID, got)
+}

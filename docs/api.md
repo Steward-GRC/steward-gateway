@@ -333,6 +333,16 @@ Core audits it, naming the real admin and the user acted as during act-as, and o
 the owner and the compliance admins. If the call fails, the gateway returns its error and serves
 nothing. A read the access rules already allow is not a break-glass read and isn't recorded.
 
+## Moving the root seat
+
+Identity keeps exactly one root. `requestStepUpOtp` emails the calling root a code, then
+`transferRoot(userId, otp)` hands the seat to `userId` and returns them as the new root. The
+caller stops being root, keeps site-admin, and their sessions stay open. Identity enforces
+root-only, the act-as refusal and the code; the gateway passes its answer through, including
+`Unimplemented` from an identity that predates the call. `grantRoot` and `revokeRoot` are gone.
+The root override in the access rules follows the identity `is_root` flag, and claims are rebuilt
+from identity on every request, so the next request after a transfer already sees the new seat.
+
 ## Calling other services
 
 The gateway calls every Steward service over gRPC, never importing their Go modules: each proto is
@@ -348,7 +358,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - obligations ReportingService: GetCompletionReport, GetAckRoster, GetAckActivity, ExportAcks
 - audit AuditService: QueryAuditLog, ExportAuditSegment, VerifyAuditChain, ShredSubject, CreateLegalHold, ListLegalHolds, ReleaseLegalHold
 - ai AiService: SearchAndAnswer, AuthoringAssist, SubmitAIJob, GetAIJob, GetProviderStatus, GetAIEnabled, SetAIEnabled, GetAIConfig, SetProviderConfig, SetProviderCredential, TestProvider, AcceptDataNotice, SetMonthlyLimit, GetTopQuestions, GetPolicySummary, SetAIRetrievalConfig, SetUserAiQueryLimit, GetRelatedPolicies
-- identity IdentityAdminService: EnableUser, DisableUser, PreviewUserDeletion, DeleteUser, PreviewAccountMerge, MergeAccounts, GrantRole, RevokeRole, CreateGroup, AddUserToGroup, RemoveUserFromGroup, GrantGroupManager, RevokeGroupManager, SetUserPolicyOverride, RequestStepUpOtp, GrantRoot, RevokeRoot, RequestHardReset, ApproveHardReset, CancelHardReset, ListHardResetRequests, RevokeUserSessions, ListUserSessions, BreakGlassReveal, ActiveBreakGlass, CreateLocalUser, ResetUserPassword, UpdateUserProfile, CompleteOnboarding, UpdateMyProfile, AdminListUserFactors, AdminRemoveUserFactor, AdminRenameUserFactor
+- identity IdentityAdminService: EnableUser, DisableUser, PreviewUserDeletion, DeleteUser, PreviewAccountMerge, MergeAccounts, GrantRole, RevokeRole, CreateGroup, AddUserToGroup, RemoveUserFromGroup, GrantGroupManager, RevokeGroupManager, SetUserPolicyOverride, RequestStepUpOtp, TransferRoot, RequestHardReset, ApproveHardReset, CancelHardReset, ListHardResetRequests, RevokeUserSessions, ListUserSessions, BreakGlassReveal, ActiveBreakGlass, CreateLocalUser, ResetUserPassword, UpdateUserProfile, CompleteOnboarding, UpdateMyProfile, AdminListUserFactors, AdminRemoveUserFactor, AdminRenameUserFactor
 - identity IdentityReadService: GetUser, GetUserByEmail, JitProvisionByEmail, ListUsersInGroup, GetGroup, ListGroups, ListUsersByEmail, ListAllUsers, ListUserIdpGroups, RevokeMySessions, ChangeMyPassword, ListMySessions, RevokeMySession, GetSetupState, BootstrapRoot, GetAuthConfig, RequestPasswordReset, ResetPasswordWithCode, RequestLoginOtp, VerifyLoginOtp, MarkEmailVerified, EnrollTotpBegin, EnrollTotpConfirm, VerifyTotp, SendEmailOtp, VerifyEmailOtp, ListUserFactors, RemoveFactor, WebauthnRegisterBegin, WebauthnRegisterFinish, WebauthnAssertBegin, WebauthnAssertFinish, ListWebauthnCredentials, RemoveWebauthnCredential, RenameMFAMethod, Discover, CheckBreakGlassEligibility
 - identity IdentitySSOAdminService: AddOrganization, ListOrganizations, GetOrganization, UpdateIdPConnection, ChangeOrgProtocol, DeleteOrganization, StartDomainVerification, VerifyDomain, RecordIdPTestResult, ActivateOrganization, DisableOrganization, AddGroupMapping, ListGroupMappings, DeleteGroupMapping, GetSPCertificate, ListSPCertificates, ForceRotateSPCertificate, RecordBreakGlassLogin
 - workflow WorkflowService: Submit, Signal, GetStatus, ListPendingTasks, ListUpcomingTasks, SwapAssignee, BulkDecide, GetAssignmentHistory, GetStageEligiblePool, ListWorkflowDefs, GetWorkflowDef, CreateWorkflowDef, UpdateWorkflowDef, ArchiveWorkflowDef, SetWorkflowVetoEnabled, ResolveWorkflow

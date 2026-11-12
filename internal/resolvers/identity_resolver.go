@@ -17,7 +17,7 @@ import (
 )
 
 // RequestStepUpOtpResolver arms the server-verified step-up confirmation for a high-risk action
-// (grantRoot or revokeRoot).
+// (transferRoot).
 func RequestStepUpOtpResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient) (bool, error) {
 	if admin == nil {
 		return false, status.Error(codes.Unavailable, "identity admin unavailable")
@@ -32,33 +32,18 @@ func RequestStepUpOtpResolver(ctx context.Context, admin identityv1.IdentityAdmi
 	return true, nil
 }
 
-// GrantRootResolver makes userID a root admin as well. Identity itself is
-// root-only, refuses act-as and verifies the step-up code; the gateway only
-// passes the call through.
-func GrantRootResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, userID, otp string) (*User, error) {
+// TransferRootResolver hands the single root seat to userID. The caller must
+// be the current root, who keeps site-admin. Identity itself is root-only,
+// refuses act-as and verifies the step-up code; the gateway only passes the
+// call through.
+func TransferRootResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, userID, otp string) (*User, error) {
 	if admin == nil {
 		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
 	}
 	if _, ok := principal.FromContext(ctx); !ok {
 		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
 	}
-	resp, err := admin.GrantRoot(ctx, &identityv1.GrantRootRequest{UserId: userID, Otp: otp})
-	if err != nil {
-		return nil, err
-	}
-	return userToGraphQL(resp.GetUser()), nil
-}
-
-// RevokeRootResolver takes the root role from userID, who keeps site-admin.
-// Same checks as GrantRootResolver, all enforced by identity.
-func RevokeRootResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, userID, otp string) (*User, error) {
-	if admin == nil {
-		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
-	}
-	if _, ok := principal.FromContext(ctx); !ok {
-		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
-	}
-	resp, err := admin.RevokeRoot(ctx, &identityv1.RevokeRootRequest{UserId: userID, Otp: otp})
+	resp, err := admin.TransferRoot(ctx, &identityv1.TransferRootRequest{ToUserId: userID, Otp: otp})
 	if err != nil {
 		return nil, err
 	}

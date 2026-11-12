@@ -84,14 +84,9 @@ func (r *mutationResolver) RequestStepUpOtp(ctx context.Context) (bool, error) {
 	return RequestStepUpOtpResolver(ctx, r.IdentityAdminClient)
 }
 
-// GrantRoot is the resolver for the grantRoot field.
-func (r *mutationResolver) GrantRoot(ctx context.Context, userID string, otp string) (*User, error) {
-	return GrantRootResolver(ctx, r.IdentityAdminClient, userID, otp)
-}
-
-// RevokeRoot is the resolver for the revokeRoot field.
-func (r *mutationResolver) RevokeRoot(ctx context.Context, userID string, otp string) (*User, error) {
-	return RevokeRootResolver(ctx, r.IdentityAdminClient, userID, otp)
+// TransferRoot is the resolver for the transferRoot field.
+func (r *mutationResolver) TransferRoot(ctx context.Context, userID string, otp string) (*User, error) {
+	return TransferRootResolver(ctx, r.IdentityAdminClient, userID, otp)
 }
 
 // RequestHardReset is the resolver for the requestHardReset field.

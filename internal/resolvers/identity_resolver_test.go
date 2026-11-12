@@ -105,13 +105,9 @@ type fakeAdminClient struct {
 	setPolicyErr     error
 	lastSetPolicyReq *identityv1.SetUserPolicyOverrideRequest
 
-	grantRootResp    *identityv1.GrantRootResponse
-	grantRootErr     error
-	lastGrantRootReq *identityv1.GrantRootRequest
-
-	revokeRootResp    *identityv1.RevokeRootResponse
-	revokeRootErr     error
-	lastRevokeRootReq *identityv1.RevokeRootRequest
+	transferRootResp    *identityv1.TransferRootResponse
+	transferRootErr     error
+	lastTransferRootReq *identityv1.TransferRootRequest
 
 	requestHardResetResp    *identityv1.RequestHardResetResponse
 	requestHardResetErr     error
@@ -149,20 +145,12 @@ type fakeAdminClient struct {
 	lastUpdateProfileReq *identityv1.UpdateUserProfileRequest
 }
 
-func (f *fakeAdminClient) GrantRoot(_ context.Context, in *identityv1.GrantRootRequest, _ ...grpc.CallOption) (*identityv1.GrantRootResponse, error) {
-	f.lastGrantRootReq = in
-	if f.grantRootErr != nil {
-		return nil, f.grantRootErr
+func (f *fakeAdminClient) TransferRoot(_ context.Context, in *identityv1.TransferRootRequest, _ ...grpc.CallOption) (*identityv1.TransferRootResponse, error) {
+	f.lastTransferRootReq = in
+	if f.transferRootErr != nil {
+		return nil, f.transferRootErr
 	}
-	return f.grantRootResp, nil
-}
-
-func (f *fakeAdminClient) RevokeRoot(_ context.Context, in *identityv1.RevokeRootRequest, _ ...grpc.CallOption) (*identityv1.RevokeRootResponse, error) {
-	f.lastRevokeRootReq = in
-	if f.revokeRootErr != nil {
-		return nil, f.revokeRootErr
-	}
-	return f.revokeRootResp, nil
+	return f.transferRootResp, nil
 }
 
 func (f *fakeAdminClient) RequestHardReset(_ context.Context, in *identityv1.RequestHardResetRequest, _ ...grpc.CallOption) (*identityv1.RequestHardResetResponse, error) {
@@ -804,63 +792,66 @@ func TestAddUserToGroupRefetchesViaGetUser(t *testing.T) {
 	}
 }
 
-func TestGrantRootResolverRequiresAuthentication(t *testing.T) {
+func TestTransferRootResolverRequiresAuthentication(t *testing.T) {
 	admin := &fakeAdminClient{}
-	_, err := resolvers.GrantRootResolver(context.Background(), admin, "u-target", "123456")
+	_, err := resolvers.TransferRootResolver(context.Background(), admin, "u-target", "123456")
 	if status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("want Unauthenticated, got %v", status.Code(err))
 	}
-	if admin.lastGrantRootReq != nil {
-		t.Errorf("GrantRoot should not be called with no authenticated caller: %+v", admin.lastGrantRootReq)
+	if admin.lastTransferRootReq != nil {
+		t.Errorf("TransferRoot should not be called with no authenticated caller: %+v", admin.lastTransferRootReq)
 	}
 }
 
-func TestGrantRootResolverHappyPath(t *testing.T) {
+func TestTransferRootResolverHappyPath(t *testing.T) {
 	admin := &fakeAdminClient{
-		grantRootResp: &identityv1.GrantRootResponse{
+		transferRootResp: &identityv1.TransferRootResponse{
 			User: &identityv1.User{Id: "u-target", IsRoot: true, Roles: []string{"site-admin"}},
 		},
 	}
-	out, err := resolvers.GrantRootResolver(ctxWithUser(t, "u-root"), admin, "u-target", "654321")
+	out, err := resolvers.TransferRootResolver(ctxWithUser(t, "u-root"), admin, "u-target", "654321")
 	if err != nil {
-		t.Fatalf("GrantRootResolver: %v", err)
+		t.Fatalf("TransferRootResolver: %v", err)
 	}
-	if admin.lastGrantRootReq == nil || admin.lastGrantRootReq.UserId != "u-target" {
-		t.Errorf("GrantRoot called with wrong target: %+v", admin.lastGrantRootReq)
+	if admin.lastTransferRootReq == nil || admin.lastTransferRootReq.GetToUserId() != "u-target" {
+		t.Errorf("TransferRoot called with wrong target: %+v", admin.lastTransferRootReq)
 	}
-	if admin.lastGrantRootReq.GetOtp() != "654321" {
-		t.Errorf("GrantRoot otp not forwarded: %q", admin.lastGrantRootReq.GetOtp())
+	if admin.lastTransferRootReq.GetOtp() != "654321" {
+		t.Errorf("TransferRoot otp not forwarded: %q", admin.lastTransferRootReq.GetOtp())
 	}
 	if out.UserID != "u-target" || !out.IsRoot {
-		t.Errorf("unexpected granted user: %+v", out)
+		t.Errorf("unexpected new root user: %+v", out)
 	}
 }
 
-func TestGrantRootResolverPassesThroughIdentityRefusal(t *testing.T) {
-	// Identity itself enforces root-only and act-as refusal; the gateway
-	// passes its error straight through rather than re-deciding.
-	admin := &fakeAdminClient{grantRootErr: status.Error(codes.PermissionDenied, "root required")}
-	_, err := resolvers.GrantRootResolver(ctxWithUser(t, "u-caller"), admin, "u-target", "123456")
+func TestTransferRootResolverPassesThroughIdentityRefusal(t *testing.T) {
+	// Identity itself enforces root-only, act-as refusal and the step-up
+	// code; the gateway passes its error straight through rather than
+	// re-deciding.
+	admin := &fakeAdminClient{transferRootErr: status.Error(codes.PermissionDenied, "root required")}
+	_, err := resolvers.TransferRootResolver(ctxWithUser(t, "u-caller"), admin, "u-target", "123456")
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("want PermissionDenied, got %v", status.Code(err))
 	}
 }
 
-func TestRevokeRootResolverHappyPath(t *testing.T) {
-	admin := &fakeAdminClient{
-		revokeRootResp: &identityv1.RevokeRootResponse{
-			User: &identityv1.User{Id: "u-target", IsRoot: false, Roles: []string{"site-admin"}},
-		},
+func TestTransferRootResolverMapsUnimplemented(t *testing.T) {
+	// An identity that predates TransferRoot answers Unimplemented; it must
+	// reach the client as that code, not be swallowed or recoded.
+	admin := &fakeAdminClient{transferRootErr: status.Error(codes.Unimplemented, "deprecated")}
+	_, err := resolvers.TransferRootResolver(ctxWithUser(t, "u-root"), admin, "u-target", "123456")
+	if status.Code(err) != codes.Unimplemented {
+		t.Fatalf("want Unimplemented, got %v", status.Code(err))
 	}
-	out, err := resolvers.RevokeRootResolver(ctxWithUser(t, "u-root"), admin, "u-target", "654321")
-	if err != nil {
-		t.Fatalf("RevokeRootResolver: %v", err)
+	if got := wireStatus(err).Code(); got != codes.Unimplemented {
+		t.Fatalf("wire code = %v, want Unimplemented", got)
 	}
-	if admin.lastRevokeRootReq == nil || admin.lastRevokeRootReq.UserId != "u-target" {
-		t.Errorf("RevokeRoot called with wrong target: %+v", admin.lastRevokeRootReq)
-	}
-	if out.UserID != "u-target" || out.IsRoot {
-		t.Errorf("unexpected revoked user: %+v", out)
+}
+
+func TestTransferRootResolverUnavailableWithoutClient(t *testing.T) {
+	_, err := resolvers.TransferRootResolver(ctxWithUser(t, "u-root"), nil, "u-target", "123456")
+	if status.Code(err) != codes.Unavailable {
+		t.Fatalf("want Unavailable, got %v", status.Code(err))
 	}
 }
 

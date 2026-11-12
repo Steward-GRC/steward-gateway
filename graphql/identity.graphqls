@@ -211,17 +211,16 @@ extend type Mutation {
   setUserPolicyOverride(userId: ID!, policyNumber: String!, effect: OverrideEffect): User!
   # Emails a one-time confirmation code to the CALLING admin's own address
   # (server-bound from the session, never from input). Arm this before
-  # grantRoot or revokeRoot; the emailed code must then be passed as otp.
+  # transferRoot; the emailed code must then be passed as otp.
   # Always returns true (anti-enumeration).
   requestStepUpOtp: Boolean!
-  # Makes userId a root admin as well; they also get site-admin. Root only,
-  # refused during act-as, and requires the one-time code emailed by
+  # Hands the single root seat to userId and returns them as the new root.
+  # There is exactly one root: the caller stops being root and keeps
+  # site-admin, userId also gets site-admin, and sessions stay open. Root
+  # only, refused during act-as, and requires the one-time code emailed by
   # requestStepUpOtp, verified server-side first — an invalid/absent code
-  # grants nothing.
-  grantRoot(userId: ID!, otp: String!): User!
-  # Takes the root role from userId, who keeps site-admin. The last root
-  # admin can't lose it. Same checks as grantRoot.
-  revokeRoot(userId: ID!, otp: String!): User!
+  # moves nothing.
+  transferRoot(userId: ID!, otp: String!): User!
   # Starts a two-person hard reset of a module: one root admin asks, a
   # different root admin approves within the request's 24h window. Root
   # only, refused during act-as. One open request per module.

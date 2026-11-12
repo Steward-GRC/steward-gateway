@@ -5,7 +5,6 @@ package resolvers
 
 import (
 	"context"
-	"slices"
 
 	authz "github.com/Steward-GRC/steward-authz"
 	"google.golang.org/grpc/codes"
@@ -15,26 +14,27 @@ import (
 )
 
 // Who may co-edit and submit a policy's drafts, top wins:
-//  1. a site admin (or root), always;
+//  1. root, always;
 //  2. the policy's primary author (its owner), always;
-//  3. an owner of the policy's category or any ancestor (undeniable);
-//  4. an author whose category rules allow author and don't deny it.
+//  3. whoever the category access rules (the ordered engine) allow Author:
+//     an owner of the category or any ancestor (undeniable), or an author
+//     row, or Manage (which implies Author).
 //
-// (3) and (4) are steward-authz's Resolve(...).Author on the category chain.
-// Discarding a draft and deleting a never-published policy sit at the same
-// tier; only reassigning ownership (setPolicyOwner, movePolicy) is site-admin
-// only.
+// A site admin who is not root follows the rules like everyone else; their
+// fallback is break-glass for reading. Discarding a draft and deleting a
+// never-published policy sit at the same tier; only reassigning ownership
+// (setPolicyOwner, movePolicy) is site-admin only.
 
 type effectiveAuthorCtx struct {
 	uid         string
 	subj        authz.Subject
 	ownerUserID string
 	draftID     string
-	chain       []authz.CategoryRuleset
+	access      *categoryAccess
 }
 
-// loadEffectiveAuthorCtx resolves the caller and loads the policy's owner and category ruleset
-// chain (leaf→root, with owners) for an authorization decision.
+// loadEffectiveAuthorCtx resolves the caller and loads the policy's owner and category access
+// (the chain with owners and rules) for an authorization decision.
 func loadEffectiveAuthorCtx(ctx context.Context, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, policyID string) (effectiveAuthorCtx, error) {
 	uid, subj, err := evalSubjectFromCtx(ctx)
 	if err != nil {
@@ -45,50 +45,40 @@ func loadEffectiveAuthorCtx(ctx context.Context, policyClient corev1.PolicyServi
 		return effectiveAuthorCtx{}, err
 	}
 	p := resp.GetPolicy()
-	var chain []authz.CategoryRuleset
+	var access *categoryAccess
 	if categoryClient != nil && p.GetHomeCategoryId() != "" {
-		c, cerr := buildCategoryChain(ctx, categoryClient, p.GetHomeCategoryId())
+		c, cerr := loadCategoryAccess(ctx, categoryClient, p.GetHomeCategoryId())
 		if cerr != nil {
-			return effectiveAuthorCtx{}, status.Errorf(codes.Internal, "load category ruleset chain: %v", cerr)
+			return effectiveAuthorCtx{}, status.Errorf(codes.Internal, "load category access: %v", cerr)
 		}
-		chain = c
+		access = c
 	}
-	return effectiveAuthorCtx{uid: uid, subj: subj, ownerUserID: p.GetOwnerUserId(), draftID: p.GetCurrentDraftVersionId(), chain: chain}, nil
+	return effectiveAuthorCtx{uid: uid, subj: subj, ownerUserID: p.GetOwnerUserId(), draftID: p.GetCurrentDraftVersionId(), access: access}, nil
 }
 
-func (e effectiveAuthorCtx) isSiteAdmin() bool { return e.subj.SiteAdmin() || e.subj.Root }
+// isRoot reports whether the caller holds the root seat, the only exempt one.
+func (e effectiveAuthorCtx) isRoot() bool { return e.subj.Root }
 
 func (e effectiveAuthorCtx) isPrimaryAuthor() bool {
 	return e.ownerUserID != "" && e.uid == e.ownerUserID
 }
 
-// meritAuthorAllowed is the category-rule author decision, with site admin
-// left out (it is composed on top).
-func (e effectiveAuthorCtx) meritAuthorAllowed(ctx context.Context) bool {
-	if len(e.chain) == 0 {
+// authorAllowed is the category-rule Author decision: a row, an owner, Manage
+// or root.
+func (e effectiveAuthorCtx) authorAllowed() bool {
+	if e.access == nil {
 		return false
 	}
-	return authz.Resolve(ctx, meritSubject(e.subj), e.chain).Author.Allowed
+	return e.access.decide(personFromSubject(e.subj)).Author.Allowed
 }
 
-// meritReadAllowed is the category-rule read decision, with site admin left
-// out. Resolve folds author and approve into read, and owners read.
-func (e effectiveAuthorCtx) meritReadAllowed(ctx context.Context) bool {
-	if len(e.chain) == 0 {
+// readAllowed is the category-rule Read decision (Author, Approve and Manage
+// confer Read over a Read deny).
+func (e effectiveAuthorCtx) readAllowed() bool {
+	if e.access == nil {
 		return false
 	}
-	return authz.Resolve(ctx, meritSubject(e.subj), e.chain).Read.Allowed
-}
-
-// ownsCategory reports whether the caller owns the policy's category or any ancestor
-// (owners-as-managers), independent of any author grant.
-func (e effectiveAuthorCtx) ownsCategory() bool {
-	for _, c := range e.chain {
-		if slices.Contains(c.Owners, e.uid) {
-			return true
-		}
-	}
-	return false
+	return e.access.decide(personFromSubject(e.subj)).Read.Allowed
 }
 
 // authorizeEffectiveAuthor gates a draft edit or submit per the model above
@@ -108,66 +98,69 @@ func authorizeEffectiveAuthorCtx(ctx context.Context, policyClient corev1.Policy
 	if err != nil {
 		return effectiveAuthorCtx{}, err
 	}
-	if e.isSiteAdmin() || e.isPrimaryAuthor() || e.meritAuthorAllowed(ctx) {
+	if e.isRoot() || e.isPrimaryAuthor() || e.authorAllowed() {
 		return e, nil
 	}
 	return effectiveAuthorCtx{}, status.Error(codes.PermissionDenied, "not an author for this policy's category")
 }
 
-// authorizeCategoryAuthor gates creating a policy in homeCategoryID: a site
-// admin, an owner of the category or an ancestor, or an author the category
-// rules allow. Returns the caller's user id.
+// categoryAccessFor loads the access for a category for a caller-only check
+// (nil when no category is named or no client is wired).
+func categoryAccessFor(ctx context.Context, categoryClient corev1.CategoryServiceClient, categoryID string) (*categoryAccess, error) {
+	if categoryClient == nil || categoryID == "" {
+		return nil, nil
+	}
+	return loadCategoryAccess(ctx, categoryClient, categoryID)
+}
+
+// authorizeCategoryAuthor gates creating a policy in homeCategoryID: root, or
+// an owner of the category or an ancestor, or an author the category rules
+// allow. Returns the caller's user id.
 func authorizeCategoryAuthor(ctx context.Context, categoryClient corev1.CategoryServiceClient, homeCategoryID string) (string, error) {
 	uid, subj, err := evalSubjectFromCtx(ctx)
 	if err != nil {
 		return "", err
 	}
 	e := effectiveAuthorCtx{uid: uid, subj: subj}
-	if e.isSiteAdmin() {
+	if e.isRoot() {
 		return uid, nil
 	}
 	if categoryClient == nil || homeCategoryID == "" {
 		return "", status.Error(codes.PermissionDenied, "not an author for the target category")
 	}
-	chain, cerr := buildCategoryChain(ctx, categoryClient, homeCategoryID)
+	access, cerr := loadCategoryAccess(ctx, categoryClient, homeCategoryID)
 	if cerr != nil {
-		return "", status.Errorf(codes.Internal, "load category ruleset chain: %v", cerr)
+		return "", status.Errorf(codes.Internal, "load category access: %v", cerr)
 	}
-	e.chain = chain
-	if e.ownsCategory() || e.meritAuthorAllowed(ctx) {
+	e.access = access
+	if e.authorAllowed() {
 		return uid, nil
 	}
 	return "", status.Error(codes.PermissionDenied, "not an author for the target category")
 }
 
 // canAuthorCategory is authorizeCategoryAuthor as a boolean, for template
-// visibility. A template with no category is visible to site admins only.
+// visibility. A template with no category is visible to root only.
 func canAuthorCategory(ctx context.Context, categoryClient corev1.CategoryServiceClient, uid string, subj authz.Subject, categoryID string) bool {
 	e := effectiveAuthorCtx{uid: uid, subj: subj}
-	if e.isSiteAdmin() {
+	if e.isRoot() {
 		return true
 	}
-	if categoryClient == nil || categoryID == "" {
-		return false
+	if access, err := categoryAccessFor(ctx, categoryClient, categoryID); err == nil {
+		e.access = access
 	}
-	if c, cerr := buildCategoryChain(ctx, categoryClient, categoryID); cerr == nil {
-		e.chain = c
-	}
-	return e.ownsCategory() || e.meritAuthorAllowed(ctx)
+	return e.authorAllowed()
 }
 
 // canReadCategory is the read counterpart of canAuthorCategory, for the AI
 // category-scope gate on read-type operations.
 func canReadCategory(ctx context.Context, categoryClient corev1.CategoryServiceClient, uid string, subj authz.Subject, categoryID string) bool {
 	e := effectiveAuthorCtx{uid: uid, subj: subj}
-	if e.isSiteAdmin() {
+	if e.isRoot() {
 		return true
 	}
-	if categoryClient == nil || categoryID == "" {
-		return false
+	if access, err := categoryAccessFor(ctx, categoryClient, categoryID); err == nil {
+		e.access = access
 	}
-	if c, cerr := buildCategoryChain(ctx, categoryClient, categoryID); cerr == nil {
-		e.chain = c
-	}
-	return e.meritReadAllowed(ctx)
+	return e.readAllowed()
 }

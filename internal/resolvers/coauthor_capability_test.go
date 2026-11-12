@@ -46,6 +46,10 @@ type erroringCategoryClient struct {
 	*raciCategoryClient
 }
 
+func (e *erroringCategoryClient) GetEffectiveRuleset(_ context.Context, _ *corev1.GetEffectiveRulesetRequest, _ ...grpc.CallOption) (*corev1.GetEffectiveRulesetResponse, error) {
+	return nil, status.Error(codes.Unavailable, "group service boom")
+}
+
 func (e *erroringCategoryClient) GetCategory(_ context.Context, _ *corev1.GetCategoryRequest, _ ...grpc.CallOption) (*corev1.GetCategoryResponse, error) {
 	return nil, status.Error(codes.Unavailable, "group service boom")
 }

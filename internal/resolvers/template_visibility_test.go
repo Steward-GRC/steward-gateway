@@ -83,11 +83,11 @@ func TestListTemplates_VisibleOnlyForAuthorCategory(t *testing.T) {
 	}
 }
 
-// TestListTemplates_SiteAdminSeesAll confirms a site-admin sees every template
+// TestListTemplates_RootSeesAll confirms a site-admin sees every template
 // regardless of category author grants.
-func TestListTemplates_SiteAdminSeesAll(t *testing.T) {
+func TestListTemplates_RootSeesAll(t *testing.T) {
 	tc, gc := templateVisibilityEnv("author-a")
-	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}})
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}, IsRootValue: true})
 
 	got, err := resolvers.ListTemplates(ctx, tc, gc, nil)
 	if err != nil {

@@ -1073,6 +1073,7 @@ type PolicyViewerCan struct {
 	Edit              bool    `json:"edit"`
 	Submit            bool    `json:"submit"`
 	Approve           bool    `json:"approve"`
+	Manage            bool    `json:"manage"`
 	ContentObfuscated bool    `json:"contentObfuscated"`
 	CanBreakGlass     bool    `json:"canBreakGlass"`
 	BreakGlassUntil   *string `json:"breakGlassUntil,omitempty"`
@@ -1088,15 +1089,30 @@ type QuietHours struct {
 	Timezone string `json:"timezone"`
 }
 
+type RaciConfiguredBlock struct {
+	Action      RaciAction      `json:"action"`
+	CategoryID  string          `json:"categoryId"`
+	SubjectKind RaciSubjectKind `json:"subjectKind"`
+	SubjectRef  string          `json:"subjectRef"`
+}
+
 type RaciDecision struct {
-	Read          bool   `json:"read"`
-	Ack           bool   `json:"ack"`
-	Approve       bool   `json:"approve"`
-	Author        bool   `json:"author"`
-	ReadReason    string `json:"readReason"`
-	AckReason     string `json:"ackReason"`
-	ApproveReason string `json:"approveReason"`
-	AuthorReason  string `json:"authorReason"`
+	Read            bool                   `json:"read"`
+	Ack             bool                   `json:"ack"`
+	Approve         bool                   `json:"approve"`
+	Author          bool                   `json:"author"`
+	Manage          bool                   `json:"manage"`
+	ReadReason      string                 `json:"readReason"`
+	AckReason       string                 `json:"ackReason"`
+	ApproveReason   string                 `json:"approveReason"`
+	AuthorReason    string                 `json:"authorReason"`
+	ManageReason    string                 `json:"manageReason"`
+	ReadCode        RaciReasonCode         `json:"readCode"`
+	AckCode         RaciReasonCode         `json:"ackCode"`
+	ApproveCode     RaciReasonCode         `json:"approveCode"`
+	AuthorCode      RaciReasonCode         `json:"authorCode"`
+	ManageCode      RaciReasonCode         `json:"manageCode"`
+	ConfiguredBlock []*RaciConfiguredBlock `json:"configuredBlock"`
 }
 
 type RaciRule struct {
@@ -1106,6 +1122,7 @@ type RaciRule struct {
 	Ack         RaciGrant       `json:"ack"`
 	Approve     RaciGrant       `json:"approve"`
 	Author      RaciGrant       `json:"author"`
+	Manage      RaciGrant       `json:"manage"`
 }
 
 type RaciRuleInput struct {
@@ -1115,6 +1132,7 @@ type RaciRuleInput struct {
 	Ack         RaciGrant       `json:"ack"`
 	Approve     RaciGrant       `json:"approve"`
 	Author      RaciGrant       `json:"author"`
+	Manage      RaciGrant       `json:"manage"`
 }
 
 type ReassignUserPoliciesResult struct {
@@ -3425,6 +3443,67 @@ func (e PolicyExportKind) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type RaciAction string
+
+const (
+	RaciActionRead    RaciAction = "READ"
+	RaciActionAuthor  RaciAction = "AUTHOR"
+	RaciActionApprove RaciAction = "APPROVE"
+	RaciActionManage  RaciAction = "MANAGE"
+	RaciActionAck     RaciAction = "ACK"
+)
+
+var AllRaciAction = []RaciAction{
+	RaciActionRead,
+	RaciActionAuthor,
+	RaciActionApprove,
+	RaciActionManage,
+	RaciActionAck,
+}
+
+func (e RaciAction) IsValid() bool {
+	switch e {
+	case RaciActionRead, RaciActionAuthor, RaciActionApprove, RaciActionManage, RaciActionAck:
+		return true
+	}
+	return false
+}
+
+func (e RaciAction) String() string {
+	return string(e)
+}
+
+func (e *RaciAction) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RaciAction(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RaciAction", str)
+	}
+	return nil
+}
+
+func (e RaciAction) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RaciAction) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RaciAction) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type RaciGrant string
 
 const (
@@ -3477,6 +3556,67 @@ func (e *RaciGrant) UnmarshalJSON(b []byte) error {
 }
 
 func (e RaciGrant) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RaciReasonCode string
+
+const (
+	RaciReasonCodeEntry       RaciReasonCode = "ENTRY"
+	RaciReasonCodeDefaultDeny RaciReasonCode = "DEFAULT_DENY"
+	RaciReasonCodeOwner       RaciReasonCode = "OWNER"
+	RaciReasonCodeRoot        RaciReasonCode = "ROOT"
+	RaciReasonCodeRequires    RaciReasonCode = "REQUIRES"
+)
+
+var AllRaciReasonCode = []RaciReasonCode{
+	RaciReasonCodeEntry,
+	RaciReasonCodeDefaultDeny,
+	RaciReasonCodeOwner,
+	RaciReasonCodeRoot,
+	RaciReasonCodeRequires,
+}
+
+func (e RaciReasonCode) IsValid() bool {
+	switch e {
+	case RaciReasonCodeEntry, RaciReasonCodeDefaultDeny, RaciReasonCodeOwner, RaciReasonCodeRoot, RaciReasonCodeRequires:
+		return true
+	}
+	return false
+}
+
+func (e RaciReasonCode) String() string {
+	return string(e)
+}
+
+func (e *RaciReasonCode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RaciReasonCode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RaciReasonCode", str)
+	}
+	return nil
+}
+
+func (e RaciReasonCode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RaciReasonCode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RaciReasonCode) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

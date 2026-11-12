@@ -60,7 +60,7 @@ func apxBodyOf(text string) string {
 
 // mock: "the version diff: is shown to an author, a site admin and compliance"
 // (author and site admin here; compliance waits on the access model).
-func TestAppendixDiff_ShownToAuthorAndSiteAdmin(t *testing.T) {
+func TestAppendixDiff_ShownToAuthorAndRoot(t *testing.T) {
 	for _, user := range []string{"bob", "alice"} {
 		e := newApxEnv(t)
 		e.save(t, "bob", apxSeeded, "Per-diem rates", apxBodyOf("Changed terms."))
@@ -207,7 +207,9 @@ func TestAppendixDiff_BadContentPassesThrough(t *testing.T) {
 func TestAppendixDiff_ObfuscatedReaderGetsNoText(t *testing.T) {
 	e := newApxEnv(t)
 	pc, gc, ctx := breakGlassReadSetup(t, true) // a site admin whose group is denied on merit
-	pc.policies[apxPolicy].OwnerUserId = "bob"
+	// The site admin follows the rules, so what lets them edit is owning the
+	// policy; the Read deny still applies to them.
+	pc.policies[apxPolicy].OwnerUserId = "sa"
 	e.r.PolicyClient, e.r.CategoryClient = pc, gc
 	typed := apxBodyOf("Secret new text.")
 	got, err := e.r.Query().AppendixDiff(ctx, apxSeeded, &typed)

@@ -159,7 +159,7 @@ func TestIssueCollabToken_EffectiveAuthorGate(t *testing.T) {
 		},
 		{
 			name:      "site-admin may open a room (deny never applies)",
-			claims:    principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}},
+			claims:    principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}, IsRootValue: true},
 			rules:     []*corev1.CategoryRule{authorRule("admin-u", corev1.GrantEffect_GRANT_EFFECT_DENY)},
 			wantAllow: true,
 		},

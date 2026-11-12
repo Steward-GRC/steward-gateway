@@ -50,8 +50,8 @@ func sensitivityGate(subj authz.Subject, p *Policy) authz.Effect {
 }
 
 // meritRACIReadEffect decides read for one policy, in order: the root override,
-// override allow, override deny, break glass, the category rules (meritRead),
-// then the sensitive gate. Root is a global approver and global manager, so it
+// override allow, override deny, break glass, the category rules (meritRead,
+// from the ordered engine), then the sensitive gate. Root is a global approver and global manager, so it
 // always reads: no category rule, sensitivity or per-policy deny applies, and
 // its content is never obfuscated.
 func meritRACIReadEffect(subj authz.Subject, p *Policy, meritRead bool) authz.Effect {
@@ -77,36 +77,25 @@ func meritRACIReadEffect(subj authz.Subject, p *Policy, meritRead bool) authz.Ef
 // shared by the read decision and viewerCan.
 type raciReadResult struct {
 	effect authz.Effect
-	action authz.Result
-	// ackUngated is the acknowledge decision without the read gate, used when
-	// an override allow settles read outside the rules.
-	ackUngated bool
+	action categoryDecisions
 }
 
-// meritSubject is the caller with roles and root dropped, so the category
-// rules decide on merit; site admin is composed on top by each caller.
-func meritSubject(subj authz.Subject) authz.Subject {
-	return authz.Subject{UserID: subj.UserID, Groups: subj.Groups}
-}
-
-// computeRACIResult evaluates the policy's category chain for the caller. The
-// bool is false only when no category client is wired; a chain-build error is
-// returned, never treated as "no access", so a co-author is not silently
-// locked out of their own draft.
+// computeRACIResult evaluates the policy's category chain for the caller with
+// the ordered engine. The caller is decided as they are: Everyone covers a
+// site admin, and only root (role:root) is exempt. The bool is false only when
+// no category client is wired; a lookup error is returned, never treated as
+// "no access", so a co-author is not silently locked out of their own draft.
 func computeRACIResult(ctx context.Context, subj authz.Subject, p *Policy, categoryClient corev1.CategoryServiceClient) (raciReadResult, bool, error) {
 	if categoryClient == nil {
 		return raciReadResult{}, false, nil
 	}
-	chain, err := buildCategoryChain(ctx, categoryClient, p.HomeCategoryID)
+	access, err := loadCategoryAccess(ctx, categoryClient, p.HomeCategoryID)
 	if err != nil {
 		return raciReadResult{}, false, err
 	}
-	ev := authz.Compile(chain)
-	merit := meritSubject(subj)
-	action := ev.Resolve(ctx, merit)
+	action := access.decide(personFromSubject(subj))
 	return raciReadResult{
-		effect:     meritRACIReadEffect(subj, p, action.Read.Allowed),
-		action:     action,
-		ackUngated: ev.Acknowledgement(ctx, merit).Allowed,
+		effect: meritRACIReadEffect(subj, p, action.Read.Allowed),
+		action: action,
 	}, true, nil
 }

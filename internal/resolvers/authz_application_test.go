@@ -51,12 +51,12 @@ func TestSetGroupDefaultsRequiresAdmin(t *testing.T) {
 func TestSetGroupGovernanceRequiresGroupManage(t *testing.T) {
 	// SetGroupGovernance is now gated on group.manage. author lacks it -> denied.
 	// nil clients are safe here because the auth gate fires before any client call.
-	_, err := resolvers.SetCategoryGovernance(ctxWithRoles(t, "u", []string{"author"}), nil, "g1", nil, nil, nil, resolvers.AckTriggerNone, resolvers.ReviewCadenceNone, nil, nil)
+	_, err := resolvers.SetCategoryGovernance(ctxWithRoles(t, "u", []string{"author"}), nil, nil, "g1", nil, nil, nil, resolvers.AckTriggerNone, resolvers.ReviewCadenceNone, nil, nil)
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("SetGroupGovernance with author: want PermissionDenied, got %v", err)
 	}
 	// compliance-admin also lacks group.manage -> denied.
-	_, err = resolvers.SetCategoryGovernance(ctxWithRoles(t, "u", []string{"compliance-admin"}), nil, "g1", nil, nil, nil, resolvers.AckTriggerNone, resolvers.ReviewCadenceNone, nil, nil)
+	_, err = resolvers.SetCategoryGovernance(ctxWithRoles(t, "u", []string{"compliance-admin"}), nil, nil, "g1", nil, nil, nil, resolvers.AckTriggerNone, resolvers.ReviewCadenceNone, nil, nil)
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("SetGroupGovernance with compliance-admin: want PermissionDenied, got %v", err)
 	}

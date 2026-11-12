@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Bugs5382/go-authz/ordered"
 	authz "github.com/Steward-GRC/steward-authz"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
@@ -38,67 +39,9 @@ func categoryLineageNamed(ctx context.Context, categoryClient corev1.CategorySer
 	return ids, names, nil
 }
 
-// buildCategoryChain loads the steward-authz chain for categoryID: the
-// category first, then each ancestor, each with its owners and ordered rules.
-func buildCategoryChain(ctx context.Context, categoryClient corev1.CategoryServiceClient, categoryID string) ([]authz.CategoryRuleset, error) {
-	var chain []authz.CategoryRuleset
-	for id := categoryID; id != "" && len(chain) < maxCategoryDepth; {
-		resp, err := categoryClient.GetCategory(ctx, &corev1.GetCategoryRequest{Id: id})
-		if err != nil {
-			return nil, fmt.Errorf("get category %s: %w", id, err)
-		}
-		c := resp.GetCategory()
-		rs, err := categoryClient.GetCategoryRuleset(ctx, &corev1.GetCategoryRulesetRequest{CategoryId: id})
-		if err != nil {
-			return nil, fmt.Errorf("get category ruleset %s: %w", id, err)
-		}
-		rules := make([]authz.Rule, 0, len(rs.GetRules()))
-		for _, r := range rs.GetRules() {
-			rules = append(rules, ruleFromProto(r))
-		}
-		chain = append(chain, authz.CategoryRuleset{Name: c.GetName(), Owners: c.GetOwners(), Rules: rules})
-		id = c.GetParentId()
-	}
-	return chain, nil
-}
-
-func ruleFromProto(r *corev1.CategoryRule) authz.Rule {
-	return authz.Rule{
-		Subject: authz.RuleSubject{Kind: subjectKindFromProto(r.GetSubjectKind()), Name: r.GetSubjectRef()},
-		Grants: map[authz.Action]authz.Grant{
-			authz.ActionRead:        grantFromProto(r.GetRead()),
-			authz.ActionAcknowledge: grantFromProto(r.GetAck()),
-			authz.ActionApprove:     grantFromProto(r.GetApprove()),
-			authz.ActionAuthor:      grantFromProto(r.GetAuthor()),
-		},
-	}
-}
-
-func grantFromProto(e corev1.GrantEffect) authz.Grant {
-	switch e {
-	case corev1.GrantEffect_GRANT_EFFECT_ALLOW:
-		return authz.GrantAllow
-	case corev1.GrantEffect_GRANT_EFFECT_DENY:
-		return authz.GrantDeny
-	default:
-		return authz.GrantBlank
-	}
-}
-
-func subjectKindFromProto(k corev1.RuleSubjectKind) authz.SubjectKind {
-	switch k {
-	case corev1.RuleSubjectKind_RULE_SUBJECT_KIND_GROUP:
-		return authz.SubjectGroup
-	case corev1.RuleSubjectKind_RULE_SUBJECT_KIND_USER:
-		return authz.SubjectUser
-	default:
-		return authz.SubjectEveryone
-	}
-}
-
-// subjectForUser builds the steward-authz Subject for a user other than the
-// caller (the access simulator, approver pools): roles and root from GetUser,
-// IdP group names from ListUserIdpGroups for group-rule matching.
+// subjectForUser builds the Subject for a user other than the caller (the
+// access simulator, approver pools): roles and root from GetUser, IdP group
+// names from ListUserIdpGroups for group-rule matching.
 func subjectForUser(ctx context.Context, ic identityv1.IdentityReadServiceClient, userID string) (authz.Subject, error) {
 	ur, err := ic.GetUser(ctx, &identityv1.GetUserRequest{UserId: userID})
 	if err != nil {
@@ -114,4 +57,24 @@ func subjectForUser(ctx context.Context, ic identityv1.IdentityReadServiceClient
 		roles = append(roles, authz.Role(r))
 	}
 	return authz.Subject{UserID: userID, Roles: roles, Root: u.GetIsRoot(), Groups: gr.GetIdpGroups()}, nil
+}
+
+// personFromSubject is the person the ordered engine decides for. Roles do not
+// matter to the rows, which name users, groups and Everyone; the one role the
+// engine knows is root, set from identity's is_root flag.
+func personFromSubject(subj authz.Subject) ordered.Person {
+	p := ordered.Person{ID: subj.UserID, Groups: subj.Groups}
+	if subj.Root {
+		p.Roles = []string{rootRole}
+	}
+	return p
+}
+
+// personForUser is personFromSubject for a user other than the caller.
+func personForUser(ctx context.Context, ic identityv1.IdentityReadServiceClient, userID string) (ordered.Person, error) {
+	subj, err := subjectForUser(ctx, ic, userID)
+	if err != nil {
+		return ordered.Person{}, err
+	}
+	return personFromSubject(subj), nil
 }

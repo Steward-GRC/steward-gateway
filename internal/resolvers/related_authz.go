@@ -9,6 +9,7 @@ import (
 
 	log "github.com/Bugs5382/go-log"
 
+	"github.com/Bugs5382/go-authz/ordered"
 	authz "github.com/Steward-GRC/steward-authz"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
@@ -20,7 +21,7 @@ import (
 // audienceMember is a fully-hydrated evaluation record for one platform user, built once per
 // request and reused across every reader-set computation.
 type audienceMember struct {
-	eval     authz.Subject
+	eval     ordered.Person
 	readSens authz.Subject
 }
 
@@ -35,7 +36,7 @@ type readerAudience struct {
 	loaded  bool
 	loadErr error
 
-	chainByCat  map[string][]authz.CategoryRuleset
+	accessByCat map[string]*categoryAccess
 	readByKey   map[string]bool
 	authorByKey map[string]bool
 }
@@ -46,7 +47,7 @@ func newReaderAudience(ctx context.Context, logger log.Logger, categoryClient co
 		logger:         logger,
 		categoryClient: categoryClient,
 		identity:       identity,
-		chainByCat:     map[string][]authz.CategoryRuleset{},
+		accessByCat:    map[string]*categoryAccess{},
 		readByKey:      map[string]bool{},
 		authorByKey:    map[string]bool{},
 	}
@@ -88,7 +89,7 @@ func (a *readerAudience) load() error {
 		}
 
 		a.members = append(a.members, audienceMember{
-			eval: meritSubject(subj),
+			eval: personFromSubject(subj),
 			readSens: authz.Subject{
 				UserID:        uid,
 				Roles:         roles,
@@ -99,27 +100,38 @@ func (a *readerAudience) load() error {
 	return nil
 }
 
-// chainFor returns (and memoizes) the RACI category chain for a policy's home category.
-func (a *readerAudience) chainFor(homeCategoryID string) []authz.CategoryRuleset {
-	if c, ok := a.chainByCat[homeCategoryID]; ok {
+// accessFor returns (and memoizes) the category access for a policy's home category. A category
+// whose access can't be loaded is nil, which reads and authors nothing.
+func (a *readerAudience) accessFor(homeCategoryID string) *categoryAccess {
+	if c, ok := a.accessByCat[homeCategoryID]; ok {
 		return c
 	}
-	chain, err := buildCategoryChain(a.ctx, a.categoryClient, homeCategoryID)
+	access, err := loadCategoryAccess(a.ctx, a.categoryClient, homeCategoryID)
 	if err != nil {
-		a.logger.Warn("reader audience could not build a category chain", log.F("category_id", homeCategoryID), log.F("error", err.Error()))
-		chain = nil
+		a.logger.Warn("reader audience could not load a category's access", log.F("category_id", homeCategoryID), log.F("error", err.Error()))
+		access = nil
 	}
-	a.chainByCat[homeCategoryID] = chain
-	return chain
+	a.accessByCat[homeCategoryID] = access
+	return access
+}
+
+// decide is the engine's answer for member m on p's home category; nothing is allowed when the
+// access could not be loaded.
+func (a *readerAudience) decide(m audienceMember, p *Policy) categoryDecisions {
+	access := a.accessFor(p.HomeCategoryID)
+	if access == nil {
+		return categoryDecisions{}
+	}
+	return access.decide(m.eval)
 }
 
 // memberReads reports whether user m can read policy p: merit RACI read allowed AND the policy's
 // sensitivity gate satisfied.
 func (a *readerAudience) memberReads(m audienceMember, p *Policy) bool {
-	key := m.eval.UserID + "\x00" + p.HomeCategoryID
+	key := m.eval.ID + "\x00" + p.HomeCategoryID
 	meritRead, ok := a.readByKey[key]
 	if !ok {
-		meritRead = authz.Resolve(a.ctx, m.eval, a.chainFor(p.HomeCategoryID)).Read.Allowed
+		meritRead = a.decide(m, p).Read.Allowed
 		a.readByKey[key] = meritRead
 	}
 	if !meritRead {
@@ -134,12 +146,12 @@ func isDraftPolicy(p *Policy) bool {
 }
 
 // memberAuthors reports whether user m is a merit OVERSEER (author) of policy p:
-// authz.Resolve(...).Author.Allowed AND the policy's sensitivity gate satisfied.
+// the engine's Author decision AND the policy's sensitivity gate satisfied.
 func (a *readerAudience) memberAuthors(m audienceMember, p *Policy) bool {
-	key := m.eval.UserID + "\x00" + p.HomeCategoryID
+	key := m.eval.ID + "\x00" + p.HomeCategoryID
 	author, ok := a.authorByKey[key]
 	if !ok {
-		author = authz.Resolve(a.ctx, m.eval, a.chainFor(p.HomeCategoryID)).Author.Allowed
+		author = a.decide(m, p).Author.Allowed
 		a.authorByKey[key] = author
 	}
 	if !author {
@@ -155,7 +167,7 @@ func (a *readerAudience) subjectReads(m audienceMember, subject *Policy) bool {
 	if !isDraftPolicy(subject) {
 		return a.memberReads(m, subject)
 	}
-	if subject.OwnerUserID != "" && m.eval.UserID == subject.OwnerUserID {
+	if subject.OwnerUserID != "" && m.eval.ID == subject.OwnerUserID {
 		return true
 	}
 	return a.memberAuthors(m, subject)

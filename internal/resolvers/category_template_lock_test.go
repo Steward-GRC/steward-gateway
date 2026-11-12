@@ -175,7 +175,7 @@ func TestCategoryReadsCarryTheTemplateLock(t *testing.T) {
 // allowed under a lock, steward-core#74).
 func TestCreatePolicy_LockedCategory_InheritForwardsNoTemplate(t *testing.T) {
 	pc := &lockPolicyClient{fakePolicyClient: &fakePolicyClient{}}
-	if _, err := resolvers.CreatePolicy(ctxWithRoles(t, "bob", []string{"site-admin"}), pc, nil, "category-finance", "A document", resolvers.SensitivityStandard, nil, nil); err != nil {
+	if _, err := resolvers.CreatePolicy(ctxRoot(t, "bob"), pc, nil, "category-finance", "A document", resolvers.SensitivityStandard, nil, nil); err != nil {
 		t.Fatalf("CreatePolicy: %v", err)
 	}
 	if pc.lastCreate.GetTemplateId() != "" {
@@ -189,7 +189,7 @@ func TestCreatePolicy_LockedCategory_InheritForwardsNoTemplate(t *testing.T) {
 func TestCreatePolicy_ForwardsTheNamedTemplate(t *testing.T) {
 	pc := &lockPolicyClient{fakePolicyClient: &fakePolicyClient{}}
 	tmpl := "template-1"
-	if _, err := resolvers.CreatePolicy(ctxWithRoles(t, "bob", []string{"site-admin"}), pc, nil, "category-finance", "A document", resolvers.SensitivityStandard, &tmpl, nil); err != nil {
+	if _, err := resolvers.CreatePolicy(ctxRoot(t, "bob"), pc, nil, "category-finance", "A document", resolvers.SensitivityStandard, &tmpl, nil); err != nil {
 		t.Fatalf("CreatePolicy: %v", err)
 	}
 	if pc.lastCreate.GetTemplateId() != "template-1" {
@@ -205,7 +205,7 @@ func TestCreatePolicy_PassesThroughTemplateLocked(t *testing.T) {
 		t.Run(home, func(t *testing.T) {
 			pc := &lockPolicyClient{fakePolicyClient: &fakePolicyClient{}, createErr: errTemplateLocked(t)}
 			other := "template-2"
-			_, err := resolvers.CreatePolicy(ctxWithRoles(t, "bob", []string{"site-admin"}), pc, nil, home, "A document", resolvers.SensitivityStandard, &other, nil)
+			_, err := resolvers.CreatePolicy(ctxRoot(t, "bob"), pc, nil, home, "A document", resolvers.SensitivityStandard, &other, nil)
 			if status.Code(err) != codes.FailedPrecondition {
 				t.Fatalf("want FailedPrecondition, got %v", err)
 			}
@@ -241,7 +241,7 @@ func TestSetPolicyTemplate_LockedCategory(t *testing.T) {
 			if tc.refused {
 				lp.setErr = errTemplateLocked(t)
 			}
-			_, err := resolvers.SetPolicyTemplate(ctxWithRoles(t, "bob", []string{"site-admin"}), lp, gc, nil, nil, nil, "pol", tc.tmpl, tc.none)
+			_, err := resolvers.SetPolicyTemplate(ctxRoot(t, "bob"), lp, gc, nil, nil, nil, "pol", tc.tmpl, tc.none)
 			if tc.refused && status.Code(err) != codes.FailedPrecondition {
 				t.Fatalf("want FailedPrecondition, got %v", err)
 			}
@@ -260,7 +260,7 @@ func TestSetPolicyTemplate_LockedCategory(t *testing.T) {
 func TestSetPolicyTemplate_LockedCategory_InheritIsForwarded(t *testing.T) {
 	pc, gc := draftPointerEnv(nil)
 	lp := &lockPolicyClient{fakePolicyClient: pc}
-	if _, err := resolvers.SetPolicyTemplate(ctxWithRoles(t, "bob", []string{"site-admin"}), lp, gc, nil, nil, nil, "pol", nil, false); err != nil {
+	if _, err := resolvers.SetPolicyTemplate(ctxRoot(t, "bob"), lp, gc, nil, nil, nil, "pol", nil, false); err != nil {
 		t.Fatalf("SetPolicyTemplate: %v", err)
 	}
 	if pc.lastSetTmpl.GetNone() || pc.lastSetTmpl.GetTemplateId() != "" {
@@ -336,14 +336,14 @@ func TestTemplateLockRefusals_ReachTheClientCoded(t *testing.T) {
 	t.Run("setPolicyTemplate 4004", func(t *testing.T) {
 		pc, gc := draftPointerEnv(nil)
 		lp := &lockPolicyClient{fakePolicyClient: pc, setErr: errTemplateLocked(t)}
-		out := lockGraphQL(t, ctxWithRoles(t, "bob", []string{"site-admin"}), &resolvers.Resolver{PolicyClient: lp, CategoryClient: gc},
+		out := lockGraphQL(t, ctxRoot(t, "bob"), &resolvers.Resolver{PolicyClient: lp, CategoryClient: gc},
 			`mutation { setPolicyTemplate(policyId: "pol", none: true) { id } }`, nil)
 		wantCoded(t, out, 4004, "CATEGORY_TEMPLATE_LOCKED", "This category requires the Standard Policy template.")
 	})
 	t.Run("createPolicy 4004", func(t *testing.T) {
 		pc, gc := draftPointerEnv(nil)
 		lp := &lockPolicyClient{fakePolicyClient: pc, createErr: errTemplateLocked(t)}
-		out := lockGraphQL(t, ctxWithRoles(t, "bob", []string{"site-admin"}), &resolvers.Resolver{PolicyClient: lp, CategoryClient: gc},
+		out := lockGraphQL(t, ctxRoot(t, "bob"), &resolvers.Resolver{PolicyClient: lp, CategoryClient: gc},
 			`mutation { createPolicy(homeCategoryId: "g-cat", title: "T", sensitivity: STANDARD, templateId: "template-2") { id } }`, nil)
 		wantCoded(t, out, 4004, "CATEGORY_TEMPLATE_LOCKED", "This category requires the Standard Policy template.")
 	})
@@ -351,7 +351,7 @@ func TestTemplateLockRefusals_ReachTheClientCoded(t *testing.T) {
 		refusal := codedCoreError(t, codes.FailedPrecondition, 4005, "TEMPLATE_LOCK_NEEDS_DEFAULT",
 			"Choose a default template for Travel before locking it.", map[string]string{"category": "Travel"})
 		cc := &lockCategoryClient{cat: &corev1.Category{Id: "category-travel"}, err: refusal}
-		out := lockGraphQL(t, ctxWithRoles(t, "alice", []string{"site-admin"}), &resolvers.Resolver{CategoryClient: cc},
+		out := lockGraphQL(t, ctxRoot(t, "alice"), &resolvers.Resolver{CategoryClient: cc},
 			`mutation { setCategoryTemplateLock(id: "category-travel", locked: true) { id } }`, nil)
 		wantCoded(t, out, 4005, "TEMPLATE_LOCK_NEEDS_DEFAULT", "Choose a default template for Travel before locking it.")
 	})

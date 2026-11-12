@@ -58,7 +58,7 @@ func (f *fakeSettingsClient) EmailServiceConfigStatus(_ context.Context, _ *core
 }
 
 func adminCtx(t *testing.T) context.Context {
-	return ctxWithStubClaims(t, principal.Static{UserIDValue: "admin-1", RolesValue: []string{"site-admin"}})
+	return ctxWithStubClaims(t, principal.Static{UserIDValue: "admin-1", RolesValue: []string{"site-admin"}, IsRootValue: true})
 }
 
 func nonAdminCtx(t *testing.T) context.Context {

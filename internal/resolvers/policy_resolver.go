@@ -129,47 +129,24 @@ func policyResource(ctx context.Context, p *Policy, categoryClient corev1.Catego
 	return res, ids
 }
 
-// grantOwnerApprover adds a per-request approver grant on the policy's
-// category when the caller owns any category in its lineage: owners approve
-// their own categories' policies without an approver grant. Never persisted.
-func grantOwnerApprover(ctx context.Context, subj authz.Subject, res authz.Resource, lineage []string, categoryClient corev1.CategoryServiceClient) authz.Subject {
-	if categoryClient == nil || res.Category == "" || subj.UserID == "" {
-		return subj
-	}
-	for _, id := range lineage {
-		resp, err := categoryClient.GetCategory(ctx, &corev1.GetCategoryRequest{Id: id})
-		if err != nil {
-			continue
-		}
-		if slices.Contains(resp.GetCategory().GetOwners(), subj.UserID) {
-			subj.ScopedGrants = append(slices.Clone(subj.ScopedGrants), authz.ScopedGrant{Role: authz.RoleApprover, Category: res.Category})
-			return subj
-		}
-	}
-	return subj
-}
-
 // viewerCanFor projects the viewer's capabilities on one policy. Edit, submit
 // and approve are the union of the role-based decision and the category-rule
-// decision; edit and submit also include the primary author, so the read side
-// matches the write gate (authorizeEffectiveAuthor). Ack follows obligations:
-// an override deny removes the viewer from the audience, an override allow
-// uses the ungated acknowledge rule, otherwise the read-gated one. A
-// procedure is never acknowledged, so its ack is always false (#160).
+// decision (the ordered engine); edit and submit also include the primary
+// author, so the read side matches the write gate (authorizeEffectiveAuthor).
+// A site admin who is not root follows the category rules, so the site-admin
+// role is left out of the role-based side. Manage is the engine's Manage
+// decision (a row, an owner or root). Ack follows obligations: an override deny
+// removes the viewer from the audience, an override allow uses the acknowledge
+// rule without its Read requirement, otherwise the engine's Ack (which needs
+// Read). A procedure is never acknowledged, so its ack is always false (#160).
 func viewerCanFor(subj authz.Subject, res authz.Resource, readD authz.Effect, raci raciReadResult, isPrimaryAuthor bool, docType DocumentType) *PolicyViewerCan {
-	allowed := func(p authz.Permission) bool { return authz.Authorize(subj, p, &res).Allowed() }
 	var ack bool
 	switch subjOverrideFor(subj, res.ID) {
 	case authz.GrantDeny:
 	case authz.GrantAllow:
-		ack = raci.ackUngated
+		ack = raci.action.AckUngated
 	default:
-		ack = raci.action.Acknowledge.Allowed
-		if subj.Root {
-			// Root always reads, so the read gate on the acknowledge rule is
-			// met; Ack stays the one per-category thing for root.
-			ack = raci.ackUngated
-		}
+		ack = raci.action.Ack.Allowed
 	}
 	if docType == DocumentTypeProcedure {
 		ack = false
@@ -177,9 +154,12 @@ func viewerCanFor(subj authz.Subject, res authz.Resource, readD authz.Effect, ra
 	if subj.Root {
 		// Root is a global approver and manager (Manage implies Read and
 		// Author): everything is allowed, nothing is obfuscated or offered as
-		// break-glass.
-		return &PolicyViewerCan{Read: true, Edit: true, Submit: true, Approve: true, Ack: ack}
+		// break-glass. Ack stays the one per-category thing for root.
+		return &PolicyViewerCan{Read: true, Edit: true, Submit: true, Approve: true, Manage: true, Ack: ack}
 	}
+	roleSubj := subj
+	roleSubj.Roles = slices.DeleteFunc(slices.Clone(subj.Roles), func(r authz.Role) bool { return r == authz.RoleSiteAdmin })
+	allowed := func(p authz.Permission) bool { return authz.Authorize(roleSubj, p, &res).Allowed() }
 	return &PolicyViewerCan{
 		Read:              readD != authz.EffectDeny,
 		ContentObfuscated: readD == authz.EffectObfuscate,
@@ -187,6 +167,7 @@ func viewerCanFor(subj authz.Subject, res authz.Resource, readD authz.Effect, ra
 		Edit:              allowed(authz.PolicyAuthor) || raci.action.Author.Allowed || isPrimaryAuthor,
 		Submit:            allowed(authz.PolicySubmit) || raci.action.Author.Allowed || isPrimaryAuthor,
 		Approve:           allowed(authz.PolicyApprove) || raci.action.Approve.Allowed,
+		Manage:            raci.action.Manage.Allowed,
 		Ack:               ack,
 	}
 }
@@ -306,7 +287,7 @@ func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClien
 		if rerr != nil {
 			return nil, status.Errorf(codes.Internal, "evaluate policy access: %v", rerr)
 		}
-		res, lineage := policyResource(ctx, p, categoryClient)
+		res, _ := policyResource(ctx, p, categoryClient)
 		readD := raci.effect
 		if !raciOK {
 			readD = authz.Authorize(subj, authz.PolicyRead, &res).Effect
@@ -314,8 +295,7 @@ func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClien
 		if readD == authz.EffectDeny {
 			continue
 		}
-		psubj := grantOwnerApprover(ctx, subj, res, lineage, categoryClient)
-		p.ViewerCan = viewerCanFor(psubj, res, readD, raci, p.OwnerUserID == subj.UserID, p.DocumentType)
+		p.ViewerCan = viewerCanFor(subj, res, readD, raci, p.OwnerUserID == subj.UserID, p.DocumentType)
 		if until, ok := breakGlassUntil[p.Number]; ok {
 			p.ViewerCan.BreakGlassUntil = &until
 		}

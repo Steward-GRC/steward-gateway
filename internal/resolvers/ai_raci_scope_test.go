@@ -6,6 +6,9 @@ package resolvers_test
 import (
 	"testing"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
@@ -101,13 +104,12 @@ func TestSubmitDraftGeneration_RACIDeniedAuthorDenied(t *testing.T) {
 	}
 }
 
-// TestSubmitDraftGeneration_SiteAdminAlwaysAllowed proves the site-admin bypass
-// survives: a site-admin drafts in any category with no RACI rules and no
-// any directory group.
-func TestSubmitDraftGeneration_SiteAdminAlwaysAllowed(t *testing.T) {
+// TestSubmitDraftGeneration_RootAlwaysAllowed proves the root bypass: root
+// drafts in any category with no RACI rules and no directory group.
+func TestSubmitDraftGeneration_RootAlwaysAllowed(t *testing.T) {
 	client := &fakeAIClient{submitResp: &aiv1.SubmitAIJobResponse{JobId: "aijob-admin"}}
 	gc := aiRaciEnv(nil, []*corev1.CategoryRule{})
-	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}})
+	ctx := ctxRoot(t, "admin-u")
 
 	gid := aiRaciCat
 	res, err := resolvers.SubmitDraftGenerationResolver(
@@ -115,10 +117,30 @@ func TestSubmitDraftGeneration_SiteAdminAlwaysAllowed(t *testing.T) {
 		resolvers.SubmitDraftGenerationInput{CategoryID: &gid, Brief: "b"},
 	)
 	if err != nil {
-		t.Fatalf("expected site-admin bypass to authorize draft, got %v", err)
+		t.Fatalf("expected the root bypass to authorize the draft, got %v", err)
 	}
 	if res.JobID != "aijob-admin" || client.lastSubmitReq == nil {
-		t.Fatalf("AI SubmitAIJob not invoked for site-admin: %+v", client.lastSubmitReq)
+		t.Fatalf("AI SubmitAIJob not invoked for root: %+v", client.lastSubmitReq)
+	}
+}
+
+// TestSubmitDraftGeneration_NonRootSiteAdminFollowsTheRules proves a site
+// admin who is not root needs an Author row in the category like anyone else.
+func TestSubmitDraftGeneration_NonRootSiteAdminFollowsTheRules(t *testing.T) {
+	client := &fakeAIClient{submitResp: &aiv1.SubmitAIJobResponse{JobId: "aijob-admin"}}
+	gc := aiRaciEnv(nil, []*corev1.CategoryRule{})
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}})
+
+	gid := aiRaciCat
+	_, err := resolvers.SubmitDraftGenerationResolver(
+		ctx, client, gc, nil,
+		resolvers.SubmitDraftGenerationInput{CategoryID: &gid, Brief: "b"},
+	)
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("err = %v, want PermissionDenied for a site admin with no Author row", err)
+	}
+	if client.lastSubmitReq != nil {
+		t.Fatal("the AI job must not be submitted")
 	}
 }
 

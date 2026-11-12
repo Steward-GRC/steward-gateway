@@ -610,9 +610,12 @@ func TestReviewThreads_AVersionWithNoRunSeatsNobodyAndOnlyTheAuthorSideRemains(t
 func TestReviewThreads_AnObfuscatedReaderGetsNoMessageBodies(t *testing.T) {
 	pc, gc, _ := breakGlassReadSetup(t, true) // the site admin sees this policy obfuscated
 	e := buildThrEnv(pc, gc)
+	// The site admin follows the rules, so a denied read cannot also author: they take
+	// part as an approver holding a seat, and still see the policy obfuscated.
+	e.wf.statusResp.StageAssignees[0].Assignees = append(e.wf.statusResp.StageAssignees[0].Assignees, &workflowv1.StageAssignee{UserId: "sa", State: "pending"})
 	e.core.threads = []*corev1.ReviewThread{{
-		Id: "t-1", PolicyVersionId: thrVersion, Quote: "seven years", Occurrence: 1, ApproverUserId: thrCharlie, CreatedBy: thrCharlie,
-		Messages: []*corev1.ReviewMessage{{Id: "m-1", AuthorUserId: thrCharlie, Body: "the secret clause", CreatedAt: timestamppb.Now()}},
+		Id: "t-1", PolicyVersionId: thrVersion, Quote: "seven years", Occurrence: 1, ApproverUserId: "sa", CreatedBy: "sa",
+		Messages: []*corev1.ReviewMessage{{Id: "m-1", AuthorUserId: "sa", Body: "the secret clause", CreatedAt: timestamppb.Now()}},
 	}}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "sa", RolesValue: []string{"site-admin"}, IdpGroupsValue: []string{"Admins"}})
 
@@ -621,7 +624,7 @@ func TestReviewThreads_AnObfuscatedReaderGetsNoMessageBodies(t *testing.T) {
 		t.Fatalf("reviewThreads = %v, %v; want the thread", ids(got), err)
 	}
 	m := got[0].Messages[0]
-	if m.Body != "" || m.AuthorUserID != thrCharlie || m.AuthorName == nil {
+	if m.Body != "" || m.AuthorUserID != "sa" || m.AuthorName == nil {
 		t.Fatalf("message = %+v, want no body but who wrote it", m)
 	}
 	reply, err := e.r.ReplyReviewThreadResolver(ctx, "t-1", "another secret")

@@ -340,7 +340,7 @@ func TestSetPolicyAck_NilAckTrigger(t *testing.T) {
 	}
 
 	override := []string{"grp-a", "grp-b"}
-	p, err := resolvers.SetPolicyAck(ctxWithRoles(t, "u", []string{"site-admin"}), client, nil, nil, nil, nil, "pol-2", nil, override)
+	p, err := resolvers.SetPolicyAck(ctxRoot(t, "u"), client, nil, nil, nil, nil, "pol-2", nil, override)
 	if err != nil {
 		t.Fatalf("SetPolicyAck: %v", err)
 	}
@@ -382,7 +382,7 @@ func TestGetPolicy_ViewerCan_ExcludedSiteAdminObfuscated(t *testing.T) {
 		},
 	)
 	pc := &fakePolicyClient{policies: map[string]*corev1.Policy{
-		"pol-1": {Id: "pol-1", HomeCategoryId: "g-it", Number: "POL-IT-1", Title: "Sec", Sensitivity: corev1.Sensitivity_SENSITIVITY_STANDARD},
+		"pol-1": {Id: "pol-1", HomeCategoryId: "g-it", Number: "POL-IT-1", Title: "Sec", Sensitivity: corev1.Sensitivity_SENSITIVITY_STANDARD, CurrentPublishedVersionId: "pol-1-v1"},
 	}}
 	ctx := ctxWithStubClaims(t, principal.Static{
 		UserIDValue:    "sa",
@@ -535,11 +535,10 @@ func TestGetPolicy_ViewerCan_NonOwnerNonApproverDenied(t *testing.T) {
 	}
 }
 
-// TestGetPolicy_ViewerCan_SiteAdminNotBlanketApprover verifies site-admin is NOT
-// an automatic approver: it can author/submit globally, but approval eligibility
-// must come from group ownership (grantOwnerApprover) or an explicit approver
-// grant. A site-admin who does NOT own the policy's home group cannot approve.
-func TestGetPolicy_ViewerCan_SiteAdminNotBlanketApprover(t *testing.T) {
+// TestGetPolicy_ViewerCan_SiteAdminFollowsTheRules verifies a site admin who is
+// not root is not an automatic author or approver: the category rules decide,
+// Everyone: Read gives them Read only, and Manage is false.
+func TestGetPolicy_ViewerCan_SiteAdminFollowsTheRules(t *testing.T) {
 	groups := newRaciReadClient(
 		map[string]*corev1.Category{
 			"g-it": {Id: "g-it", Name: "IT", ParentId: "", Owners: []string{"someone-else"}},
@@ -562,18 +561,16 @@ func TestGetPolicy_ViewerCan_SiteAdminNotBlanketApprover(t *testing.T) {
 	if p.ViewerCan == nil {
 		t.Fatal("viewerCan must be populated")
 	}
-	// Authoring stays global for site-admin.
-	if !p.ViewerCan.Edit || !p.ViewerCan.Submit {
-		t.Fatalf("site-admin must author/submit globally; got %+v", p.ViewerCan)
+	if !p.ViewerCan.Read {
+		t.Fatalf("Everyone: Read covers a site admin; got %+v", p.ViewerCan)
 	}
-	// But approval requires ownership/explicit grant — this site-admin has neither.
-	if p.ViewerCan.Approve {
-		t.Fatalf("site-admin without ownership must NOT approve; got %+v", p.ViewerCan)
+	if p.ViewerCan.Edit || p.ViewerCan.Submit || p.ViewerCan.Approve || p.ViewerCan.Manage {
+		t.Fatalf("a non-root site admin with no row must not edit, submit, approve or manage; got %+v", p.ViewerCan)
 	}
 }
 
 // TestGetPolicy_ViewerCan_SiteAdminApprovesOwnedGroup verifies a site-admin who
-// OWNS the policy's home group can approve (grantOwnerApprover supplies the
+// OWNS the policy's home group can approve (the engine gives an owner Approve and the
 // approver ScopedGrant that authz now requires, and RACI also grants approve
 // via owner-chain).
 func TestGetPolicy_ViewerCan_SiteAdminApprovesOwnedGroup(t *testing.T) {
@@ -814,7 +811,7 @@ func TestDeletePolicy_ForwardsPolicyIDAndBindsActor(t *testing.T) {
 	client := &fakePolicyClient{policies: map[string]*corev1.Policy{
 		"pol-9": {Id: "pol-9"},
 	}}
-	ok, err := resolvers.DeletePolicy(ctxWithRoles(t, "admin-42", []string{"site-admin"}), client, nil, "pol-9")
+	ok, err := resolvers.DeletePolicy(ctxRoot(t, "admin-42"), client, nil, "pol-9")
 	if err != nil {
 		t.Fatalf("DeletePolicy: %v", err)
 	}
@@ -915,14 +912,14 @@ func TestRetirePolicy_PrimaryAuthorAllowed(t *testing.T) {
 	}
 }
 
-// TestRetirePolicy_SiteAdminAllowed verifies site-admin is always authorized
+// TestRetirePolicy_RootAllowed verifies site-admin is always authorized
 // (deny never applies) and the actor is forwarded from claims. categoryClient nil:
 // the site-admin short-circuit fires before any chain lookup.
-func TestRetirePolicy_SiteAdminAllowed(t *testing.T) {
+func TestRetirePolicy_RootAllowed(t *testing.T) {
 	client := &fakePolicyClient{policies: map[string]*corev1.Policy{
 		"pol-9": {Id: "pol-9"},
 	}}
-	p, err := resolvers.RetirePolicy(ctxWithRoles(t, "admin-42", []string{"site-admin"}), client, nil, nil, nil, nil, "pol-9")
+	p, err := resolvers.RetirePolicy(ctxRoot(t, "admin-42"), client, nil, nil, nil, nil, "pol-9")
 	if err != nil {
 		t.Fatalf("RetirePolicy: %v", err)
 	}

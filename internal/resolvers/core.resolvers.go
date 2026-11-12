@@ -175,7 +175,7 @@ func (r *mutationResolver) ReindexPolicyVersion(ctx context.Context, policyVersi
 
 // SetCategoryGovernance is the resolver for the setCategoryGovernance field.
 func (r *mutationResolver) SetCategoryGovernance(ctx context.Context, id string, owners []string, idpGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) (*Category, error) {
-	return SetCategoryGovernance(ctx, r.CategoryClient, id, owners, idpGroupIds, exclusionGroupIds, ackTriggers, reviewCadence, reviewDate, ackEveryone)
+	return SetCategoryGovernance(ctx, r.CategoryClient, r.IdentityClient, id, owners, idpGroupIds, exclusionGroupIds, ackTriggers, reviewCadence, reviewDate, ackEveryone)
 }
 
 // SetPolicyAck is the resolver for the setPolicyAck field.

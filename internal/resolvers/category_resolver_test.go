@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -139,6 +140,10 @@ func (f *fakeCategoryClient) GetEffectiveGovernance(_ context.Context, _ *corev1
 	return &corev1.GetEffectiveGovernanceResponse{}, nil
 }
 
+func (f *fakeCategoryClient) GetEffectiveRuleset(_ context.Context, in *corev1.GetEffectiveRulesetRequest, _ ...grpc.CallOption) (*corev1.GetEffectiveRulesetResponse, error) {
+	return effectiveRuleset(f.groups, nil, in.CategoryId)
+}
+
 func (f *fakeCategoryClient) GetCategoryRuleset(_ context.Context, _ *corev1.GetCategoryRulesetRequest, _ ...grpc.CallOption) (*corev1.GetCategoryRulesetResponse, error) {
 	return &corev1.GetCategoryRulesetResponse{}, nil
 }
@@ -235,7 +240,7 @@ func TestSetCategoryGovernance_EnumMappingAndReturn(t *testing.T) {
 		"g1": {Id: "g1", Name: "Eng", Slug: "eng"},
 	}}
 	reviewDate := "2026-01-01"
-	g, err := resolvers.SetCategoryGovernance(ctxWithRoles(t, "u", []string{"site-admin"}), client, "g1",
+	g, err := resolvers.SetCategoryGovernance(ctxWithRoles(t, "u", []string{"site-admin"}), client, ownerIdentity("owner-1"), "g1",
 		[]string{"owner-1"}, []string{"AD-A"}, []string{},
 		resolvers.AckTriggerOnChange, resolvers.ReviewCadenceAnnual, &reviewDate, nil)
 	if err != nil {
@@ -288,7 +293,7 @@ func TestSetCategoryGovernance_ProtoUnspecifiedMapsToNone(t *testing.T) {
 			ReviewCadence: corev1.ReviewCadence_REVIEW_CADENCE_UNSPECIFIED,
 		},
 	}}
-	g, err := resolvers.SetCategoryGovernance(ctxWithRoles(t, "u", []string{"site-admin"}), client, "g2",
+	g, err := resolvers.SetCategoryGovernance(ctxWithRoles(t, "u", []string{"site-admin"}), client, ownerIdentity("owner-1", "owner-2"), "g2",
 		nil, nil, nil,
 		resolvers.AckTriggerNone, resolvers.ReviewCadenceNone, nil, nil)
 	if err != nil {
@@ -315,7 +320,7 @@ func TestSetCategoryGovernance_ExclusionGroupsForwarded(t *testing.T) {
 		"g3": {Id: "g3", Name: "Legal", Slug: "legal"},
 	}}
 	g, err := resolvers.SetCategoryGovernance(
-		ctxWithRoles(t, "u", []string{"site-admin"}), client, "g3",
+		ctxWithRoles(t, "u", []string{"site-admin"}), client, ownerIdentity("owner-1"), "g3",
 		[]string{}, []string{"audience-group"}, []string{"excluded-group"},
 		resolvers.AckTriggerNone, resolvers.ReviewCadenceNone, nil, nil,
 	)
@@ -352,7 +357,7 @@ func TestSetCategoryGovernance_NilArgs_ProvidedFalse(t *testing.T) {
 		"gnil": {Id: "gnil", Name: "Eng", Slug: "eng"},
 	}}
 	_, err := resolvers.SetCategoryGovernance(
-		ctxWithRoles(t, "u", []string{"site-admin"}), client, "gnil",
+		ctxWithRoles(t, "u", []string{"site-admin"}), client, ownerIdentity("owner-1"), "gnil",
 		[]string{"owner-1"}, nil, nil,
 		resolvers.AckTriggerNone, resolvers.ReviewCadenceNone, nil, nil,
 	)
@@ -379,7 +384,7 @@ func TestSetCategoryGovernance_EmptyArgs_ProvidedTrue(t *testing.T) {
 		"gempty": {Id: "gempty", Name: "Eng", Slug: "eng"},
 	}}
 	_, err := resolvers.SetCategoryGovernance(
-		ctxWithRoles(t, "u", []string{"site-admin"}), client, "gempty",
+		ctxWithRoles(t, "u", []string{"site-admin"}), client, ownerIdentity("owner-1"), "gempty",
 		[]string{"owner-1"}, []string{}, []string{},
 		resolvers.AckTriggerNone, resolvers.ReviewCadenceNone, nil, nil,
 	)
@@ -659,4 +664,13 @@ func TestReorderCategoriesPropagatesCoreRefusal(t *testing.T) {
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("want InvalidArgument, got %v", err)
 	}
+}
+
+// ownerIdentity is an identity service that knows the given user ids.
+func ownerIdentity(ids ...string) *raciIdentityClient {
+	users := map[string]*identityv1.User{}
+	for _, id := range ids {
+		users[id] = &identityv1.User{Id: id}
+	}
+	return &raciIdentityClient{users: users}
 }

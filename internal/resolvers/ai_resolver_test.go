@@ -44,6 +44,10 @@ type fakeAIClient struct {
 	getEnabledResp *aiv1.GetAIEnabledResponse
 	getEnabledErr  error
 
+	usageLimitResp *aiv1.GetMyUsageLimitResponse
+	usageLimitErr  error
+	usageLimitCall int
+
 	setEnabledResp    *aiv1.SetAIEnabledResponse
 	setEnabledErr     error
 	lastSetEnabledReq *aiv1.SetAIEnabledRequest
@@ -115,6 +119,17 @@ func (f *fakeAIClient) GetProviderStatus(_ context.Context, _ *aiv1.GetProviderS
 		return f.providerStatusResp, nil
 	}
 	return &aiv1.GetProviderStatusResponse{Available: true}, nil
+}
+
+func (f *fakeAIClient) GetMyUsageLimit(_ context.Context, _ *aiv1.GetMyUsageLimitRequest, _ ...grpc.CallOption) (*aiv1.GetMyUsageLimitResponse, error) {
+	f.usageLimitCall++
+	if f.usageLimitErr != nil {
+		return nil, f.usageLimitErr
+	}
+	if f.usageLimitResp != nil {
+		return f.usageLimitResp, nil
+	}
+	return &aiv1.GetMyUsageLimitResponse{}, nil
 }
 
 func (f *fakeAIClient) GetAIEnabled(_ context.Context, _ *aiv1.GetAIEnabledRequest, _ ...grpc.CallOption) (*aiv1.GetAIEnabledResponse, error) {

@@ -52,9 +52,11 @@ type AIHealth struct {
 	Available bool `json:"available"`
 	// Populated only when available is false: "ai_service_unavailable" (the ai
 	// service is unreachable), "disabled_by_admin" (the module switch is off; ai
-	// refuses every intake call while it is, site admins included), or
+	// refuses every intake call while it is, site admins included),
 	// "provider_unavailable" (the configured model provider is failing or not
-	// configured). Null when available is true.
+	// configured) or "limit_reached" (the organisation's monthly AI limit or the
+	// caller's own daily limit is reached; clears when the period resets). Null
+	// when available is true.
 	Reason *string `json:"reason,omitempty"`
 	// Why the model provider is unavailable, as the ai service reports it:
 	// "auth_failed" (the provider refused the credential), "provider_error" (the

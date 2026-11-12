@@ -36,6 +36,15 @@ func AIHealthResolver(ctx context.Context, client aiv1.AiServiceClient) (*AIHeal
 		reason := "provider_unavailable"
 		return &AIHealth{Available: false, Reason: &reason, ProviderReason: nilIfEmpty(statusResp.GetReason())}, nil
 	}
+	// A usage limit holds while ai and its provider are otherwise fine, so it
+	// is checked last. One read covers both limits: the organisation's monthly
+	// one and the caller's own daily one (steward-ai#47). The read counts no
+	// query. If it fails, aiHealth stays best-effort and says available; the
+	// submit itself is refused by ai when a limit really holds.
+	usage, err := client.GetMyUsageLimit(ctx, &aiv1.GetMyUsageLimitRequest{})
+	if err == nil && usage.GetLimitReached() {
+		return unavailable("limit_reached")
+	}
 	return &AIHealth{Available: true}, nil
 }
 

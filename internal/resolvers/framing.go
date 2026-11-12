@@ -4,9 +4,11 @@
 package resolvers
 
 import (
-	"fmt"
 	"strings"
 	"unicode/utf8"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // maxCustomFramingRunes caps the author's own CUSTOM wording, counted in
@@ -17,8 +19,10 @@ const maxCustomFramingRunes = 500
 
 // resolveFraming validates a draft framing and its custom wording and returns
 // the values for the DRAFT or REVISE job input. An absent framing returns
-// empty strings, so both keys are left out and the default tone stays. The
-// wording is trimmed and only carried for CUSTOM, where it is required.
+// empty strings, so both keys are left out and the default tone stays.
+// Refusals are InvalidArgument statuses, so the error presenter shows the
+// message to the client as a business refusal instead of the generic fault.
+// The wording is trimmed and only carried for CUSTOM, where it is required.
 func resolveFraming(framing *DraftFraming, custom *string) (string, string, error) {
 	if framing == nil {
 		return "", "", nil
@@ -30,13 +34,13 @@ func resolveFraming(framing *DraftFraming, custom *string) (string, string, erro
 	case DraftFramingCustom:
 		wording := strings.TrimSpace(derefOrEmpty(custom))
 		if wording == "" {
-			return "", "", fmt.Errorf("framing: custom framing needs wording")
+			return "", "", status.Error(codes.InvalidArgument, "Custom framing needs wording.")
 		}
 		if n := utf8.RuneCountInString(wording); n > maxCustomFramingRunes {
-			return "", "", fmt.Errorf("framing: custom wording is %d characters, the limit is %d", n, maxCustomFramingRunes)
+			return "", "", status.Errorf(codes.InvalidArgument, "Custom wording is %d characters; the limit is %d.", n, maxCustomFramingRunes)
 		}
 		return string(f), wording, nil
 	default:
-		return "", "", fmt.Errorf("framing: unknown framing %q", string(f))
+		return "", "", status.Errorf(codes.InvalidArgument, "Unknown framing %q.", string(f))
 	}
 }

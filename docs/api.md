@@ -51,6 +51,20 @@ manager may name only a group they manage in `actorGroupId`; any other group is 
 `PermissionDenied`.
 `auditSegment` (the raw export) needs `audit.read`, because record ids span every group.
 
+**Policy history:** `policyHistory(policyId, pageSize, pageToken)` returns one policy's whole
+timeline, newest first, in the `AuditQueryPage` shape of `auditLog`. Core files a policy's
+creation and a discarded draft under `policy:<id>`, and its draft saves, publishes and status
+changes under `policy_version:<id>`; workflow files every approval event (submission, signals,
+decisions, withdrawal) under `policy_version:<id>`. Audit matches one exact subject a query, so the
+gateway asks for `policy:<id>` and for each version it may show, and merges the answers. It needs
+no `audit.read`: it is open to anyone who can read the policy, and a caller who cannot gets
+`NotFound` with audit never asked. A draft, a version in review or a rejected one is shown only to
+an editor or the holder of a pending approval seat on it; for anyone else its records are left
+out. Each record carries `versionNumber` (null for a policy-level record). `pageSize` is 1 to 200
+(anything else means 50) and `pageToken` is the previous page's `nextPageToken`. A draft that was
+discarded no longer exists in core, so only its `policy.draft_discarded` record (filed under the
+policy) is shown, not its earlier saves. The gateway reads at most 5000 records for one policy.
+
 **Shred and legal holds:** `shredAuditSubject` (crypto-shred a subject: audit erases its key and
 clears its personal data from activity records), `createAuditLegalHold`, `releaseAuditLegalHold`
 and the query `auditLegalHolds` need `compliance.manage` (`compliance-admin` and `site-admin`
@@ -278,6 +292,27 @@ shapes follow the mock server's schema.
   list). `relatedPolicies` lists the policy's own links only. The older `setRelatedPolicies`,
   `setPolicyReferences`, `setPolicyContactBlocks` and `setPolicyDefinitionEntries` still write
   core's per-policy store and no longer show in those reads.
+
+## Policy text search
+
+`searchPolicies(query, documentType, first, after)` asks core's `PolicyService.SearchPolicies` for the
+documents whose title, number or published text (appendices included) hold every word of the query,
+as whole words ignoring case, and returns a page `{hits, nextPageToken}`. Each hit has the `policy`
+(through the same read model as `policies`), a `rank` and a `snippet` of plain text with `matches`
+counted in UTF-16 code units. `first` is the page size (default 20, at most 100) and `after` the
+`nextPageToken` of the page before; a token the gateway did not hand out is `INVALID_ARGUMENT`, and
+so is `first` under 1. A blank query finds nothing.
+
+- A document the caller may not read never appears.
+- For a caller whose content is obfuscated on a document, or who reads it only under a break-glass
+  grant, the document matches on its title and number alone: a hit stays only when every word is in
+  the title and number, it carries the title-only rank, and it has no snippet. Search cannot reveal
+  hidden text one guess at a time, and a break-glass read is never made through search.
+- Core pages the ranked hits and the gateway filters after it, so the token is core's offset of the
+  first hit not yet returned and a page can end in the middle of a core page. A page can be shorter
+  than `first` and still carry a token when the caller cannot read many of the hits that follow
+  (the gateway reads at most five core pages per request).
+- Neither the query nor any document text is logged, only the query's length.
 
 ## Break-glass reads
 

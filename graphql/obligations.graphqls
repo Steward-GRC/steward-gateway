@@ -18,6 +18,17 @@ type Acknowledgment {
   ackedAt: String!
 }
 
+# One acknowledgement the caller recorded, named by its policy: the row of the
+# "Recently acknowledged" card on My work.
+type RecentAcknowledgment {
+  policyId: ID!
+  number: String!
+  title: String!
+  versionNo: Int!
+  policyVersionId: ID!
+  ackedAt: String!
+}
+
 type AckStatus {
   acknowledged: Boolean!
   ackedAt: String   # ISO-8601; null when acknowledged=false
@@ -109,6 +120,9 @@ type AckExport {
 extend type Query {
   myObligations: [Obligation!]!
   myAckSummary: AckSummary!
+  # The caller's own acknowledgements, newest first. Always the signed-in user's,
+  # never another person's. limit defaults to 10 and is capped at 100.
+  myAcknowledgments(limit: Int): [RecentAcknowledgment!]!
   obligatedAudienceCount(policyId: ID!): Int!
   ackStatus(policyVersionId: ID!): AckStatus!
   notificationPref: NotificationPref! @deprecated(reason: "Use notificationSettings.channels")

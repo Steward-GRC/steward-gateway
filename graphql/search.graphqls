@@ -1,0 +1,40 @@
+extend type Query {
+  # Searches the published text of policies and procedures, and their titles and numbers. Every
+  # word of the query must match, as a whole word, ignoring case. A policy the viewer can't read
+  # never appears. For a viewer whose content is obfuscated (or who reads it only under a
+  # break-glass grant), a policy matches on its title and number only and gets no snippet, so
+  # search can't reveal hidden text one guess at a time. Drafts, superseded versions and retired
+  # policies never match. documentType null searches both kinds. first is the page size (default
+  # 20, at most 100). after is the nextPageToken of the page before; a token the gateway didn't
+  # hand out is INVALID_ARGUMENT.
+  searchPolicies(query: String!, documentType: DocumentType, first: Int, after: String): PolicySearchPage!
+}
+
+# One page of hits, best first. A page can be shorter than first and still carry a nextPageToken
+# when the viewer can't read many of the hits that follow.
+type PolicySearchPage {
+  hits: [PolicySearchHit!]!
+  # Opaque; pass as `after` for the next page. Empty on the last page.
+  nextPageToken: String!
+}
+
+type PolicySearchHit {
+  policy: Policy!
+  # Higher is better. Only comparable within one search's results.
+  rank: Float!
+  # Null when the match is in the title or number only, or the viewer's content is obfuscated.
+  snippet: PolicySearchSnippet
+}
+
+# A passage of the published text, plain (no markup), and where the query matched in it. A long
+# passage is cut to a window around its first match, with an ellipsis at a cut end.
+type PolicySearchSnippet {
+  text: String!
+  matches: [TextSpan!]!
+}
+
+# A run of `text`, counted in UTF-16 code units, as JavaScript, NSString and Kotlin index strings.
+type TextSpan {
+  start: Int!
+  length: Int!
+}

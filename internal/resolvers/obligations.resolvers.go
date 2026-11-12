@@ -56,6 +56,11 @@ func (r *queryResolver) MyAckSummary(ctx context.Context) (*AckSummary, error) {
 	return MyAckSummaryResolver(ctx, r.ObligationClient)
 }
 
+// MyAcknowledgments is the resolver for the myAcknowledgments field.
+func (r *queryResolver) MyAcknowledgments(ctx context.Context, limit *int) ([]*RecentAcknowledgment, error) {
+	return MyAcknowledgmentsResolver(ctx, r.logger().Ctx(ctx), r.ObligationClient, limit)
+}
+
 // ObligatedAudienceCount is the resolver for the obligatedAudienceCount field.
 func (r *queryResolver) ObligatedAudienceCount(ctx context.Context, policyID string) (int, error) {
 	return ObligatedAudienceCountResolver(ctx, r.ObligationClient, policyID)

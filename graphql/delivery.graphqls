@@ -19,7 +19,33 @@ type MagicLink {
   expiresAt: String!
 }
 
+# One issued magic link as the registry lists it. token is the bearer secret the share URL carries,
+# so only a site admin may read it. status is active, revoked or expired (a revoked link that is also
+# past its expiry is revoked). Dates are RFC 3339; revokedAt is null until the link is revoked.
+type MagicLinkInfo {
+  token: String!
+  fingerprint: String!
+  policyVersionId: ID!
+  createdByUserId: ID!
+  sensitive: Boolean!
+  status: String!
+  createdAt: String!
+  expiresAt: String!
+  revokedAt: String
+  revokedByUserId: ID
+}
+
+# One page of issued magic links. nextPageToken is null on the last page.
+type MagicLinkPage {
+  links: [MagicLinkInfo!]!
+  nextPageToken: String
+}
+
 extend type Query {
+  # magicLinks -> DeliveryService.ListMagicLinks. Site admin only (the results hold bearer tokens).
+  # policyVersionIds limits the list to links for those versions (empty or omitted: every link);
+  # pageSize is 1 to 200 (anything else means 50); pageToken is a previous page's nextPageToken.
+  magicLinks(policyVersionIds: [ID!], pageSize: Int, pageToken: String): MagicLinkPage!
   renderedContent(policyVersionId: ID!): RenderedContent!
   policyDiff(fromVersionId: ID!, toVersionId: ID!): PolicyDiff!
   pdfDownloadLink(jobId: ID!): PDFDownloadLink!
@@ -29,6 +55,10 @@ extend type Mutation {
   requestPDFExport(policyVersionId: ID!): PDFExportJob!
   createMagicLink(policyVersionId: ID!, sensitive: Boolean!): MagicLink!
   revokeMagicLink(token: String!): Boolean!
+  # removeMagicLink -> DeliveryService.RemoveMagicLink. Site admin only. Deletes a revoked or expired
+  # link from the list; an active link is refused (delivery answers MAGIC_LINK_ACTIVE), an unknown
+  # one is NotFound (MAGIC_LINK_NOT_FOUND).
+  removeMagicLink(token: String!): Boolean!
   # Records that the signed-in caller printed or exported a policy, for the audit log. Only a
   # SENSITIVE policy is recorded: true means an entry was written, false means the policy is not
   # sensitive (or the caller sees it obfuscated) and nothing was. A caller who cannot read the

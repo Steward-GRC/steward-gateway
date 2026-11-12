@@ -625,6 +625,24 @@ type ComplexityRoot struct {
 		Token     func(childComplexity int) int
 	}
 
+	MagicLinkInfo struct {
+		CreatedAt       func(childComplexity int) int
+		CreatedByUserID func(childComplexity int) int
+		ExpiresAt       func(childComplexity int) int
+		Fingerprint     func(childComplexity int) int
+		PolicyVersionID func(childComplexity int) int
+		RevokedAt       func(childComplexity int) int
+		RevokedByUserID func(childComplexity int) int
+		Sensitive       func(childComplexity int) int
+		Status          func(childComplexity int) int
+		Token           func(childComplexity int) int
+	}
+
+	MagicLinkPage struct {
+		Links         func(childComplexity int) int
+		NextPageToken func(childComplexity int) int
+	}
+
 	Maintenance struct {
 		Enabled func(childComplexity int) int
 		Message func(childComplexity int) int
@@ -767,6 +785,7 @@ type ComplexityRoot struct {
 		ReindexPolicyVersion          func(childComplexity int, policyVersionID string) int
 		ReleaseAuditLegalHold         func(childComplexity int, holdUUID string) int
 		RemoveFactor                  func(childComplexity int, kind string) int
+		RemoveMagicLink               func(childComplexity int, token string) int
 		RemoveUserFromGroup           func(childComplexity int, userID string, groupID string) int
 		RemoveUserMfaFactor           func(childComplexity int, userID string, methodID string) int
 		RemoveWebauthnCredential      func(childComplexity int, credentialID string) int
@@ -1124,6 +1143,7 @@ type ComplexityRoot struct {
 		ImpersonationStatus        func(childComplexity int) int
 		LatestTemplateVersion      func(childComplexity int, templateID string) int
 		ListUserSessions           func(childComplexity int, userID string) int
+		MagicLinks                 func(childComplexity int, policyVersionIds []string, pageSize *int, pageToken *string) int
 		ManagedGroupMembers        func(childComplexity int, groupID string) int
 		Me                         func(childComplexity int) int
 		MyAckSummary               func(childComplexity int) int
@@ -1778,6 +1798,7 @@ type MutationResolver interface {
 	RequestPDFExport(ctx context.Context, policyVersionID string) (*PDFExportJob, error)
 	CreateMagicLink(ctx context.Context, policyVersionID string, sensitive bool) (*MagicLink, error)
 	RevokeMagicLink(ctx context.Context, token string) (bool, error)
+	RemoveMagicLink(ctx context.Context, token string) (bool, error)
 	RecordPolicyExport(ctx context.Context, policyID string, kind PolicyExportKind, includeHistory bool) (bool, error)
 	GrantRole(ctx context.Context, userID string, role string, category *string) (*User, error)
 	RevokeRole(ctx context.Context, userID string, role string, category *string) (*User, error)
@@ -1935,6 +1956,7 @@ type QueryResolver interface {
 	SimulateCategory(ctx context.Context, categoryID string, userID string, draftRules []*RaciRuleInput) (*RaciDecision, error)
 	CategoryApprovers(ctx context.Context, categoryID string) ([]*User, error)
 	ViewerIsApprover(ctx context.Context) (bool, error)
+	MagicLinks(ctx context.Context, policyVersionIds []string, pageSize *int, pageToken *string) (*MagicLinkPage, error)
 	RenderedContent(ctx context.Context, policyVersionID string) (*RenderedContent, error)
 	PolicyDiff(ctx context.Context, fromVersionID string, toVersionID string) (*PolicyDiff, error)
 	PDFDownloadLink(ctx context.Context, jobID string) (*PDFDownloadLink, error)
@@ -4199,6 +4221,80 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.MagicLink.Token(childComplexity), true
 
+	case "MagicLinkInfo.createdAt":
+		if e.ComplexityRoot.MagicLinkInfo.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkInfo.CreatedAt(childComplexity), true
+	case "MagicLinkInfo.createdByUserId":
+		if e.ComplexityRoot.MagicLinkInfo.CreatedByUserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkInfo.CreatedByUserID(childComplexity), true
+	case "MagicLinkInfo.expiresAt":
+		if e.ComplexityRoot.MagicLinkInfo.ExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkInfo.ExpiresAt(childComplexity), true
+	case "MagicLinkInfo.fingerprint":
+		if e.ComplexityRoot.MagicLinkInfo.Fingerprint == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkInfo.Fingerprint(childComplexity), true
+	case "MagicLinkInfo.policyVersionId":
+		if e.ComplexityRoot.MagicLinkInfo.PolicyVersionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkInfo.PolicyVersionID(childComplexity), true
+	case "MagicLinkInfo.revokedAt":
+		if e.ComplexityRoot.MagicLinkInfo.RevokedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkInfo.RevokedAt(childComplexity), true
+	case "MagicLinkInfo.revokedByUserId":
+		if e.ComplexityRoot.MagicLinkInfo.RevokedByUserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkInfo.RevokedByUserID(childComplexity), true
+	case "MagicLinkInfo.sensitive":
+		if e.ComplexityRoot.MagicLinkInfo.Sensitive == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkInfo.Sensitive(childComplexity), true
+	case "MagicLinkInfo.status":
+		if e.ComplexityRoot.MagicLinkInfo.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkInfo.Status(childComplexity), true
+	case "MagicLinkInfo.token":
+		if e.ComplexityRoot.MagicLinkInfo.Token == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkInfo.Token(childComplexity), true
+
+	case "MagicLinkPage.links":
+		if e.ComplexityRoot.MagicLinkPage.Links == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkPage.Links(childComplexity), true
+	case "MagicLinkPage.nextPageToken":
+		if e.ComplexityRoot.MagicLinkPage.NextPageToken == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MagicLinkPage.NextPageToken(childComplexity), true
+
 	case "Maintenance.enabled":
 		if e.ComplexityRoot.Maintenance.Enabled == nil {
 			break
@@ -5250,6 +5346,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RemoveFactor(childComplexity, args["kind"].(string)), true
+	case "Mutation.removeMagicLink":
+		if e.ComplexityRoot.Mutation.RemoveMagicLink == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeMagicLink_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RemoveMagicLink(childComplexity, args["token"].(string)), true
 	case "Mutation.removeUserFromGroup":
 		if e.ComplexityRoot.Mutation.RemoveUserFromGroup == nil {
 			break
@@ -7559,6 +7666,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.ListUserSessions(childComplexity, args["userId"].(string)), true
+	case "Query.magicLinks":
+		if e.ComplexityRoot.Query.MagicLinks == nil {
+			break
+		}
+
+		args, err := ec.field_Query_magicLinks_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.MagicLinks(childComplexity, args["policyVersionIds"].([]string), args["pageSize"].(*int), args["pageToken"].(*string)), true
 	case "Query.managedGroupMembers":
 		if e.ComplexityRoot.Query.ManagedGroupMembers == nil {
 			break
@@ -11978,7 +12096,33 @@ type MagicLink {
   expiresAt: String!
 }
 
+# One issued magic link as the registry lists it. token is the bearer secret the share URL carries,
+# so only a site admin may read it. status is active, revoked or expired (a revoked link that is also
+# past its expiry is revoked). Dates are RFC 3339; revokedAt is null until the link is revoked.
+type MagicLinkInfo {
+  token: String!
+  fingerprint: String!
+  policyVersionId: ID!
+  createdByUserId: ID!
+  sensitive: Boolean!
+  status: String!
+  createdAt: String!
+  expiresAt: String!
+  revokedAt: String
+  revokedByUserId: ID
+}
+
+# One page of issued magic links. nextPageToken is null on the last page.
+type MagicLinkPage {
+  links: [MagicLinkInfo!]!
+  nextPageToken: String
+}
+
 extend type Query {
+  # magicLinks -> DeliveryService.ListMagicLinks. Site admin only (the results hold bearer tokens).
+  # policyVersionIds limits the list to links for those versions (empty or omitted: every link);
+  # pageSize is 1 to 200 (anything else means 50); pageToken is a previous page's nextPageToken.
+  magicLinks(policyVersionIds: [ID!], pageSize: Int, pageToken: String): MagicLinkPage!
   renderedContent(policyVersionId: ID!): RenderedContent!
   policyDiff(fromVersionId: ID!, toVersionId: ID!): PolicyDiff!
   pdfDownloadLink(jobId: ID!): PDFDownloadLink!
@@ -11988,6 +12132,10 @@ extend type Mutation {
   requestPDFExport(policyVersionId: ID!): PDFExportJob!
   createMagicLink(policyVersionId: ID!, sensitive: Boolean!): MagicLink!
   revokeMagicLink(token: String!): Boolean!
+  # removeMagicLink -> DeliveryService.RemoveMagicLink. Site admin only. Deletes a revoked or expired
+  # link from the list; an active link is refused (delivery answers MAGIC_LINK_ACTIVE), an unknown
+  # one is NotFound (MAGIC_LINK_NOT_FOUND).
+  removeMagicLink(token: String!): Boolean!
   # Records that the signed-in caller printed or exported a policy, for the audit log. Only a
   # SENSITIVE policy is recorded: true means an entry was written, false means the policy is not
   # sensitive (or the caller sees it obfuscated) and nothing was. A caller who cannot read the
@@ -15175,6 +15323,42 @@ func (ec *executionContext) childFields_MagicLink(ctx context.Context, field gra
 		return ec.fieldContext_MagicLink_expiresAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type MagicLink", field.Name)
+}
+
+func (ec *executionContext) childFields_MagicLinkInfo(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "token":
+		return ec.fieldContext_MagicLinkInfo_token(ctx, field)
+	case "fingerprint":
+		return ec.fieldContext_MagicLinkInfo_fingerprint(ctx, field)
+	case "policyVersionId":
+		return ec.fieldContext_MagicLinkInfo_policyVersionId(ctx, field)
+	case "createdByUserId":
+		return ec.fieldContext_MagicLinkInfo_createdByUserId(ctx, field)
+	case "sensitive":
+		return ec.fieldContext_MagicLinkInfo_sensitive(ctx, field)
+	case "status":
+		return ec.fieldContext_MagicLinkInfo_status(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_MagicLinkInfo_createdAt(ctx, field)
+	case "expiresAt":
+		return ec.fieldContext_MagicLinkInfo_expiresAt(ctx, field)
+	case "revokedAt":
+		return ec.fieldContext_MagicLinkInfo_revokedAt(ctx, field)
+	case "revokedByUserId":
+		return ec.fieldContext_MagicLinkInfo_revokedByUserId(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type MagicLinkInfo", field.Name)
+}
+
+func (ec *executionContext) childFields_MagicLinkPage(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "links":
+		return ec.fieldContext_MagicLinkPage_links(ctx, field)
+	case "nextPageToken":
+		return ec.fieldContext_MagicLinkPage_nextPageToken(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type MagicLinkPage", field.Name)
 }
 
 func (ec *executionContext) childFields_Maintenance(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -18401,6 +18585,20 @@ func (ec *executionContext) field_Mutation_removeFactor_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_removeMagicLink_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "token",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["token"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_removeUserFromGroup_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -21146,6 +21344,36 @@ func (ec *executionContext) field_Query_listUserSessions_args(ctx context.Contex
 		return nil, err
 	}
 	args["userId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_magicLinks_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "policyVersionIds",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["policyVersionIds"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pageToken",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["pageToken"] = arg2
 	return args, nil
 }
 
@@ -30433,6 +30661,291 @@ func (ec *executionContext) fieldContext_MagicLink_expiresAt(_ context.Context, 
 	return graphql.NewScalarFieldContext("MagicLink", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _MagicLinkInfo_token(ctx context.Context, field graphql.CollectedField, obj *MagicLinkInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkInfo_token(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Token, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkInfo_token(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkInfo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MagicLinkInfo_fingerprint(ctx context.Context, field graphql.CollectedField, obj *MagicLinkInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkInfo_fingerprint(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Fingerprint, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkInfo_fingerprint(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkInfo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MagicLinkInfo_policyVersionId(ctx context.Context, field graphql.CollectedField, obj *MagicLinkInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkInfo_policyVersionId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PolicyVersionID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkInfo_policyVersionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkInfo", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _MagicLinkInfo_createdByUserId(ctx context.Context, field graphql.CollectedField, obj *MagicLinkInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkInfo_createdByUserId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedByUserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkInfo_createdByUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkInfo", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _MagicLinkInfo_sensitive(ctx context.Context, field graphql.CollectedField, obj *MagicLinkInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkInfo_sensitive(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Sensitive, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkInfo_sensitive(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkInfo", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _MagicLinkInfo_status(ctx context.Context, field graphql.CollectedField, obj *MagicLinkInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkInfo_status(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkInfo_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkInfo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MagicLinkInfo_createdAt(ctx context.Context, field graphql.CollectedField, obj *MagicLinkInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkInfo_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkInfo_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkInfo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MagicLinkInfo_expiresAt(ctx context.Context, field graphql.CollectedField, obj *MagicLinkInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkInfo_expiresAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkInfo_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkInfo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MagicLinkInfo_revokedAt(ctx context.Context, field graphql.CollectedField, obj *MagicLinkInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkInfo_revokedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RevokedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkInfo_revokedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkInfo", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _MagicLinkInfo_revokedByUserId(ctx context.Context, field graphql.CollectedField, obj *MagicLinkInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkInfo_revokedByUserId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RevokedByUserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkInfo_revokedByUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkInfo", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _MagicLinkPage_links(ctx context.Context, field graphql.CollectedField, obj *MagicLinkPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkPage_links(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Links, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*MagicLinkInfo) graphql.Marshaler {
+			return ec.marshalNMagicLinkInfo2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMagicLinkInfoᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkPage_links(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MagicLinkPage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_MagicLinkInfo(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MagicLinkPage_nextPageToken(ctx context.Context, field graphql.CollectedField, obj *MagicLinkPage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_MagicLinkPage_nextPageToken(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.NextPageToken, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_MagicLinkPage_nextPageToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("MagicLinkPage", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Maintenance_enabled(ctx context.Context, field graphql.CollectedField, obj *Maintenance) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -34818,6 +35331,50 @@ func (ec *executionContext) fieldContext_Mutation_revokeMagicLink(ctx context.Co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_revokeMagicLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeMagicLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_removeMagicLink(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RemoveMagicLink(ctx, fc.Args["token"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_removeMagicLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeMagicLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -44374,6 +44931,50 @@ func (ec *executionContext) _Query_viewerIsApprover(ctx context.Context, field g
 }
 func (ec *executionContext) fieldContext_Query_viewerIsApprover(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Query_magicLinks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_magicLinks(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().MagicLinks(ctx, fc.Args["policyVersionIds"].([]string), fc.Args["pageSize"].(*int), fc.Args["pageToken"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *MagicLinkPage) graphql.Marshaler {
+			return ec.marshalNMagicLinkPage2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMagicLinkPage(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_magicLinks(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_MagicLinkPage(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_magicLinks_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _Query_renderedContent(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -61802,6 +62403,132 @@ func (ec *executionContext) _MagicLink(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var magicLinkInfoImplementors = []string{"MagicLinkInfo"}
+
+func (ec *executionContext) _MagicLinkInfo(ctx context.Context, sel ast.SelectionSet, obj *MagicLinkInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, magicLinkInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MagicLinkInfo")
+		case "token":
+			out.Values[i] = ec._MagicLinkInfo_token(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fingerprint":
+			out.Values[i] = ec._MagicLinkInfo_fingerprint(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "policyVersionId":
+			out.Values[i] = ec._MagicLinkInfo_policyVersionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdByUserId":
+			out.Values[i] = ec._MagicLinkInfo_createdByUserId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sensitive":
+			out.Values[i] = ec._MagicLinkInfo_sensitive(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._MagicLinkInfo_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._MagicLinkInfo_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expiresAt":
+			out.Values[i] = ec._MagicLinkInfo_expiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "revokedAt":
+			out.Values[i] = ec._MagicLinkInfo_revokedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "revokedByUserId":
+			out.Values[i] = ec._MagicLinkInfo_revokedByUserId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var magicLinkPageImplementors = []string{"MagicLinkPage"}
+
+func (ec *executionContext) _MagicLinkPage(ctx context.Context, sel ast.SelectionSet, obj *MagicLinkPage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, magicLinkPageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MagicLinkPage")
+		case "links":
+			out.Values[i] = ec._MagicLinkPage_links(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nextPageToken":
+			out.Values[i] = ec._MagicLinkPage_nextPageToken(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var maintenanceImplementors = []string{"Maintenance"}
 
 func (ec *executionContext) _Maintenance(ctx context.Context, sel ast.SelectionSet, obj *Maintenance) graphql.Marshaler {
@@ -62887,6 +63614,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "revokeMagicLink":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_revokeMagicLink(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeMagicLink":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeMagicLink(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -66317,6 +67051,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_viewerIsApprover(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "magicLinks":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_magicLinks(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -73494,6 +74250,46 @@ func (ec *executionContext) marshalNMagicLink2ᚖgithubᚗcomᚋStewardᚑGRCᚋ
 		return graphql.Null
 	}
 	return ec._MagicLink(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMagicLinkInfo2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMagicLinkInfoᚄ(ctx context.Context, sel ast.SelectionSet, v []*MagicLinkInfo) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNMagicLinkInfo2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMagicLinkInfo(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMagicLinkInfo2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMagicLinkInfo(ctx context.Context, sel ast.SelectionSet, v *MagicLinkInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MagicLinkInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMagicLinkPage2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMagicLinkPage(ctx context.Context, sel ast.SelectionSet, v MagicLinkPage) graphql.Marshaler {
+	return ec._MagicLinkPage(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMagicLinkPage2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMagicLinkPage(ctx context.Context, sel ast.SelectionSet, v *MagicLinkPage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MagicLinkPage(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNMaintenance2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐMaintenance(ctx context.Context, sel ast.SelectionSet, v *Maintenance) graphql.Marshaler {

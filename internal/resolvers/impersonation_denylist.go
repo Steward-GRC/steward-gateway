@@ -51,6 +51,7 @@ var impersonationDenylist = map[string]struct{}{
 
 	"revokeUserSessions": {},
 	"revokeMagicLink":    {},
+	"removeMagicLink":    {},
 
 	"createLocalUser": {},
 

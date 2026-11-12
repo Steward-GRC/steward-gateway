@@ -26,9 +26,19 @@ func (r *mutationResolver) RevokeMagicLink(ctx context.Context, token string) (b
 	return RevokeMagicLinkResolver(ctx, r.DeliveryClient, token)
 }
 
+// RemoveMagicLink is the resolver for the removeMagicLink field.
+func (r *mutationResolver) RemoveMagicLink(ctx context.Context, token string) (bool, error) {
+	return RemoveMagicLinkResolver(ctx, r.DeliveryClient, token)
+}
+
 // RecordPolicyExport is the resolver for the recordPolicyExport field.
 func (r *mutationResolver) RecordPolicyExport(ctx context.Context, policyID string, kind PolicyExportKind, includeHistory bool) (bool, error) {
 	return RecordPolicyExport(ctx, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.AuditEmitter, policyID, kind, includeHistory)
+}
+
+// MagicLinks is the resolver for the magicLinks field.
+func (r *queryResolver) MagicLinks(ctx context.Context, policyVersionIds []string, pageSize *int, pageToken *string) (*MagicLinkPage, error) {
+	return ListMagicLinksResolver(ctx, r.DeliveryClient, policyVersionIds, pageSize, pageToken)
 }
 
 // RenderedContent is the resolver for the renderedContent field.

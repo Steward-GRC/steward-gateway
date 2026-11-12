@@ -342,16 +342,31 @@ each ancestor, nearest first, with owners and rules) and asks the engine.
 - **Everyone** is an explicit row and covers every person, a site admin included. A new category
   starts with Everyone: Read. A site admin who is not root follows the rows; break-glass is their
   fallback for reading.
-- **Root** is the one exempt seat (identity's `is_root`): global `read`, `author`, `approve` and
-  `manage`; `ack` follows the rows. A deny configured for root is stored and never applied. The
+- **Root** is the one exempt seat (identity's `is_root`): global `read`, `author` and `manage`.
+  `approve` and `ack` follow the rows (an Approve cell, or owning the category), like anyone's. A
+  deny of `read`, `author` or `manage` configured for root is stored and never applied. The
   simulator returns the action as allowed with code `ROOT` and a `blocked:` reason, and lists the
-  entry in `configuredBlock`.
+  entry in `configuredBlock`; a deny of `approve` or `ack` applies and is not listed.
 - **Reasons.** Each action has a human string and a code beside it: `ENTRY`, `DEFAULT_DENY`,
   `OWNER`, `ROOT`, `REQUIRES`.
 - **Approver pool.** `categoryApprovers` is the owners plus everyone whose `approve` is allowed,
-  owners first, then root (a global approver). `viewerIsApprover` is true for root.
-- **Manage** is for moving and reordering documents. It does not gate `setCategoryRuleset` or
-  `setCategoryGovernance`, which stay global-admin only. `PolicyViewerCan.manage` reports it.
+  owners first. Root is in it, and `viewerIsApprover` and `viewerCan.approve` are true for root,
+  only where an Approve cell or ownership allows.
+- **Manage** is for moving documents. `movePolicy`, `movePolicies` and `previewMovePolicies` are
+  allowed when `manage` is allowed on the document's category and `author` on the target category,
+  or to the site-admin role (the old gate, kept beside it). Manage does not gate
+  `setCategoryRuleset` or `setCategoryGovernance`, which stay global-admin only.
+  `PolicyViewerCan.manage` reports it.
+- **Collaboration token.** `issueCollabToken` follows collab's own edit check: root, the policy
+  owner, `author` or `manage` allowed, or the catalog's `policy.author` (global or scoped to the
+  category or an ancestor; the site-admin role does not count). A non-root site admin needs a rule.
+- **Regenerating a summary** (`regenerateVersionSummary`, and `summarizeChanges` with
+  `regenerate: true`) needs the same Author right as editing the policy, besides reading it.
+- **Appendix diff and contributors** are shown to whoever may edit the policy, a site admin and
+  compliance (`compliance.report`); that adds no right to write.
+- **Group typeahead.** `searchPlatformGroups(query, limit)` searches identity's groups by name for
+  the access picker (2 or more characters, 20 by default, at most 50), for whoever edits category
+  access (`group.manage` or `template.manage`); `searchUsers` finds people. Owners are people only.
 
 ## Break-glass reads
 

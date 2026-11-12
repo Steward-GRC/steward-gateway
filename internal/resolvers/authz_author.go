@@ -5,6 +5,7 @@ package resolvers
 
 import (
 	"context"
+	"slices"
 
 	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 	"google.golang.org/grpc/codes"
@@ -29,6 +30,7 @@ type effectiveAuthorCtx struct {
 	uid         string
 	subj        authz.Subject
 	ownerUserID string
+	number      string
 	draftID     string
 	access      *categoryAccess
 }
@@ -53,7 +55,7 @@ func loadEffectiveAuthorCtx(ctx context.Context, policyClient corev1.PolicyServi
 		}
 		access = c
 	}
-	return effectiveAuthorCtx{uid: uid, subj: subj, ownerUserID: p.GetOwnerUserId(), draftID: p.GetCurrentDraftVersionId(), access: access}, nil
+	return effectiveAuthorCtx{uid: uid, subj: subj, ownerUserID: p.GetOwnerUserId(), number: p.GetNumber(), draftID: p.GetCurrentDraftVersionId(), access: access}, nil
 }
 
 // isRoot reports whether the caller holds the root seat, the only exempt one.
@@ -163,4 +165,55 @@ func canReadCategory(ctx context.Context, categoryClient corev1.CategoryServiceC
 		e.access = access
 	}
 	return e.readAllowed()
+}
+
+// manageAllowed is the category-rule Manage decision. Manage implies Author, so
+// it is already inside authorAllowed; the collab gate names it as collab does.
+func (e effectiveAuthorCtx) manageAllowed() bool {
+	if e.access == nil {
+		return false
+	}
+	return e.access.decide(personFromSubject(e.subj)).Manage.Allowed
+}
+
+// scopedAuthorAllowed is the permission catalog's policy.author for the caller
+// on this policy, the path collab keeps beside the category rules: a role
+// granted globally or scoped to the policy's category or an ancestor. The
+// site-admin role is left out (a non-root site admin edits through a rule, and
+// root is the engine's seat), as collab does.
+func (e effectiveAuthorCtx) scopedAuthorAllowed() bool {
+	// The subject is built as collab builds it: the user, the groups, the
+	// catalog roles without site-admin and the scoped grants. Per-document
+	// overrides, the individual read-sensitive grant and break-glass belong to
+	// reading and are left out.
+	roleSubj := authz.Subject{
+		UserID:       e.subj.UserID,
+		Groups:       e.subj.Groups,
+		ScopedGrants: e.subj.ScopedGrants,
+		Roles:        slices.DeleteFunc(slices.Clone(e.subj.Roles), func(r authz.Role) bool { return r == authz.RoleSiteAdmin }),
+	}
+	res := authz.Resource{ID: e.number}
+	if e.access != nil {
+		res.CategoryLineage = e.access.lineage
+		if len(res.CategoryLineage) > 0 {
+			res.Category = res.CategoryLineage[0]
+		}
+	}
+	return authz.Authorize(roleSubj, authz.PolicyAuthor, &res).Allowed()
+}
+
+// authorizeCollabEditor gates minting a collaboration token. It is collab's own
+// edit check, so a person collab would let edit is not refused here first:
+// root, the policy owner, Author or Manage allowed by the category rules, or
+// the catalog's policy.author (see scopedAuthorAllowed). Returns the caller's
+// user id.
+func authorizeCollabEditor(ctx context.Context, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, policyID string) (string, error) {
+	e, err := loadEffectiveAuthorCtx(ctx, policyClient, categoryClient, policyID)
+	if err != nil {
+		return "", err
+	}
+	if e.isRoot() || e.isPrimaryAuthor() || e.authorAllowed() || e.manageAllowed() || e.scopedAuthorAllowed() {
+		return e.uid, nil
+	}
+	return "", status.Error(codes.PermissionDenied, "not an author for this policy's category")
 }

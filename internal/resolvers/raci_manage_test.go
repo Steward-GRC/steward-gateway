@@ -4,13 +4,16 @@
 package resolvers_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
+	log "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -97,8 +100,11 @@ func TestSimulateCategory_RootDenyIsBlockedNotApplied(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !d.Read || !d.Manage || !d.Author || !d.Approve {
+	if !d.Read || !d.Manage || !d.Author {
 		t.Fatalf("root stays allowed over its own deny: %+v", d)
+	}
+	if d.Approve {
+		t.Fatalf("root's Approve follows the rows and nothing allows it: %+v", d)
 	}
 	if d.Ack {
 		t.Fatalf("root's Ack follows the rule, and nothing allows it: %+v", d)
@@ -226,8 +232,8 @@ func TestSetCategoryGovernance_OwnersArePeopleOnly(t *testing.T) {
 }
 
 // The approver pool is the owners plus everyone whose Approve is allowed,
-// owners first, root included (a global approver).
-func TestCategoryApprovers_OwnersThenRowsThenRoot(t *testing.T) {
+// owners first. Root is in it only through a row (here Everyone: Approve).
+func TestCategoryApprovers_OwnersThenRows(t *testing.T) {
 	appr := userRule("approver")
 	appr.Approve = corev1.GrantEffect_GRANT_EFFECT_ALLOW
 	denied := userRule("denied")
@@ -249,7 +255,7 @@ func TestCategoryApprovers_OwnersThenRowsThenRoot(t *testing.T) {
 	for _, u := range got {
 		ids = append(ids, u.UserID)
 	}
-	want := []string{"owner", "the-root", "bystander", "approver"}
+	want := []string{"owner", "bystander", "approver", "the-root"}
 	if strings.Join(ids, ",") != strings.Join(want, ",") {
 		t.Fatalf("pool = %v, want %v (the denied person is out; Everyone: Approve brings in the rest)", ids, want)
 	}
@@ -325,4 +331,123 @@ func TestNonRootSiteAdminFollowsTheRulesAtTheWriteGates(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Root is not in any approver pool by being root: with no Approve row for it, it
+// is out; an Approve row, or owning the category, brings it in.
+func TestCategoryApprovers_RootOnlyThroughARowOrOwnership(t *testing.T) {
+	appr := userRule("approver")
+	appr.Approve = corev1.GrantEffect_GRANT_EFFECT_ALLOW
+	rootRow := userRule("the-root")
+	rootRow.Approve = corev1.GrantEffect_GRANT_EFFECT_ALLOW
+	cases := []struct {
+		name   string
+		rules  []*corev1.CategoryRule
+		owners []string
+		want   string
+	}{
+		{"no row for root", []*corev1.CategoryRule{appr}, nil, "approver"},
+		{"an approve row for root", []*corev1.CategoryRule{appr, rootRow}, nil, "approver,the-root"},
+		{"root owns the category", []*corev1.CategoryRule{appr}, []string{"the-root"}, "the-root,approver"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := manageEnv(tc.rules, tc.owners)
+			ic := r.IdentityClient.(*raciIdentityClient)
+			ic.users["approver"] = &identityv1.User{Id: "approver"}
+			ic.users["the-root"] = &identityv1.User{Id: "the-root", IsRoot: true, Roles: []string{"site-admin"}}
+			ic.allUsers = []*identityv1.User{ic.users["approver"], ic.users["the-root"]}
+			got, err := resolvers.CategoryApproversResolver(ctxWithRoles(t, "admin", []string{"site-admin"}), r, "c")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var ids []string
+			for _, u := range got {
+				ids = append(ids, u.UserID)
+			}
+			if strings.Join(ids, ",") != tc.want {
+				t.Fatalf("pool = %v, want %s", ids, tc.want)
+			}
+		})
+	}
+}
+
+// viewerIsApprover follows the rows for root as for anyone.
+func TestViewerIsApprover_RootFollowsTheRows(t *testing.T) {
+	root := principal.Static{UserIDValue: "the-root", RolesValue: []string{"site-admin"}, IsRootValue: true}
+	for _, tc := range []struct {
+		name   string
+		rules  []*corev1.CategoryRule
+		owners []string
+		want   bool
+	}{
+		{"no approve cell", []*corev1.CategoryRule{userRule("someone")}, nil, false},
+		{"an approve row", func() []*corev1.CategoryRule {
+			r := userRule("the-root")
+			r.Approve = corev1.GrantEffect_GRANT_EFFECT_ALLOW
+			return []*corev1.CategoryRule{r}
+		}(), nil, true},
+		{"owner", nil, []string{"the-root"}, true},
+		{"approve denied", func() []*corev1.CategoryRule {
+			r := userRule("the-root")
+			r.Approve = corev1.GrantEffect_GRANT_EFFECT_DENY
+			return []*corev1.CategoryRule{r}
+		}(), nil, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := manageEnv(tc.rules, tc.owners)
+			got, err := resolvers.ViewerIsApproverResolver(ctxWithStubClaims(t, root), log.Nop(),
+				topLevelLister{r.CategoryClient.(*raciCategoryClient)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Fatalf("viewerIsApprover = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// The simulator for root: a deny of read, author or manage is allowed with the
+// ROOT code and a configuredBlock entry; a deny of approve or ack applies.
+func TestSimulateCategory_RootApproveAndAckDenyApply(t *testing.T) {
+	deny := userRule("root-u")
+	deny.Read, deny.Author, deny.Manage = corev1.GrantEffect_GRANT_EFFECT_DENY, corev1.GrantEffect_GRANT_EFFECT_DENY, corev1.GrantEffect_GRANT_EFFECT_DENY
+	deny.Approve, deny.Ack = corev1.GrantEffect_GRANT_EFFECT_DENY, corev1.GrantEffect_GRANT_EFFECT_DENY
+	every := &corev1.CategoryRule{SubjectKind: corev1.RuleSubjectKind_RULE_SUBJECT_KIND_EVERYONE,
+		Read: corev1.GrantEffect_GRANT_EFFECT_ALLOW, Approve: corev1.GrantEffect_GRANT_EFFECT_ALLOW, Ack: corev1.GrantEffect_GRANT_EFFECT_ALLOW}
+	r := manageEnv([]*corev1.CategoryRule{deny, every}, nil,
+		&identityv1.User{Id: "root-u", IsRoot: true, Roles: []string{"site-admin"}})
+	d, err := resolvers.SimulateCategoryResolver(ctxWithRoles(t, "admin", []string{"site-admin"}), r, "c", "root-u", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !d.Read || !d.Author || !d.Manage {
+		t.Fatalf("read, author and manage stay allowed: %+v", d)
+	}
+	if d.ReadCode != resolvers.RaciReasonCodeRoot || d.AuthorCode != resolvers.RaciReasonCodeRoot || d.ManageCode != resolvers.RaciReasonCodeRoot {
+		t.Fatalf("codes = %v %v %v, want ROOT", d.ReadCode, d.AuthorCode, d.ManageCode)
+	}
+	if len(d.ConfiguredBlock) != 3 {
+		t.Fatalf("configuredBlock = %+v, want read, author and manage only", d.ConfiguredBlock)
+	}
+	for _, b := range d.ConfiguredBlock {
+		if b.Action == resolvers.RaciActionApprove || b.Action == resolvers.RaciActionAck {
+			t.Fatalf("approve and ack denies apply and are not blocked: %+v", d.ConfiguredBlock)
+		}
+	}
+	if d.Approve || d.Ack {
+		t.Fatalf("a deny of approve or ack applies to root: %+v", d)
+	}
+}
+
+// topLevelLister lists the one category "c" under the top level, so the
+// approver walk has something to visit.
+type topLevelLister struct{ *raciCategoryClient }
+
+func (topLevelLister) ListCategoryChildren(_ context.Context, in *corev1.ListCategoryChildrenRequest, _ ...grpc.CallOption) (*corev1.ListCategoryChildrenResponse, error) {
+	if in.GetParentId() != "" {
+		return &corev1.ListCategoryChildrenResponse{}, nil
+	}
+	return &corev1.ListCategoryChildrenResponse{Categories: []*corev1.Category{{Id: "c", Name: "Cat"}}}, nil
 }

@@ -13,10 +13,10 @@ import (
 
 // MovePolicies is the resolver for the movePolicies field.
 func (r *mutationResolver) MovePolicies(ctx context.Context, policyIds []string, homeCategoryID string) (*MovePoliciesResult, error) {
-	return MovePolicies(ctx, r.PolicyClient, policyIds, homeCategoryID)
+	return MovePolicies(ctx, r.PolicyClient, r.CategoryClient, policyIds, homeCategoryID)
 }
 
 // PreviewMovePolicies is the resolver for the previewMovePolicies field.
 func (r *queryResolver) PreviewMovePolicies(ctx context.Context, policyIds []string, homeCategoryID string) (*MovePoliciesPreview, error) {
-	return PreviewMovePolicies(ctx, r.PolicyClient, policyIds, homeCategoryID)
+	return PreviewMovePolicies(ctx, r.PolicyClient, r.CategoryClient, policyIds, homeCategoryID)
 }

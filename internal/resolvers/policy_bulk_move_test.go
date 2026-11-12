@@ -203,8 +203,8 @@ func TestBulkMoveParity_SiteAdminOnly(t *testing.T) {
 	require.Empty(t, core.previewReq)
 	require.Empty(t, core.moveReq)
 
-	_, err := resolvers.MovePolicies(author, core, []string{"p1"}, "cat-finance")
+	_, err := resolvers.MovePolicies(author, core, nil, []string{"p1"}, "cat-finance")
 	require.Equal(t, codes.PermissionDenied, status.Code(err))
-	_, err = resolvers.PreviewMovePolicies(author, core, []string{"p1"}, "cat-finance")
+	_, err = resolvers.PreviewMovePolicies(author, core, nil, []string{"p1"}, "cat-finance")
 	require.Equal(t, codes.PermissionDenied, status.Code(err))
 }

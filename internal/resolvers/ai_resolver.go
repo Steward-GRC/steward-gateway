@@ -674,7 +674,8 @@ func submitSummaryJob(ctx context.Context, client aiv1.AiServiceClient, category
 	return &SubmitDraftGenerationResult{JobID: resp.GetJobId()}, nil
 }
 
-// SummarizeChangesResolver submits a SUMMARIZE job for the changes between two versions. The caller
+// SummarizeChangesResolver submits a SUMMARIZE job for the changes between two versions. Asking to
+// regenerate, which replaces the stored summary, also needs the Author right. The caller
 // must be able to read both with their real content: authorizeVersionReads refuses an unreadable
 // version (NotFound) and an obfuscated one is refused here, so the AI service never sees content
 // the caller may not read.
@@ -689,6 +690,12 @@ func SummarizeChangesResolver(ctx context.Context, client aiv1.AiServiceClient, 
 	}
 	if effect != authz.EffectAllow {
 		return nil, status.Error(codes.PermissionDenied, "obfuscated content is not summarised")
+	}
+	if regenerate != nil && *regenerate {
+		// A regenerated summary replaces the stored one every reader sees.
+		if _, err := authorizeEffectiveAuthor(ctx, policyClient, categoryClient, reads[1].version.PolicyID); err != nil {
+			return nil, err
+		}
 	}
 	diff, err := policyClient.DiffVersions(ctx, &corev1.DiffVersionsRequest{FromVersionId: fromID, ToVersionId: toID})
 	if err != nil {
@@ -708,8 +715,9 @@ func SummarizeChangesResolver(ctx context.Context, client aiv1.AiServiceClient, 
 }
 
 // RegenerateVersionSummaryResolver submits a SUMMARIZE job that replaces one version's stored
-// summary. It takes the same read decision as PolicyVersionSummaryResolver (real content only); no
-// author-only rule is added here, that waits on the access model.
+// summary. It takes the same read decision as PolicyVersionSummaryResolver (real content only) and
+// then the Author right on the version's policy (authorizeEffectiveAuthor: the category rules, the
+// policy's owner, root): reading a version is not enough to replace the summary every reader sees.
 func RegenerateVersionSummaryResolver(ctx context.Context, client aiv1.AiServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, workflow workflowv1.WorkflowServiceClient, versionID string) (*SubmitDraftGenerationResult, error) {
 	claims, ok := principal.FromContext(ctx)
 	if !ok || claims == nil || claims.UserID() == "" {
@@ -723,6 +731,9 @@ func RegenerateVersionSummaryResolver(ctx context.Context, client aiv1.AiService
 		return nil, status.Error(codes.PermissionDenied, "obfuscated content is not summarised")
 	}
 	v := reads[0].version
+	if _, err := authorizeEffectiveAuthor(ctx, policyClient, categoryClient, v.PolicyID); err != nil {
+		return nil, err
+	}
 	pol, err := policyClient.GetPolicy(ctx, &corev1.GetPolicyRequest{Id: v.PolicyID})
 	if err != nil {
 		return nil, err

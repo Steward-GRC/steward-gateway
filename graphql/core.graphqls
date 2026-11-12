@@ -143,7 +143,8 @@ extend type Mutation {
   retirePolicy(id: ID!): Policy!
   # Site-admin: reassign a policy's owner (author).
   setPolicyOwner(policyId: ID!, ownerUserId: ID!): Policy!
-  # Site-admin: move a policy to another section; renumbers to the target's sequence.
+  # Move a policy to another section; renumbers to the target's sequence. Needs Manage on
+  # the policy's category and Author on the target, or the site-admin role.
   movePolicy(policyId: ID!, homeCategoryId: ID!): Policy!
   # Flip a policy's classification (STANDARD <-> SENSITIVE) in place. This is a
   # direct metadata change — it does NOT create a new version and does NOT trigger
@@ -789,8 +790,9 @@ type CategoryRuleset { categoryId: ID!  rules: [RaciRule!]! }
 enum RaciReasonCode { ENTRY DEFAULT_DENY OWNER ROOT REQUIRES }
 enum RaciAction { READ AUTHOR APPROVE MANAGE ACK }
 
-# A deny that is configured for root: stored, never applied (root is always
-# allowed), and shown by the simulator as blocked.
+# A deny of Read, Author or Manage that is configured for root: stored, never
+# applied (root always holds those three), and shown by the simulator as
+# blocked. A deny of Approve or Ack applies to root and is not listed.
 type RaciConfiguredBlock {
   action: RaciAction!
   categoryId: ID!
@@ -801,7 +803,7 @@ type RaciDecision {
   read: Boolean!  ack: Boolean!  approve: Boolean!  author: Boolean!  manage: Boolean!
   readReason: String!  ackReason: String!  approveReason: String!  authorReason: String!  manageReason: String!
   readCode: RaciReasonCode!  ackCode: RaciReasonCode!  approveCode: RaciReasonCode!  authorCode: RaciReasonCode!  manageCode: RaciReasonCode!
-  # Empty unless the person is root and a row would have denied an action.
+  # Empty unless the person is root and a row would have denied Read, Author or Manage.
   configuredBlock: [RaciConfiguredBlock!]!
 }
 extend type Query {

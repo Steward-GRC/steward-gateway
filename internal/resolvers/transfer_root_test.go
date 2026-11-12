@@ -80,7 +80,7 @@ func viewAsFreshRequest(t *testing.T, id *seatIdentity, userID string) *resolver
 }
 
 func isFullRoot(vc *resolvers.PolicyViewerCan) bool {
-	return vc.Read && !vc.ContentObfuscated && !vc.CanBreakGlass && vc.Edit && vc.Submit && vc.Approve
+	return vc.Read && !vc.ContentObfuscated && !vc.CanBreakGlass && vc.Edit && vc.Submit && vc.Manage
 }
 
 func TestRootOverrideFollowsTheSeatAfterTransfer(t *testing.T) {

@@ -38,12 +38,12 @@ var accessActions = []string{actRead, actAuthor, actApprove, actManage, actAck}
 // accessModel is the engine configuration: the five default actions (Manage
 // implies Read and Author, Approve and Author imply Read, Ack requires Read,
 // owners hold Read, Author, Approve and Manage but not Ack) and the root seat,
-// exempt for every action except Ack.
+// exempt for Read, Author and Manage only: Approve and Ack follow the rows.
 func accessModel() ordered.Model {
 	m := ordered.DefaultModel()
 	m.Superusers = &ordered.Superusers{
 		Subjects: []string{"role:" + rootRole},
-		Actions:  []string{actRead, actAuthor, actApprove, actManage},
+		Actions:  []string{actRead, actAuthor, actManage},
 	}
 	return m
 }
@@ -68,6 +68,8 @@ type categoryAccess struct {
 	rs    ordered.RuleSet
 	leaf  string
 	names map[string]string // category id -> name, for reasons
+	// lineage is the category names, the leaf first, then each parent.
+	lineage []string
 }
 
 // loadCategoryAccess reads the category's whole chain in one call.
@@ -103,6 +105,7 @@ func newCategoryAccess(levels []*corev1.EffectiveLevel) *categoryAccess {
 		}
 		a.rs.Categories[id] = ordered.Category{Entries: rulesEntries(l.GetRules()), Owners: owners}
 		a.names[id] = l.GetName()
+		a.lineage = append(a.lineage, l.GetName())
 		if i+1 < len(levels) {
 			a.rs.Parents[id] = levels[i+1].GetCategoryId()
 		}
@@ -120,7 +123,7 @@ func (a *categoryAccess) withLeafRules(rules []*corev1.CategoryRule) *categoryAc
 	leaf := cats[a.leaf]
 	leaf.Entries = rulesEntries(rules)
 	cats[a.leaf] = leaf
-	return &categoryAccess{rs: ordered.RuleSet{Categories: cats, Parents: a.rs.Parents}, leaf: a.leaf, names: a.names}
+	return &categoryAccess{rs: ordered.RuleSet{Categories: cats, Parents: a.rs.Parents}, leaf: a.leaf, names: a.names, lineage: a.lineage}
 }
 
 // categoryDecisions is the answer for one person on one category, one decision

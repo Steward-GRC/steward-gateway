@@ -596,6 +596,8 @@ type ComplexityRoot struct {
 	}
 
 	ImpersonationSession struct {
+		ActorName    func(childComplexity int) int
+		ActorUserID  func(childComplexity int) int
 		ExpiresAt    func(childComplexity int) int
 		Reason       func(childComplexity int) int
 		StartedAt    func(childComplexity int) int
@@ -4075,6 +4077,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.HealthStatus.Status(childComplexity), true
 
+	case "ImpersonationSession.actorName":
+		if e.ComplexityRoot.ImpersonationSession.ActorName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImpersonationSession.ActorName(childComplexity), true
+	case "ImpersonationSession.actorUserId":
+		if e.ComplexityRoot.ImpersonationSession.ActorUserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImpersonationSession.ActorUserID(childComplexity), true
 	case "ImpersonationSession.expiresAt":
 		if e.ComplexityRoot.ImpersonationSession.ExpiresAt == nil {
 			break
@@ -12489,6 +12503,10 @@ type ImpersonationSession {
   targetName: String!
   # The required justification captured at start.
   reason: String!
+  # The real administrator acting as the target: the account the actions are
+  # audited under. actorName is the display name (the id when none is known).
+  actorUserId: ID!
+  actorName: String!
   # RFC3339 start / expiry timestamps (30-minute window).
   startedAt: String!
   expiresAt: String!
@@ -15013,6 +15031,10 @@ func (ec *executionContext) childFields_ImpersonationSession(ctx context.Context
 		return ec.fieldContext_ImpersonationSession_targetName(ctx, field)
 	case "reason":
 		return ec.fieldContext_ImpersonationSession_reason(ctx, field)
+	case "actorUserId":
+		return ec.fieldContext_ImpersonationSession_actorUserId(ctx, field)
+	case "actorName":
+		return ec.fieldContext_ImpersonationSession_actorName(ctx, field)
 	case "startedAt":
 		return ec.fieldContext_ImpersonationSession_startedAt(ctx, field)
 	case "expiresAt":
@@ -29915,6 +29937,52 @@ func (ec *executionContext) _ImpersonationSession_reason(ctx context.Context, fi
 	)
 }
 func (ec *executionContext) fieldContext_ImpersonationSession_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ImpersonationSession", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _ImpersonationSession_actorUserId(ctx context.Context, field graphql.CollectedField, obj *ImpersonationSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ImpersonationSession_actorUserId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ActorUserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ImpersonationSession_actorUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ImpersonationSession", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _ImpersonationSession_actorName(ctx context.Context, field graphql.CollectedField, obj *ImpersonationSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ImpersonationSession_actorName(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ActorName, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ImpersonationSession_actorName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("ImpersonationSession", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -61178,6 +61246,16 @@ func (ec *executionContext) _ImpersonationSession(ctx context.Context, sel ast.S
 			}
 		case "reason":
 			out.Values[i] = ec._ImpersonationSession_reason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "actorUserId":
+			out.Values[i] = ec._ImpersonationSession_actorUserId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "actorName":
+			out.Values[i] = ec._ImpersonationSession_actorName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

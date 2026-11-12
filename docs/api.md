@@ -26,6 +26,8 @@ throttled per hash of the case code and overall, failing closed.
 **Act-as:** while a site admin acts as another user, every call is made as that user with the
 admin as the impersonator, and high-risk mutations (passwords, factors, roles, deletions,
 sessions, audit shreds and legal holds) are refused with `IMPERSONATION_DENIED`.
+`startImpersonation` and `impersonationStatus` name the acting admin (`actorUserId`, `actorName`)
+from the admin's session record, so the banner can say whose account the actions are audited under.
 
 **Platform groups vs categories:** `platformGroups` and `createPlatformGroup` (site-admin only)
 list and create identity's platform groups, the groups that memberships (`addUserToGroup`),

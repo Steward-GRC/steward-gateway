@@ -721,6 +721,8 @@ type ImpersonationSession struct {
 	TargetUserID string `json:"targetUserId"`
 	TargetName   string `json:"targetName"`
 	Reason       string `json:"reason"`
+	ActorUserID  string `json:"actorUserId"`
+	ActorName    string `json:"actorName"`
 	StartedAt    string `json:"startedAt"`
 	ExpiresAt    string `json:"expiresAt"`
 }

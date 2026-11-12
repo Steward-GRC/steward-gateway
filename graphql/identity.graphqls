@@ -520,6 +520,10 @@ type ImpersonationSession {
   targetName: String!
   # The required justification captured at start.
   reason: String!
+  # The real administrator acting as the target: the account the actions are
+  # audited under. actorName is the display name (the id when none is known).
+  actorUserId: ID!
+  actorName: String!
   # RFC3339 start / expiry timestamps (30-minute window).
   startedAt: String!
   expiresAt: String!

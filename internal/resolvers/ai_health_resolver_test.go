@@ -152,6 +152,81 @@ func TestAIHealthResolver_providerReasonNullOutsideProviderOutage(t *testing.T) 
 	}
 }
 
+// A reached usage limit, the organisation's monthly one or the caller's own daily one, makes
+// aiHealth unavailable with reason limit_reached and no providerReason (the mock's rule).
+func TestAIHealthResolver_limitReached(t *testing.T) {
+	for name, resp := range map[string]*aiv1.GetMyUsageLimitResponse{
+		"limit_reached flag":    {LimitReached: true},
+		"monthly limit reached": {MonthlyLimitReached: true, LimitReached: true},
+		"daily limit reached":   {DailyLimitReached: true, DailyLimit: 5, DailyUsed: 5, LimitReached: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			client := &fakeAIClient{usageLimitResp: resp}
+			ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-1"})
+			got, err := resolvers.AIHealthResolver(ctx, client)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got.Available || got.Reason == nil || *got.Reason != "limit_reached" {
+				t.Fatalf("expected unavailable/limit_reached, got %+v", got)
+			}
+			if got.ProviderReason != nil {
+				t.Fatalf("expected a null providerReason, got %q", *got.ProviderReason)
+			}
+		})
+	}
+}
+
+// Under both limits the answer is available, and a usage read that fails does not turn AI off:
+// the submit refuses on its own, so aiHealth stays best-effort.
+func TestAIHealthResolver_limitNotReachedOrUnreadable_isAvailable(t *testing.T) {
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-1"})
+	for name, client := range map[string]*fakeAIClient{
+		"under both limits": {usageLimitResp: &aiv1.GetMyUsageLimitResponse{DailyLimit: 5, DailyUsed: 1}},
+		"usage read fails":  {usageLimitErr: errors.New("boom")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := resolvers.AIHealthResolver(ctx, client)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !got.Available || got.Reason != nil {
+				t.Fatalf("expected available with no reason, got %+v", got)
+			}
+		})
+	}
+}
+
+// The limit yields to the more basic failures, as in the mock, and is not even read then.
+func TestAIHealthResolver_limitYieldsToMoreBasicFailures(t *testing.T) {
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-1"})
+	reached := &aiv1.GetMyUsageLimitResponse{LimitReached: true}
+	for name, tc := range map[string]struct {
+		client *fakeAIClient
+		reason string
+	}{
+		"ai unreachable": {&fakeAIClient{getEnabledErr: errors.New("down"), usageLimitResp: reached}, "ai_service_unavailable"},
+		"disabled":       {&fakeAIClient{getEnabledResp: &aiv1.GetAIEnabledResponse{Enabled: false}, usageLimitResp: reached}, "disabled_by_admin"},
+		"provider down": {&fakeAIClient{
+			providerStatusResp: &aiv1.GetProviderStatusResponse{Available: false, Reason: "auth_failed"},
+			usageLimitResp:     reached,
+		}, "provider_unavailable"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := resolvers.AIHealthResolver(ctx, tc.client)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got.Reason == nil || *got.Reason != tc.reason {
+				t.Fatalf("expected %s, got %+v", tc.reason, got)
+			}
+			if tc.client.usageLimitCall != 0 {
+				t.Fatalf("expected the usage limit not to be read, read %d times", tc.client.usageLimitCall)
+			}
+		})
+	}
+}
+
 func TestAIEnabledResolver_readsRawFlag(t *testing.T) {
 	client := &fakeAIClient{getEnabledResp: &aiv1.GetAIEnabledResponse{Enabled: false}}
 	got, err := resolvers.AIEnabledResolver(context.Background(), client)

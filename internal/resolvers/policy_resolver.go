@@ -286,7 +286,8 @@ func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClien
 	if err != nil {
 		return []*Policy{}, nil
 	}
-	subj.BreakGlass = activeBreakGlassFor(ctx, adminClient, subj.SiteAdmin())
+	var breakGlassUntil map[string]string
+	subj.BreakGlass, breakGlassUntil = activeBreakGlassGrants(ctx, adminClient, subj.SiteAdmin())
 	seats := newPendingSeats(workflow)
 	visible := make([]*Policy, 0, len(policies))
 	for _, p := range policies {
@@ -304,6 +305,9 @@ func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClien
 		}
 		psubj := grantOwnerApprover(ctx, subj, res, lineage, categoryClient)
 		p.ViewerCan = viewerCanFor(psubj, res, readD, raci, p.OwnerUserID == subj.UserID, p.DocumentType)
+		if until, ok := breakGlassUntil[p.Number]; ok {
+			p.ViewerCan.BreakGlassUntil = &until
+		}
 		if !p.ViewerCan.Edit && !seats.holds(ctx, derefOrEmpty(p.CurrentDraftVersionID)) {
 			p.CurrentDraftVersionID = nil
 			if derefOrEmpty(p.CurrentPublishedVersionID) == "" {

@@ -477,8 +477,10 @@ type CreateMagicLinkRequest struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	PolicyVersionId string                 `protobuf:"bytes,1,opt,name=policy_version_id,json=policyVersionId,proto3" json:"policy_version_id,omitempty"`
 	CreatedByUserId string                 `protobuf:"bytes,2,opt,name=created_by_user_id,json=createdByUserId,proto3" json:"created_by_user_id,omitempty"`
-	// A sensitive link expires sooner, always shows the watermark and asks the
-	// viewer for an email address before it opens.
+	// Ignored. Delivery decides from the version and its policy: a sensitive
+	// link expires sooner, always shows the watermark and asks the viewer for an
+	// email address before it opens. The field stays so older callers still
+	// compile.
 	Sensitive     bool `protobuf:"varint,3,opt,name=sensitive,proto3" json:"sensitive,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

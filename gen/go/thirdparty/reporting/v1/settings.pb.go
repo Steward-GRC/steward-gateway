@@ -84,8 +84,11 @@ func (x *IntakeCategory) GetLabel() string {
 // ComplianceSettings are the Compliance settings.
 type ComplianceSettings struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Local group ids or identity provider group names whose members work
-	// cases, matched ignoring case. Empty means nobody can open a case.
+	// Ignored and unused: it is no longer stored, read or audited. Who works
+	// cases is the privacy-officer role in identity. Kept only so the contract
+	// does not break; saved settings never return it.
+	//
+	// Deprecated: Marked as deprecated in steward/reporting/v1/settings.proto.
 	OfficerGroups []string `protobuf:"bytes,1,rep,name=officer_groups,json=officerGroups,proto3" json:"officer_groups,omitempty"`
 	// Off, new anonymous reports are refused; existing ones can still be
 	// checked and replied to.
@@ -133,6 +136,7 @@ func (*ComplianceSettings) Descriptor() ([]byte, []int) {
 	return file_steward_reporting_v1_settings_proto_rawDescGZIP(), []int{1}
 }
 
+// Deprecated: Marked as deprecated in steward/reporting/v1/settings.proto.
 func (x *ComplianceSettings) GetOfficerGroups() []string {
 	if x != nil {
 		return x.OfficerGroups
@@ -351,9 +355,9 @@ const file_steward_reporting_v1_settings_proto_rawDesc = "" +
 	"#steward/reporting/v1/settings.proto\x12\x14steward.reporting.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"8\n" +
 	"\x0eIntakeCategory\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05label\x18\x02 \x01(\tR\x05label\"\xcd\x02\n" +
-	"\x12ComplianceSettings\x12%\n" +
-	"\x0eofficer_groups\x18\x01 \x03(\tR\rofficerGroups\x12.\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\"\xd1\x02\n" +
+	"\x12ComplianceSettings\x12)\n" +
+	"\x0eofficer_groups\x18\x01 \x03(\tB\x02\x18\x01R\rofficerGroups\x12.\n" +
 	"\x13public_link_enabled\x18\x02 \x01(\bR\x11publicLinkEnabled\x12%\n" +
 	"\x0eretention_days\x18\x03 \x01(\x05R\rretentionDays\x12Q\n" +
 	"\x11intake_categories\x18\x04 \x03(\v2$.steward.reporting.v1.IntakeCategoryR\x10intakeCategories\x129\n" +

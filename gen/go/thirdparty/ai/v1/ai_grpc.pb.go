@@ -26,6 +26,7 @@ const (
 	AiService_AuthoringAssist_FullMethodName       = "/steward.ai.v1.AiService/AuthoringAssist"
 	AiService_SubmitAIJob_FullMethodName           = "/steward.ai.v1.AiService/SubmitAIJob"
 	AiService_GetAIJob_FullMethodName              = "/steward.ai.v1.AiService/GetAIJob"
+	AiService_GetAIJobResult_FullMethodName        = "/steward.ai.v1.AiService/GetAIJobResult"
 	AiService_GetProviderStatus_FullMethodName     = "/steward.ai.v1.AiService/GetProviderStatus"
 	AiService_GetAIEnabled_FullMethodName          = "/steward.ai.v1.AiService/GetAIEnabled"
 	AiService_SetAIEnabled_FullMethodName          = "/steward.ai.v1.AiService/SetAIEnabled"
@@ -36,6 +37,7 @@ const (
 	AiService_AcceptDataNotice_FullMethodName      = "/steward.ai.v1.AiService/AcceptDataNotice"
 	AiService_SetMonthlyLimit_FullMethodName       = "/steward.ai.v1.AiService/SetMonthlyLimit"
 	AiService_GetUsage_FullMethodName              = "/steward.ai.v1.AiService/GetUsage"
+	AiService_GetMyUsageLimit_FullMethodName       = "/steward.ai.v1.AiService/GetMyUsageLimit"
 	AiService_SetOrgContext_FullMethodName         = "/steward.ai.v1.AiService/SetOrgContext"
 	AiService_GetTopQuestions_FullMethodName       = "/steward.ai.v1.AiService/GetTopQuestions"
 	AiService_GetPolicySummary_FullMethodName      = "/steward.ai.v1.AiService/GetPolicySummary"
@@ -74,6 +76,11 @@ type AiServiceClient interface {
 	// GetAIJob reports a job submitted by the same person. A job submitted by
 	// someone else reads as not found.
 	GetAIJob(ctx context.Context, in *GetAIJobRequest, opts ...grpc.CallOption) (*GetAIJobResponse, error)
+	// GetAIJobResult returns the stored result of a succeeded job after its
+	// cache entry has expired. Only the person who submitted the job may read
+	// it; for anyone else, and for an id with no stored result, the call fails
+	// with AI_JOB_NOT_FOUND.
+	GetAIJobResult(ctx context.Context, in *GetAIJobResultRequest, opts ...grpc.CallOption) (*GetAIJobResultResponse, error)
 	// GetProviderStatus reports the service's cached view of whether the
 	// generative provider is usable. It never calls the provider.
 	GetProviderStatus(ctx context.Context, in *GetProviderStatusRequest, opts ...grpc.CallOption) (*GetProviderStatusResponse, error)
@@ -102,6 +109,11 @@ type AiServiceClient interface {
 	SetMonthlyLimit(ctx context.Context, in *SetMonthlyLimitRequest, opts ...grpc.CallOption) (*SetMonthlyLimitResponse, error)
 	// GetUsage reads the usage meter for the current month.
 	GetUsage(ctx context.Context, in *GetUsageRequest, opts ...grpc.CallOption) (*GetUsageResponse, error)
+	// GetMyUsageLimit reports whether the forwarded actor can still use AI
+	// today: the organisation's monthly limit and the actor's own daily limit.
+	// It reads the counters and never consumes a query. It answers only for
+	// the actor; the request names nobody else.
+	GetMyUsageLimit(ctx context.Context, in *GetMyUsageLimitRequest, opts ...grpc.CallOption) (*GetMyUsageLimitResponse, error)
 	// SetOrgContext sets the organisation context prepended to every prompt.
 	// Empty by default; empty sends none.
 	SetOrgContext(ctx context.Context, in *SetOrgContextRequest, opts ...grpc.CallOption) (*SetOrgContextResponse, error)
@@ -163,6 +175,16 @@ func (c *aiServiceClient) GetAIJob(ctx context.Context, in *GetAIJobRequest, opt
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAIJobResponse)
 	err := c.cc.Invoke(ctx, AiService_GetAIJob_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *aiServiceClient) GetAIJobResult(ctx context.Context, in *GetAIJobResultRequest, opts ...grpc.CallOption) (*GetAIJobResultResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAIJobResultResponse)
+	err := c.cc.Invoke(ctx, AiService_GetAIJobResult_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -269,6 +291,16 @@ func (c *aiServiceClient) GetUsage(ctx context.Context, in *GetUsageRequest, opt
 	return out, nil
 }
 
+func (c *aiServiceClient) GetMyUsageLimit(ctx context.Context, in *GetMyUsageLimitRequest, opts ...grpc.CallOption) (*GetMyUsageLimitResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMyUsageLimitResponse)
+	err := c.cc.Invoke(ctx, AiService_GetMyUsageLimit_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *aiServiceClient) SetOrgContext(ctx context.Context, in *SetOrgContextRequest, opts ...grpc.CallOption) (*SetOrgContextResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetOrgContextResponse)
@@ -359,6 +391,11 @@ type AiServiceServer interface {
 	// GetAIJob reports a job submitted by the same person. A job submitted by
 	// someone else reads as not found.
 	GetAIJob(context.Context, *GetAIJobRequest) (*GetAIJobResponse, error)
+	// GetAIJobResult returns the stored result of a succeeded job after its
+	// cache entry has expired. Only the person who submitted the job may read
+	// it; for anyone else, and for an id with no stored result, the call fails
+	// with AI_JOB_NOT_FOUND.
+	GetAIJobResult(context.Context, *GetAIJobResultRequest) (*GetAIJobResultResponse, error)
 	// GetProviderStatus reports the service's cached view of whether the
 	// generative provider is usable. It never calls the provider.
 	GetProviderStatus(context.Context, *GetProviderStatusRequest) (*GetProviderStatusResponse, error)
@@ -387,6 +424,11 @@ type AiServiceServer interface {
 	SetMonthlyLimit(context.Context, *SetMonthlyLimitRequest) (*SetMonthlyLimitResponse, error)
 	// GetUsage reads the usage meter for the current month.
 	GetUsage(context.Context, *GetUsageRequest) (*GetUsageResponse, error)
+	// GetMyUsageLimit reports whether the forwarded actor can still use AI
+	// today: the organisation's monthly limit and the actor's own daily limit.
+	// It reads the counters and never consumes a query. It answers only for
+	// the actor; the request names nobody else.
+	GetMyUsageLimit(context.Context, *GetMyUsageLimitRequest) (*GetMyUsageLimitResponse, error)
 	// SetOrgContext sets the organisation context prepended to every prompt.
 	// Empty by default; empty sends none.
 	SetOrgContext(context.Context, *SetOrgContextRequest) (*SetOrgContextResponse, error)
@@ -426,6 +468,9 @@ func (UnimplementedAiServiceServer) SubmitAIJob(context.Context, *SubmitAIJobReq
 func (UnimplementedAiServiceServer) GetAIJob(context.Context, *GetAIJobRequest) (*GetAIJobResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAIJob not implemented")
 }
+func (UnimplementedAiServiceServer) GetAIJobResult(context.Context, *GetAIJobResultRequest) (*GetAIJobResultResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAIJobResult not implemented")
+}
 func (UnimplementedAiServiceServer) GetProviderStatus(context.Context, *GetProviderStatusRequest) (*GetProviderStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProviderStatus not implemented")
 }
@@ -455,6 +500,9 @@ func (UnimplementedAiServiceServer) SetMonthlyLimit(context.Context, *SetMonthly
 }
 func (UnimplementedAiServiceServer) GetUsage(context.Context, *GetUsageRequest) (*GetUsageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUsage not implemented")
+}
+func (UnimplementedAiServiceServer) GetMyUsageLimit(context.Context, *GetMyUsageLimitRequest) (*GetMyUsageLimitResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMyUsageLimit not implemented")
 }
 func (UnimplementedAiServiceServer) SetOrgContext(context.Context, *SetOrgContextRequest) (*SetOrgContextResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetOrgContext not implemented")
@@ -563,6 +611,24 @@ func _AiService_GetAIJob_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AiServiceServer).GetAIJob(ctx, req.(*GetAIJobRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AiService_GetAIJobResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAIJobResultRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AiServiceServer).GetAIJobResult(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AiService_GetAIJobResult_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AiServiceServer).GetAIJobResult(ctx, req.(*GetAIJobResultRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -747,6 +813,24 @@ func _AiService_GetUsage_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AiService_GetMyUsageLimit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMyUsageLimitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AiServiceServer).GetMyUsageLimit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AiService_GetMyUsageLimit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AiServiceServer).GetMyUsageLimit(ctx, req.(*GetMyUsageLimitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AiService_SetOrgContext_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetOrgContextRequest)
 	if err := dec(in); err != nil {
@@ -879,6 +963,10 @@ var AiService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AiService_GetAIJob_Handler,
 		},
 		{
+			MethodName: "GetAIJobResult",
+			Handler:    _AiService_GetAIJobResult_Handler,
+		},
+		{
 			MethodName: "GetProviderStatus",
 			Handler:    _AiService_GetProviderStatus_Handler,
 		},
@@ -917,6 +1005,10 @@ var AiService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUsage",
 			Handler:    _AiService_GetUsage_Handler,
+		},
+		{
+			MethodName: "GetMyUsageLimit",
+			Handler:    _AiService_GetMyUsageLimit_Handler,
 		},
 		{
 			MethodName: "SetOrgContext",

@@ -44,6 +44,20 @@ identity and sends them as `managed_groups`, and audit lets a manager query only
 manages (named in `groupId`) and verify. Anyone else is refused with `PermissionDenied`.
 `auditSegment` (the raw export) needs `audit.read`, because record ids span every group.
 
+**Policy history:** `policyHistory(policyId, pageSize, pageToken)` returns one policy's whole
+timeline, newest first, in the `AuditQueryPage` shape of `auditLog`. Core files a policy's
+creation and a discarded draft under `policy:<id>`, and its draft saves, publishes and status
+changes under `policy_version:<id>`; workflow files every approval event (submission, signals,
+decisions, withdrawal) under `policy_version:<id>`. Audit matches one exact subject a query, so the
+gateway asks for `policy:<id>` and for each version it may show, and merges the answers. It needs
+no `audit.read`: it is open to anyone who can read the policy, and a caller who cannot gets
+`NotFound` with audit never asked. A draft, a version in review or a rejected one is shown only to
+an editor or the holder of a pending approval seat on it; for anyone else its records are left
+out. Each record carries `versionNumber` (null for a policy-level record). `pageSize` is 1 to 200
+(anything else means 50) and `pageToken` is the previous page's `nextPageToken`. A draft that was
+discarded no longer exists in core, so only its `policy.draft_discarded` record (filed under the
+policy) is shown, not its earlier saves. The gateway reads at most 5000 records for one policy.
+
 **Shred and legal holds:** `shredAuditSubject` (crypto-shred a subject: audit erases its key and
 clears its personal data from activity records), `createAuditLegalHold`, `releaseAuditLegalHold`
 and the query `auditLegalHolds` need `compliance.manage` (`compliance-admin` and `site-admin`

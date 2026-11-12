@@ -95,6 +95,10 @@ func auditRecordFromProto(r *auditv1.AuditRecord) *AuditRecord {
 		RecordHash:       r.GetRecordHash(),
 		LegalBasisExempt: r.GetLegalBasisExempt(),
 	}
+	if n := r.GetVersionNumber(); n > 0 {
+		v := int(n)
+		out.VersionNumber = &v
+	}
 	if t := r.GetOccurredAt(); t != nil {
 		out.OccurredAt = t.AsTime().UTC().Format(time.RFC3339)
 	}

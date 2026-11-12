@@ -55,16 +55,31 @@ func BreakGlassRevealResolver(
 // else skips the lookup. Any failure is no grants: the content stays
 // obfuscated.
 func activeBreakGlassFor(ctx context.Context, adminClient identityv1.IdentityAdminServiceClient, isSiteAdmin bool) map[string]bool {
+	held, _ := activeBreakGlassGrants(ctx, adminClient, isSiteAdmin)
+	return held
+}
+
+// activeBreakGlassGrants is activeBreakGlassFor plus, for each policy number,
+// the RFC 3339 instant the caller's grant on it ends (identity reports the
+// latest when a policy was revealed more than once). The expiry map can lack a
+// held policy when identity answers only numbers; the field is then null.
+func activeBreakGlassGrants(ctx context.Context, adminClient identityv1.IdentityAdminServiceClient, isSiteAdmin bool) (held map[string]bool, until map[string]string) {
 	if !isSiteAdmin || adminClient == nil {
-		return nil
+		return nil, nil
 	}
 	resp, err := adminClient.ActiveBreakGlass(ctx, &identityv1.ActiveBreakGlassRequest{})
 	if err != nil || len(resp.GetPolicyNumbers()) == 0 {
-		return nil
+		return nil, nil
 	}
-	out := make(map[string]bool, len(resp.GetPolicyNumbers()))
+	held = make(map[string]bool, len(resp.GetPolicyNumbers()))
 	for _, n := range resp.GetPolicyNumbers() {
-		out[n] = true
+		held[n] = true
 	}
-	return out
+	until = make(map[string]string, len(resp.GetGrants()))
+	for _, g := range resp.GetGrants() {
+		if g.GetExpiresAt() != "" && held[g.GetPolicyNumber()] {
+			until[g.GetPolicyNumber()] = g.GetExpiresAt()
+		}
+	}
+	return held, until
 }

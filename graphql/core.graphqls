@@ -345,6 +345,11 @@ type PolicyViewerCan {
   approve: Boolean!          # the viewer may approve (scoped)
   contentObfuscated: Boolean! # body is served obfuscated (excluded site admin)
   canBreakGlass: Boolean!    # the viewer may break-glass to reveal real content
+  # breakGlassUntil: RFC 3339 instant at which the viewer's own active
+  # break-glass grant on this policy ends; null when they hold none (never
+  # granted, ended, or not a site admin). Only the caller's own grant is ever
+  # reported. Lets the reader show "Revealed for you until ..." after a reload.
+  breakGlassUntil: String
   # ack: true when the RACI chart places the viewer in this policy's ack
   # audience (ack rule match, merit-evaluated, read-gated; per-policy
   # override-allow uses the ungated ack match; override-deny → false).

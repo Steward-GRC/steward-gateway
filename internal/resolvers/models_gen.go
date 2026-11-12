@@ -1051,13 +1051,14 @@ type PolicyVersionLinks struct {
 }
 
 type PolicyViewerCan struct {
-	Read              bool `json:"read"`
-	Edit              bool `json:"edit"`
-	Submit            bool `json:"submit"`
-	Approve           bool `json:"approve"`
-	ContentObfuscated bool `json:"contentObfuscated"`
-	CanBreakGlass     bool `json:"canBreakGlass"`
-	Ack               bool `json:"ack"`
+	Read              bool    `json:"read"`
+	Edit              bool    `json:"edit"`
+	Submit            bool    `json:"submit"`
+	Approve           bool    `json:"approve"`
+	ContentObfuscated bool    `json:"contentObfuscated"`
+	CanBreakGlass     bool    `json:"canBreakGlass"`
+	BreakGlassUntil   *string `json:"breakGlassUntil,omitempty"`
+	Ack               bool    `json:"ack"`
 }
 
 type Query struct {

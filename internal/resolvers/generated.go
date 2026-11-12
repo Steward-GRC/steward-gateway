@@ -1075,6 +1075,7 @@ type ComplexityRoot struct {
 	PolicyViewerCan struct {
 		Ack               func(childComplexity int) int
 		Approve           func(childComplexity int) int
+		BreakGlassUntil   func(childComplexity int) int
 		CanBreakGlass     func(childComplexity int) int
 		ContentObfuscated func(childComplexity int) int
 		Edit              func(childComplexity int) int
@@ -7136,6 +7137,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PolicyViewerCan.Approve(childComplexity), true
+	case "PolicyViewerCan.breakGlassUntil":
+		if e.ComplexityRoot.PolicyViewerCan.BreakGlassUntil == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyViewerCan.BreakGlassUntil(childComplexity), true
 	case "PolicyViewerCan.canBreakGlass":
 		if e.ComplexityRoot.PolicyViewerCan.CanBreakGlass == nil {
 			break
@@ -11516,6 +11523,11 @@ type PolicyViewerCan {
   approve: Boolean!          # the viewer may approve (scoped)
   contentObfuscated: Boolean! # body is served obfuscated (excluded site admin)
   canBreakGlass: Boolean!    # the viewer may break-glass to reveal real content
+  # breakGlassUntil: RFC 3339 instant at which the viewer's own active
+  # break-glass grant on this policy ends; null when they hold none (never
+  # granted, ended, or not a site admin). Only the caller's own grant is ever
+  # reported. Lets the reader show "Revealed for you until ..." after a reload.
+  breakGlassUntil: String
   # ack: true when the RACI chart places the viewer in this policy's ack
   # audience (ack rule match, merit-evaluated, read-gated; per-policy
   # override-allow uses the ungated ack match; override-deny → false).
@@ -15719,6 +15731,8 @@ func (ec *executionContext) childFields_PolicyViewerCan(ctx context.Context, fie
 		return ec.fieldContext_PolicyViewerCan_contentObfuscated(ctx, field)
 	case "canBreakGlass":
 		return ec.fieldContext_PolicyViewerCan_canBreakGlass(ctx, field)
+	case "breakGlassUntil":
+		return ec.fieldContext_PolicyViewerCan_breakGlassUntil(ctx, field)
 	case "ack":
 		return ec.fieldContext_PolicyViewerCan_ack(ctx, field)
 	}
@@ -42247,6 +42261,29 @@ func (ec *executionContext) fieldContext_PolicyViewerCan_canBreakGlass(_ context
 	return graphql.NewScalarFieldContext("PolicyViewerCan", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _PolicyViewerCan_breakGlassUntil(ctx context.Context, field graphql.CollectedField, obj *PolicyViewerCan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyViewerCan_breakGlassUntil(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.BreakGlassUntil, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyViewerCan_breakGlassUntil(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyViewerCan", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _PolicyViewerCan_ack(ctx context.Context, field graphql.CollectedField, obj *PolicyViewerCan) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -65159,6 +65196,11 @@ func (ec *executionContext) _PolicyViewerCan(ctx context.Context, sel ast.Select
 		case "canBreakGlass":
 			out.Values[i] = ec._PolicyViewerCan_canBreakGlass(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "breakGlassUntil":
+			out.Values[i] = ec._PolicyViewerCan_breakGlassUntil(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		case "ack":

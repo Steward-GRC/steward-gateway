@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	obligationsv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/obligations/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
@@ -159,6 +160,18 @@ type fakeObligationClient struct {
 	ackSummaryResp    *obligationsv1.MyAckSummaryResponse
 	ackSummaryErr     error
 	lastAckSummaryReq *obligationsv1.MyAckSummaryRequest
+
+	myAcksResp    *obligationsv1.ListMyAcknowledgmentsResponse
+	myAcksErr     error
+	lastMyAcksReq *obligationsv1.ListMyAcknowledgmentsRequest
+}
+
+func (f *fakeObligationClient) ListMyAcknowledgments(_ context.Context, in *obligationsv1.ListMyAcknowledgmentsRequest, _ ...grpc.CallOption) (*obligationsv1.ListMyAcknowledgmentsResponse, error) {
+	f.lastMyAcksReq = in
+	if f.myAcksErr != nil {
+		return nil, f.myAcksErr
+	}
+	return f.myAcksResp, nil
 }
 
 func (f *fakeObligationClient) MyAckSummary(_ context.Context, in *obligationsv1.MyAckSummaryRequest, _ ...grpc.CallOption) (*obligationsv1.MyAckSummaryResponse, error) {
@@ -842,5 +855,85 @@ func TestUnspecifiedDeliveryFallsBackToImmediateOnly(t *testing.T) {
 	}
 	if len(out) != 1 || out[0].Delivery != resolvers.NotifDeliveryImmediateOnly {
 		t.Errorf("UNSPECIFIED delivery mismapped: %+v", out)
+	}
+}
+
+func TestMyAcknowledgmentsKeepsNewestFirstAndMapsFields(t *testing.T) {
+	when := time.Date(2026, 11, 3, 9, 30, 0, 0, time.UTC)
+	client := &fakeObligationClient{myAcksResp: &obligationsv1.ListMyAcknowledgmentsResponse{
+		Acknowledgments: []*obligationsv1.AcknowledgmentItem{
+			{PolicyId: "pol-2", Number: "POL-002", Title: "Access Control", VersionNo: 3, PolicyVersionId: "pv-23", AckedAt: timestamppb.New(when)},
+			{PolicyId: "pol-1", Number: "POL-001", Title: "Data Retention", VersionNo: 1, PolicyVersionId: "pv-11", AckedAt: timestamppb.New(when.Add(-48 * time.Hour))},
+		},
+	}}
+	lim := 5
+	out, err := resolvers.MyAcknowledgmentsResolver(ctxWithUser(t, "u-42"), log.Nop(), client, &lim)
+	if err != nil {
+		t.Fatalf("MyAcknowledgments: %v", err)
+	}
+	if len(out) != 2 || out[0].PolicyID != "pol-2" || out[1].PolicyID != "pol-1" {
+		t.Fatalf("order not kept newest first: %+v", out)
+	}
+	first := out[0]
+	if first.Number != "POL-002" || first.Title != "Access Control" || first.VersionNo != 3 || first.PolicyVersionID != "pv-23" {
+		t.Errorf("fields not mapped: %+v", first)
+	}
+	if first.AckedAt != "2026-11-03T09:30:00Z" {
+		t.Errorf("ackedAt: got %q", first.AckedAt)
+	}
+}
+
+func TestMyAcknowledgmentsBindsUserFromClaimsAndPassesLimit(t *testing.T) {
+	client := &fakeObligationClient{myAcksResp: &obligationsv1.ListMyAcknowledgmentsResponse{}}
+	lim := 7
+	if _, err := resolvers.MyAcknowledgmentsResolver(ctxWithUser(t, "u-42"), log.Nop(), client, &lim); err != nil {
+		t.Fatalf("MyAcknowledgments: %v", err)
+	}
+	if client.lastMyAcksReq.GetUserId() != "u-42" {
+		t.Fatalf("user id not bound from claims: got %q", client.lastMyAcksReq.GetUserId())
+	}
+	if client.lastMyAcksReq.GetLimit() != 7 {
+		t.Errorf("limit: got %d want 7", client.lastMyAcksReq.GetLimit())
+	}
+}
+
+func TestMyAcknowledgmentsDefaultsLimitWhenAbsentOrNegative(t *testing.T) {
+	neg := -3
+	for name, lim := range map[string]*int{"absent": nil, "negative": &neg} {
+		client := &fakeObligationClient{myAcksResp: &obligationsv1.ListMyAcknowledgmentsResponse{}}
+		if _, err := resolvers.MyAcknowledgmentsResolver(ctxWithUser(t, "u-42"), log.Nop(), client, lim); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if client.lastMyAcksReq.GetLimit() != 0 {
+			t.Errorf("%s: limit sent %d, want 0 (the service default)", name, client.lastMyAcksReq.GetLimit())
+		}
+	}
+}
+
+func TestMyAcknowledgmentsEmptyIsAnEmptyList(t *testing.T) {
+	client := &fakeObligationClient{myAcksResp: &obligationsv1.ListMyAcknowledgmentsResponse{}}
+	out, err := resolvers.MyAcknowledgmentsResolver(ctxWithUser(t, "u-42"), log.Nop(), client, nil)
+	if err != nil {
+		t.Fatalf("MyAcknowledgments: %v", err)
+	}
+	if out == nil || len(out) != 0 {
+		t.Fatalf("want a non-nil empty list, got %#v", out)
+	}
+}
+
+func TestMyAcknowledgmentsUnauthenticated(t *testing.T) {
+	client := &fakeObligationClient{}
+	if _, err := resolvers.MyAcknowledgmentsResolver(context.Background(), log.Nop(), client, nil); err == nil {
+		t.Fatal("expected unauthenticated error")
+	}
+	if client.lastMyAcksReq != nil {
+		t.Fatal("ListMyAcknowledgments should not be invoked without claims")
+	}
+}
+
+func TestMyAcknowledgmentsWrapsServiceError(t *testing.T) {
+	client := &fakeObligationClient{myAcksErr: errors.New("boom")}
+	if _, err := resolvers.MyAcknowledgmentsResolver(ctxWithUser(t, "u-42"), log.Nop(), client, nil); err == nil {
+		t.Fatal("expected the service error")
 	}
 }

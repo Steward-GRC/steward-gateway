@@ -1,0 +1,21 @@
+# --- Policy history across versions ---
+# Backed by audit, joined by the gateway. Core files a policy's creation and a
+# discarded draft under the subject policy:<id>; its draft saves, publishes and
+# status changes, and every approval event workflow writes, go under
+# policy_version:<id>. policyHistory reads them all and returns the one merged
+# timeline, so a reader asks once and never needs audit.read.
+
+extend type AuditRecord {
+  # The number of the policy version the record is about. Null on a record
+  # about no version, such as a policy's creation or a discarded draft.
+  versionNumber: Int
+}
+
+extend type Query {
+  # Newest first. Every record for policy:<policyId> and for each of the
+  # policy's versions the caller may see: a draft, a version in review or a
+  # rejected one only for an editor or the holder of a pending approval seat on
+  # it. NotFound for a caller who cannot read the policy. pageSize is 1 to 200
+  # (anything else means 50); pageToken is a previous page's nextPageToken.
+  policyHistory(policyId: ID!, pageSize: Int, pageToken: String): AuditQueryPage!
+}

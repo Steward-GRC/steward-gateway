@@ -61,3 +61,17 @@ func orEmpty[T any](v []T) []T {
 	}
 	return v
 }
+
+// saturateInt32 narrows a caller-supplied int for a proto field that the
+// callee validates, keeping negatives so an out-of-range value is refused there
+// rather than silently turned into a different, valid one.
+func saturateInt32(n int) int32 {
+	switch {
+	case n < math.MinInt32:
+		return math.MinInt32
+	case n > math.MaxInt32:
+		return math.MaxInt32
+	default:
+		return int32(n) //nosec G115 -- bounded by the guards above
+	}
+}

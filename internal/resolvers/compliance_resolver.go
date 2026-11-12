@@ -593,6 +593,54 @@ func SetDigestWindowResolver(ctx context.Context, client obligationsv1.NotifPref
 	return notifSettingsFromProto(resp.GetSettings()), nil
 }
 
+// QuietHoursResolver reads the authenticated user's quiet-hours window. It answers nil
+// when obligations has none stored for the user.
+func QuietHoursResolver(ctx context.Context, client obligationsv1.NotifPrefServiceClient) (*QuietHours, error) {
+	claims, ok := principal.FromContext(ctx)
+	if !ok || claims.UserID() == "" {
+		return nil, fmt.Errorf("unauthenticated")
+	}
+	resp, err := client.GetQuietHours(ctx, &obligationsv1.GetQuietHoursRequest{UserId: claims.UserID()})
+	if err != nil {
+		return nil, fmt.Errorf("compliance get quiet hours: %w", err)
+	}
+	return quietHoursFromProto(resp.GetQuietHours()), nil
+}
+
+// SetQuietHoursResolver stores or clears the authenticated user's quiet-hours window and
+// returns the full settings. A nil start and end clears it. The hours go to obligations as
+// given (a nil stays unset on the wire, an out-of-range value is not clamped) because
+// obligations validates the window and refuses it with NOTIFY_PREF_INVALID.
+func SetQuietHoursResolver(ctx context.Context, client obligationsv1.NotifPrefServiceClient, start, end *int, timezone *string) (*NotificationSettings, error) {
+	claims, ok := principal.FromContext(ctx)
+	if !ok || claims.UserID() == "" {
+		return nil, fmt.Errorf("unauthenticated")
+	}
+	req := &obligationsv1.SetQuietHoursRequest{UserId: claims.UserID()}
+	if start != nil {
+		v := saturateInt32(*start)
+		req.Start = &v
+	}
+	if end != nil {
+		v := saturateInt32(*end)
+		req.End = &v
+	}
+	if timezone != nil {
+		req.Timezone = *timezone
+	}
+	if _, err := client.SetQuietHours(ctx, req); err != nil {
+		return nil, fmt.Errorf("compliance set quiet hours: %w", err)
+	}
+	return GetNotificationSettingsResolver(ctx, client)
+}
+
+func quietHoursFromProto(q *obligationsv1.QuietHours) *QuietHours {
+	if q == nil {
+		return nil
+	}
+	return &QuietHours{Start: int(q.GetStart()), End: int(q.GetEnd()), Timezone: q.GetTimezone()}
+}
+
 // SetNotificationChannelsResolver writes the authenticated user's channel master switches
 // (superseding upsertNotificationPref) and returns the full settings.
 func SetNotificationChannelsResolver(ctx context.Context, client obligationsv1.NotifPrefServiceClient, input NotificationPrefInput) (*NotificationSettings, error) {

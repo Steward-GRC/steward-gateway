@@ -858,6 +858,7 @@ type ComplexityRoot struct {
 		UpdateMyProfile               func(childComplexity int, firstName *string, lastName *string, locale *string) int
 		UpdateReference               func(childComplexity int, id string, input ReferenceInput) int
 		UpdateTemplateVersionSections func(childComplexity int, id string, sections []*SectionInput) int
+		UpdateUserPreferences         func(childComplexity int, userID string, locale *string) int
 		UpdateUserProfile             func(childComplexity int, userID string, name string, email string) int
 		UpdateWorkflowDef             func(childComplexity int, id string, name string, description *string, stages []*WorkflowStageInput) int
 		UpsertNotificationPref        func(childComplexity int, input NotificationPrefInput) int
@@ -1799,6 +1800,7 @@ type MutationResolver interface {
 	ResetUserPassword(ctx context.Context, userID string, newPassword string) (bool, error)
 	ResendWelcomeEmail(ctx context.Context, userID string) (bool, error)
 	UpdateUserProfile(ctx context.Context, userID string, name string, email string) (*User, error)
+	UpdateUserPreferences(ctx context.Context, userID string, locale *string) (*User, error)
 	EnrollTotpBegin(ctx context.Context) (*TotpEnrollment, error)
 	EnrollTotpConfirm(ctx context.Context, code string) (bool, error)
 	SendEnrollEmailOtp(ctx context.Context) (bool, error)
@@ -6221,6 +6223,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateTemplateVersionSections(childComplexity, args["id"].(string), args["sections"].([]*SectionInput)), true
+	case "Mutation.updateUserPreferences":
+		if e.ComplexityRoot.Mutation.UpdateUserPreferences == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateUserPreferences_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateUserPreferences(childComplexity, args["userId"].(string), args["locale"].(*string)), true
 	case "Mutation.updateUserProfile":
 		if e.ComplexityRoot.Mutation.UpdateUserProfile == nil {
 			break
@@ -12361,6 +12374,15 @@ extend type Mutation {
   # Re-send the welcome-account onboarding email to a user (admin action).
   resendWelcomeEmail(userId: ID!): Boolean!
   updateUserProfile(userId: ID!, name: String!, email: String!): User!
+  # updateUserPreferences sets ANOTHER person's language (admin action,
+  # user.manage at the gateway; site admin in identity; audited there). Local and
+  # directory accounts alike: a language is not a directory field. locale is a
+  # BCP 47 tag, trimmed; omitting it leaves the stored value untouched, an empty
+  # or whitespace-only string clears it. A malformed tag fails with the coded
+  # business error PROFILE_LOCALE_INVALID (1241) and nothing is written. An
+  # unknown or deleted user is NOT_FOUND. A person edits their own language with
+  # updateMyProfile.
+  updateUserPreferences(userId: ID!, locale: String): User!
 }
 
 
@@ -20294,6 +20316,28 @@ func (ec *executionContext) field_Mutation_updateTemplateVersionSections_args(ct
 		return nil, err
 	}
 	args["sections"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateUserPreferences_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["userId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "locale",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["locale"] = arg1
 	return args, nil
 }
 
@@ -35793,6 +35837,50 @@ func (ec *executionContext) fieldContext_Mutation_updateUserProfile(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateUserProfile_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateUserPreferences(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_updateUserPreferences(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateUserPreferences(ctx, fc.Args["userId"].(string), fc.Args["locale"].(*string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *User) graphql.Marshaler {
+			return ec.marshalNUser2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐUser(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_updateUserPreferences(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_User(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateUserPreferences_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -62713,6 +62801,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateUserProfile":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateUserProfile(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateUserPreferences":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateUserPreferences(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

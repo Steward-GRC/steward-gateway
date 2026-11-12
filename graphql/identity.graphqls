@@ -378,6 +378,15 @@ extend type Mutation {
   # Re-send the welcome-account onboarding email to a user (admin action).
   resendWelcomeEmail(userId: ID!): Boolean!
   updateUserProfile(userId: ID!, name: String!, email: String!): User!
+  # updateUserPreferences sets ANOTHER person's language (admin action,
+  # user.manage at the gateway; site admin in identity; audited there). Local and
+  # directory accounts alike: a language is not a directory field. locale is a
+  # BCP 47 tag, trimmed; omitting it leaves the stored value untouched, an empty
+  # or whitespace-only string clears it. A malformed tag fails with the coded
+  # business error PROFILE_LOCALE_INVALID (1241) and nothing is written. An
+  # unknown or deleted user is NOT_FOUND. A person edits their own language with
+  # updateMyProfile.
+  updateUserPreferences(userId: ID!, locale: String): User!
 }
 
 

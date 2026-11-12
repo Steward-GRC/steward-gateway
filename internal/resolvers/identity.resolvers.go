@@ -149,6 +149,11 @@ func (r *mutationResolver) UpdateUserProfile(ctx context.Context, userID string,
 	return UpdateUserProfileResolver(ctx, r.IdentityAdminClient, userID, name, email)
 }
 
+// UpdateUserPreferences is the resolver for the updateUserPreferences field.
+func (r *mutationResolver) UpdateUserPreferences(ctx context.Context, userID string, locale *string) (*User, error) {
+	return UpdateUserPreferencesResolver(ctx, r.IdentityAdminClient, userID, locale)
+}
+
 // EnrollTotpBegin is the resolver for the enrollTotpBegin field.
 func (r *mutationResolver) EnrollTotpBegin(ctx context.Context) (*TotpEnrollment, error) {
 	return EnrollTotpBeginResolver(ctx, r.IdentityClient)

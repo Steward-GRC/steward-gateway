@@ -337,6 +337,10 @@ extend type Mutation {
 }
 
 # --- aiJobResultContent: fetch async AI job content by resultRef ---
+# The optional jobId lets the gateway fall back to the job's stored result once
+# the cached content has expired (about 24 h); without it an expired ref is
+# not found. The fallback serves only the job's submitter; a foreign or
+# unknown jobId is AI_JOB_NOT_FOUND.
 # This is the fetch-by-resultRef query the AIJobStatus/AIJobResult doc
 # comments above point to. Content is kept out of AIJobStatus/
 # AIJobResult on purpose (see their doc comments): polling/subscribing is one
@@ -380,7 +384,7 @@ extend type Query {
   user's job, or whose result has no recorded owner is refused with the same
   not-found error.
   """
-  aiJobResultContent(resultRef: String!): AIJobResultContent!
+  aiJobResultContent(resultRef: String!, jobId: ID): AIJobResultContent!
 }
 
 # --- AI health + kill switch (best-effort degrade) ---

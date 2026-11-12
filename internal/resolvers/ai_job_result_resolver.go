@@ -116,7 +116,7 @@ var errJobResultNotFound = status.Error(codes.NotFound, "job result not found")
 // user who submitted the job. The ref is an opaque key: ownership comes from the owner_user_id the
 // ai service stores in the result envelope, compared with the caller's user id. A missing result, a
 // different owner, an envelope with no owner and a caller with no id are all refused the same way.
-func AIJobResultContentResolver(ctx context.Context, logger log.Logger, reader *aijobs.ContentReader, resultRef string) (*AIJobResultContent, error) {
+func AIJobResultContentResolver(ctx context.Context, logger log.Logger, reader *aijobs.ContentReader, client aiv1.AiServiceClient, resultRef string, jobID *string) (*AIJobResultContent, error) {
 	lg := logger.Ctx(ctx)
 	claims, ok := principal.FromContext(ctx)
 	if !ok || claims == nil {
@@ -135,6 +135,9 @@ func AIJobResultContentResolver(ctx context.Context, logger log.Logger, reader *
 	content, err := reader.Fetch(ctx, resultRef)
 	if err != nil {
 		if errors.Is(err, aijobs.ErrResultNotFound) {
+			if jobID != nil && *jobID != "" && client != nil {
+				return storedJobResult(ctx, lg, client, *jobID)
+			}
 			lg.Debug("ai job result content refused", log.F("reason", "no_such_result"))
 			return nil, errJobResultNotFound
 		}
@@ -153,5 +156,23 @@ func AIJobResultContentResolver(ctx context.Context, logger log.Logger, reader *
 	return &AIJobResultContent{
 		Operation:  content.Operation,
 		ResultJSON: content.ResultJSON,
+	}, nil
+}
+
+// storedJobResult is the fallback for a result whose cached copy has expired: ai answers from the
+// result it stored for the job, and only for the job's submitter (the caller identity travels on
+// the context like every other ai call). A foreign or unknown job comes back as ai's not-found
+// error and is relayed untouched. Only ids are logged, never content.
+func storedJobResult(ctx context.Context, lg log.Logger, client aiv1.AiServiceClient, jobID string) (*AIJobResultContent, error) {
+	lg.Debug("ai job result content cache miss, reading the stored result", log.F("job_id", jobID))
+	resp, err := client.GetAIJobResult(ctx, &aiv1.GetAIJobResultRequest{JobId: jobID})
+	if err != nil {
+		lg.Debug("ai job stored result refused", log.F("job_id", jobID), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	lg.Debug("ai job stored result served", log.F("job_id", jobID), log.F("operation", resp.GetOperation()))
+	return &AIJobResultContent{
+		Operation:  resp.GetOperation(),
+		ResultJSON: resp.GetResultJson(),
 	}, nil
 }

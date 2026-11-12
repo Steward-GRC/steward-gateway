@@ -42,7 +42,7 @@ func TestAIJobResultContentResolver_Draft(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, "ai:job-result:aijob-abc:DRAFT")
+	got, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, nil, "ai:job-result:aijob-abc:DRAFT", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestAIJobResultContentResolver_Review(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, "ai:job-result:pol-1:ver-1:REVIEW")
+	got, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, nil, "ai:job-result:pol-1:ver-1:REVIEW", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestAIJobResultContentResolver_Review(t *testing.T) {
 
 func TestAIJobResultContentResolver_Unauthenticated(t *testing.T) {
 	reader, _ := newTestContentReader(t)
-	_, err := resolvers.AIJobResultContentResolver(context.Background(), log.Nop(), reader, "ai:job-result:aijob-abc:DRAFT")
+	_, err := resolvers.AIJobResultContentResolver(context.Background(), log.Nop(), reader, nil, "ai:job-result:aijob-abc:DRAFT", nil)
 	if err == nil {
 		t.Fatal("expected an error for an unauthenticated caller")
 	}
@@ -88,7 +88,7 @@ func TestAIJobResultContentResolver_Unauthenticated(t *testing.T) {
 func TestAIJobResultContentResolver_NotFound(t *testing.T) {
 	reader, _ := newTestContentReader(t)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-1"})
-	_, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, "ai:job-result:missing:DRAFT")
+	_, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, nil, "ai:job-result:missing:DRAFT", nil)
 	if err == nil {
 		t.Fatal("expected an error for a missing resultRef")
 	}
@@ -120,7 +120,7 @@ func TestAIJobResultContentResolver_OwnerReadsOwnResult(t *testing.T) {
 	putResult(t, rdb, "ai:job-result:job-1:REWRITE", ownedEnvelope)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-1"})
 
-	got, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, "ai:job-result:job-1:REWRITE")
+	got, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, nil, "ai:job-result:job-1:REWRITE", nil)
 	if err != nil {
 		t.Fatalf("owner refused: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestAIJobResultContentResolver_OtherUserRefused(t *testing.T) {
 	putResult(t, rdb, "ai:job-result:job-1:REWRITE", ownedEnvelope)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-2"})
 
-	got, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, "ai:job-result:job-1:REWRITE")
+	got, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, nil, "ai:job-result:job-1:REWRITE", nil)
 	requireNotFound(t, err)
 	if got != nil {
 		t.Fatalf("content leaked with the refusal: %+v", got)
@@ -148,8 +148,8 @@ func TestAIJobResultContentResolver_OtherUserAndMissingLookAlike(t *testing.T) {
 	putResult(t, rdb, "ai:job-result:job-1:REWRITE", ownedEnvelope)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-2"})
 
-	_, other := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, "ai:job-result:job-1:REWRITE")
-	_, missing := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, "ai:job-result:nope:REWRITE")
+	_, other := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, nil, "ai:job-result:job-1:REWRITE", nil)
+	_, missing := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, nil, "ai:job-result:nope:REWRITE", nil)
 	requireNotFound(t, other)
 	requireNotFound(t, missing)
 	if other.Error() != missing.Error() {
@@ -164,7 +164,7 @@ func TestAIJobResultContentResolver_EmptyOwnerRefused(t *testing.T) {
 	// Not even an empty-id caller matches an empty owner.
 	for _, uid := range []string{"user-1", ""} {
 		ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: uid})
-		_, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, "ai:job-result:job-1:REWRITE")
+		_, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, nil, "ai:job-result:job-1:REWRITE", nil)
 		requireNotFound(t, err)
 	}
 }
@@ -174,7 +174,7 @@ func TestAIJobResultContentResolver_EmptyCallerRefused(t *testing.T) {
 	putResult(t, rdb, "ai:job-result:job-1:REWRITE", ownedEnvelope)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: ""})
 
-	_, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, "ai:job-result:job-1:REWRITE")
+	_, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, nil, "ai:job-result:job-1:REWRITE", nil)
 	requireNotFound(t, err)
 }
 
@@ -184,7 +184,7 @@ func TestAIJobResultContentResolver_EnvelopeWithoutOwnerRefused(t *testing.T) {
 	putResult(t, rdb, "ai:job-result:job-1:REWRITE", `{"operation":"REWRITE","result":{"sections":[]}}`)
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-1"})
 
-	_, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, "ai:job-result:job-1:REWRITE")
+	_, err := resolvers.AIJobResultContentResolver(ctx, log.Nop(), reader, nil, "ai:job-result:job-1:REWRITE", nil)
 	requireNotFound(t, err)
 }
 
@@ -196,11 +196,11 @@ func TestAIJobResultContentResolver_ImpersonationComparesTheActedAsUser(t *testi
 	ctx := principal.WithImpersonator(context.Background(), principal.Static{UserIDValue: "admin-1"})
 
 	asOwner := principal.WithClaims(ctx, principal.Static{UserIDValue: "user-1"})
-	if _, err := resolvers.AIJobResultContentResolver(asOwner, log.Nop(), reader, "ai:job-result:job-1:REWRITE"); err != nil {
+	if _, err := resolvers.AIJobResultContentResolver(asOwner, log.Nop(), reader, nil, "ai:job-result:job-1:REWRITE", nil); err != nil {
 		t.Fatalf("admin acting as the owner refused: %v", err)
 	}
 	asOther := principal.WithClaims(ctx, principal.Static{UserIDValue: "user-2"})
-	_, err := resolvers.AIJobResultContentResolver(asOther, log.Nop(), reader, "ai:job-result:job-1:REWRITE")
+	_, err := resolvers.AIJobResultContentResolver(asOther, log.Nop(), reader, nil, "ai:job-result:job-1:REWRITE", nil)
 	requireNotFound(t, err)
 }
 
@@ -212,7 +212,7 @@ func TestAIJobResultContentResolver_RefIsNotParsed(t *testing.T) {
 	putResult(t, rdb, ref, ownedEnvelope)
 
 	owner := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-1"})
-	got, err := resolvers.AIJobResultContentResolver(owner, log.Nop(), reader, ref)
+	got, err := resolvers.AIJobResultContentResolver(owner, log.Nop(), reader, nil, ref, nil)
 	if err != nil {
 		t.Fatalf("owner refused for an odd ref: %v", err)
 	}
@@ -220,6 +220,6 @@ func TestAIJobResultContentResolver_RefIsNotParsed(t *testing.T) {
 		t.Fatalf("operation must come from the envelope, got %q", got.Operation)
 	}
 	other := ctxWithStubClaims(t, principal.Static{UserIDValue: "user-2"})
-	_, err = resolvers.AIJobResultContentResolver(other, log.Nop(), reader, ref)
+	_, err = resolvers.AIJobResultContentResolver(other, log.Nop(), reader, nil, ref, nil)
 	requireNotFound(t, err)
 }

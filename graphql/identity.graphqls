@@ -390,6 +390,15 @@ extend type Mutation {
 extend type Mutation {
   createLocalUser(username: String!, email: String!, name: String!, password: String!): User!
   resetUserPassword(userId: ID!, newPassword: String!): Boolean!
+  # changeMyPassword -> IdentityReadService.ChangeMyPassword: the signed-in
+  # person changes their OWN password; it never takes a user id. Identity checks
+  # the current password first, then applies the sign-in service's password
+  # policy. Refused while acting as someone. Refusals carry these codes in
+  # extensions.code (relayed from identity): CURRENT_PASSWORD_WRONG (5011),
+  # PASSWORD_TOO_WEAK (5012), NO_LOCAL_PASSWORD (5013, an account that signs in
+  # through SSO) and PASSWORD_CHANGE_UNAVAILABLE (5014, the sign-in service did
+  # not answer). Self-service (any authenticated user).
+  changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
   # Re-send the welcome-account onboarding email to a user (admin action).
   resendWelcomeEmail(userId: ID!): Boolean!
   updateUserProfile(userId: ID!, name: String!, email: String!): User!

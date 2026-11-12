@@ -7,7 +7,7 @@ tool github.com/99designs/gqlgen
 require (
 	github.com/99designs/gqlgen v0.17.94
 	github.com/Bugs5382/go-apperr v1.2.1
-	github.com/Bugs5382/go-authz v1.0.1-0.20261112110731-f425f850c4aa
+	github.com/Bugs5382/go-authz v1.1.0
 	github.com/Bugs5382/go-buildinfo v1.0.0
 	github.com/Bugs5382/go-grpc-actor v1.0.0
 	github.com/Bugs5382/go-log v1.3.0

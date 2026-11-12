@@ -2,8 +2,8 @@ github.com/99designs/gqlgen v0.17.94 h1:+3EUDVgX/8gDyDL+7NUqCo4cy2ylylwW0GvR1dGi
 github.com/99designs/gqlgen v0.17.94/go.mod h1:o+XaAMpPA/AX4rqeiK03tZUb/5T+WCgpRDD4aujgdas=
 github.com/Bugs5382/go-apperr v1.2.1 h1:+IFP+LQWu4BTPDX2ezkjEhfvn5HTvBHirL2b77EXmvU=
 github.com/Bugs5382/go-apperr v1.2.1/go.mod h1:IX+TmCj35CSUNK/JU16pPTn4L4qpDreVOc7i4Q3dxy4=
-github.com/Bugs5382/go-authz v1.0.1-0.20261112110731-f425f850c4aa h1:+R9kD/5c1tqJs3D4R0nd8Mab1MGYDqmULzlLYtoY27E=
-github.com/Bugs5382/go-authz v1.0.1-0.20261112110731-f425f850c4aa/go.mod h1:H0c0JA7yIZ+4jcf8hXUB1GkASJ7sf5OuhwBxBqV/Asc=
+github.com/Bugs5382/go-authz v1.1.0 h1:tmaXJcGOvf2YBtbxPDZ3KU/rNDqU88tdXyDzgvop5Jg=
+github.com/Bugs5382/go-authz v1.1.0/go.mod h1:QhTs6JAB+V/jRgpY0xfcnOhtnEz7n2JBMT4qfKisgiE=
 github.com/Bugs5382/go-buildinfo v1.0.0 h1:oxFnQOlYxH9MtCsDALz3AP4eEKW8uFMTJVKSD8pa6qA=
 github.com/Bugs5382/go-buildinfo v1.0.0/go.mod h1:5WxMB/NqiSjXGv23QQWNSySwpT5HldJ2iL8NQ/MkVbc=
 github.com/Bugs5382/go-grpc-actor v1.0.0 h1:PViLikqce2DlHlf4iHzxvUwvXupP8hQk1xXqYiUrScE=

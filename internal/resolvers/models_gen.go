@@ -1361,6 +1361,7 @@ type Session struct {
 	UserAgent       string  `json:"userAgent"`
 	ClientIP        *string `json:"clientIp,omitempty"`
 	LastSeenAt      *string `json:"lastSeenAt,omitempty"`
+	Current         bool    `json:"current"`
 }
 
 type SpCertificate struct {

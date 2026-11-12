@@ -29,3 +29,22 @@ func SessionIDFromContext(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(sessionIDKey{}).(string)
 	return v, ok && v != ""
 }
+
+// kratosSessionIDKey carries the caller's Kratos session id, the id identity's
+// session calls use (ListMySessions marks it current; RevokeMySession refuses
+// to end it). It is not the cookie value and is never sent to the browser.
+type kratosSessionIDKey struct{}
+
+// WithKratosSessionID returns a context carrying the Kratos session id behind
+// the validated BFF session.
+func WithKratosSessionID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, kratosSessionIDKey{}, id)
+}
+
+// KratosSessionIDFromContext returns the Kratos session id stashed by
+// WithKratosSessionID; ok=false when absent (a raw-bearer path, or a session
+// stored before the id was recorded).
+func KratosSessionIDFromContext(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(kratosSessionIDKey{}).(string)
+	return v, ok && v != ""
+}

@@ -87,6 +87,9 @@ func (h *Handler) authenticate(next http.Handler, exemptSafeMethods bool) http.H
 		}
 		h.authOutcome(r.Context(), r.URL.Path, "ok", nil)
 		ctx := WithSessionID(r.Context(), c.Value)
+		if sess.KratosSessionID != "" {
+			ctx = WithKratosSessionID(ctx, sess.KratosSessionID)
+		}
 		ctx = principal.WithClaims(ctx, claims)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

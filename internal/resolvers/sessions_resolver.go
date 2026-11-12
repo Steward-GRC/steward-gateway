@@ -6,8 +6,10 @@ package resolvers
 import (
 	"context"
 
+	log "github.com/Bugs5382/go-log"
 	authz "github.com/Steward-GRC/steward-authz"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	"github.com/Steward-GRC/steward-gateway/internal/bff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -25,6 +27,7 @@ func sessionToGraphQL(s *identityv1.Session) *Session {
 		ExpiresAt:       s.GetExpiresAt(),
 		Active:          s.GetActive(),
 		UserAgent:       s.GetUserAgent(),
+		Current:         s.GetCurrent(),
 	}
 	if ip := s.GetClientIp(); ip != "" {
 		gql.ClientIP = &ip
@@ -82,5 +85,46 @@ func RevokeMySessionsResolver(ctx context.Context, read identityv1.IdentityReadS
 	if err != nil {
 		return 0, err
 	}
+	return int(resp.GetRevoked()), nil
+}
+
+// ListMySessionsResolver lists the calling user's active sessions, marking the
+// one this request runs on (self-service; identity binds the user to the actor).
+func ListMySessionsResolver(ctx context.Context, logger log.Logger, read identityv1.IdentityReadServiceClient) ([]*Session, error) {
+	if read == nil {
+		return nil, status.Error(codes.Unavailable, "identity service unavailable")
+	}
+	lg := logger.Ctx(ctx)
+	current, _ := bff.KratosSessionIDFromContext(ctx)
+	lg.Debug("mySessions: listing", log.F("has_current_session", current != ""))
+	resp, err := read.ListMySessions(ctx, &identityv1.ListMySessionsRequest{CurrentSessionId: current})
+	if err != nil {
+		lg.Error(err, "mySessions: identity ListMySessions failed")
+		return nil, err
+	}
+	out := make([]*Session, 0, len(resp.GetSessions()))
+	for _, s := range resp.GetSessions() {
+		out = append(out, sessionToGraphQL(s))
+	}
+	lg.Debug("mySessions: listed", log.F("count", len(out)))
+	return out, nil
+}
+
+// RevokeMySessionResolver signs out one of the caller's other sessions. Identity
+// refuses the current session and a session that is not the caller's; those
+// errors are relayed untouched.
+func RevokeMySessionResolver(ctx context.Context, logger log.Logger, read identityv1.IdentityReadServiceClient, sessionID string) (int, error) {
+	if read == nil {
+		return 0, status.Error(codes.Unavailable, "identity service unavailable")
+	}
+	lg := logger.Ctx(ctx)
+	current, _ := bff.KratosSessionIDFromContext(ctx)
+	lg.Debug("revokeMySession: revoking", log.F("session_id", sessionID))
+	resp, err := read.RevokeMySession(ctx, &identityv1.RevokeMySessionRequest{SessionId: sessionID, CurrentSessionId: current})
+	if err != nil {
+		lg.Error(err, "revokeMySession: identity RevokeMySession failed", log.F("session_id", sessionID))
+		return 0, err
+	}
+	lg.Info("revokeMySession: done", log.F("session_id", sessionID), log.F("revoked", resp.GetRevoked()))
 	return int(resp.GetRevoked()), nil
 }

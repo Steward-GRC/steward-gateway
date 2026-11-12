@@ -35,6 +35,7 @@ const (
 	IdentityReadService_ListUserGroups_FullMethodName             = "/steward.identity.v1.IdentityReadService/ListUserGroups"
 	IdentityReadService_ListUsersByEmail_FullMethodName           = "/steward.identity.v1.IdentityReadService/ListUsersByEmail"
 	IdentityReadService_ListGroups_FullMethodName                 = "/steward.identity.v1.IdentityReadService/ListGroups"
+	IdentityReadService_SearchGroups_FullMethodName               = "/steward.identity.v1.IdentityReadService/SearchGroups"
 	IdentityReadService_ListUsersByIdpGroups_FullMethodName       = "/steward.identity.v1.IdentityReadService/ListUsersByIdpGroups"
 	IdentityReadService_CountUsersByIdpGroups_FullMethodName      = "/steward.identity.v1.IdentityReadService/CountUsersByIdpGroups"
 	IdentityReadService_ListAllUsers_FullMethodName               = "/steward.identity.v1.IdentityReadService/ListAllUsers"
@@ -44,6 +45,7 @@ const (
 	IdentityReadService_RevokeMySessions_FullMethodName           = "/steward.identity.v1.IdentityReadService/RevokeMySessions"
 	IdentityReadService_ListMySessions_FullMethodName             = "/steward.identity.v1.IdentityReadService/ListMySessions"
 	IdentityReadService_RevokeMySession_FullMethodName            = "/steward.identity.v1.IdentityReadService/RevokeMySession"
+	IdentityReadService_ChangeMyPassword_FullMethodName           = "/steward.identity.v1.IdentityReadService/ChangeMyPassword"
 	IdentityReadService_GetSetupState_FullMethodName              = "/steward.identity.v1.IdentityReadService/GetSetupState"
 	IdentityReadService_BootstrapRoot_FullMethodName              = "/steward.identity.v1.IdentityReadService/BootstrapRoot"
 	IdentityReadService_GetAuthConfig_FullMethodName              = "/steward.identity.v1.IdentityReadService/GetAuthConfig"
@@ -115,6 +117,12 @@ type IdentityReadServiceClient interface {
 	// ListGroups lists the groups under parent_id (empty for the roots),
 	// optionally with all their descendants, sorted by name, a page at a time.
 	ListGroups(ctx context.Context, in *ListGroupsRequest, opts ...grpc.CallOption) (*ListGroupsResponse, error)
+	// SearchGroups finds groups at any depth whose name contains the query,
+	// case-insensitively, sorted by name and capped at limit. The query is
+	// required, so the call can't enumerate the directory; a percent or
+	// underscore in it is text, not a pattern. Groups have no description, so
+	// the name is all that is matched. Who may ask is the caller's rule.
+	SearchGroups(ctx context.Context, in *SearchGroupsRequest, opts ...grpc.CallOption) (*SearchGroupsResponse, error)
 	// ListUsersByIdpGroups lists the users holding any of the named identity
 	// provider groups.
 	ListUsersByIdpGroups(ctx context.Context, in *ListUsersByIdpGroupsRequest, opts ...grpc.CallOption) (*ListUsersByIdpGroupsResponse, error)
@@ -145,6 +153,11 @@ type IdentityReadServiceClient interface {
 	// end everything) and a session that isn't the caller's (NotFound, the same
 	// as an unknown one). Audited as session.revoked.
 	RevokeMySession(ctx context.Context, in *RevokeMySessionRequest, opts ...grpc.CallOption) (*RevokeMySessionResponse, error)
+	// ChangeMyPassword changes the calling user's own password. It checks the
+	// current password through the sign-in service and applies the new one
+	// under that service's password policy. A wrong current password, a weak
+	// new one and an account with no local password each answer a coded error.
+	ChangeMyPassword(ctx context.Context, in *ChangeMyPasswordRequest, opts ...grpc.CallOption) (*ChangeMyPasswordResponse, error)
 	// GetSetupState reports whether first-run setup is still needed (no root
 	// admin exists).
 	GetSetupState(ctx context.Context, in *GetSetupStateRequest, opts ...grpc.CallOption) (*GetSetupStateResponse, error)
@@ -358,6 +371,16 @@ func (c *identityReadServiceClient) ListGroups(ctx context.Context, in *ListGrou
 	return out, nil
 }
 
+func (c *identityReadServiceClient) SearchGroups(ctx context.Context, in *SearchGroupsRequest, opts ...grpc.CallOption) (*SearchGroupsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchGroupsResponse)
+	err := c.cc.Invoke(ctx, IdentityReadService_SearchGroups_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *identityReadServiceClient) ListUsersByIdpGroups(ctx context.Context, in *ListUsersByIdpGroupsRequest, opts ...grpc.CallOption) (*ListUsersByIdpGroupsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListUsersByIdpGroupsResponse)
@@ -442,6 +465,16 @@ func (c *identityReadServiceClient) RevokeMySession(ctx context.Context, in *Rev
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RevokeMySessionResponse)
 	err := c.cc.Invoke(ctx, IdentityReadService_RevokeMySession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityReadServiceClient) ChangeMyPassword(ctx context.Context, in *ChangeMyPasswordRequest, opts ...grpc.CallOption) (*ChangeMyPasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ChangeMyPasswordResponse)
+	err := c.cc.Invoke(ctx, IdentityReadService_ChangeMyPassword_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -733,6 +766,12 @@ type IdentityReadServiceServer interface {
 	// ListGroups lists the groups under parent_id (empty for the roots),
 	// optionally with all their descendants, sorted by name, a page at a time.
 	ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error)
+	// SearchGroups finds groups at any depth whose name contains the query,
+	// case-insensitively, sorted by name and capped at limit. The query is
+	// required, so the call can't enumerate the directory; a percent or
+	// underscore in it is text, not a pattern. Groups have no description, so
+	// the name is all that is matched. Who may ask is the caller's rule.
+	SearchGroups(context.Context, *SearchGroupsRequest) (*SearchGroupsResponse, error)
 	// ListUsersByIdpGroups lists the users holding any of the named identity
 	// provider groups.
 	ListUsersByIdpGroups(context.Context, *ListUsersByIdpGroupsRequest) (*ListUsersByIdpGroupsResponse, error)
@@ -763,6 +802,11 @@ type IdentityReadServiceServer interface {
 	// end everything) and a session that isn't the caller's (NotFound, the same
 	// as an unknown one). Audited as session.revoked.
 	RevokeMySession(context.Context, *RevokeMySessionRequest) (*RevokeMySessionResponse, error)
+	// ChangeMyPassword changes the calling user's own password. It checks the
+	// current password through the sign-in service and applies the new one
+	// under that service's password policy. A wrong current password, a weak
+	// new one and an account with no local password each answer a coded error.
+	ChangeMyPassword(context.Context, *ChangeMyPasswordRequest) (*ChangeMyPasswordResponse, error)
 	// GetSetupState reports whether first-run setup is still needed (no root
 	// admin exists).
 	GetSetupState(context.Context, *GetSetupStateRequest) (*GetSetupStateResponse, error)
@@ -885,6 +929,9 @@ func (UnimplementedIdentityReadServiceServer) ListUsersByEmail(context.Context, 
 func (UnimplementedIdentityReadServiceServer) ListGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListGroups not implemented")
 }
+func (UnimplementedIdentityReadServiceServer) SearchGroups(context.Context, *SearchGroupsRequest) (*SearchGroupsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchGroups not implemented")
+}
 func (UnimplementedIdentityReadServiceServer) ListUsersByIdpGroups(context.Context, *ListUsersByIdpGroupsRequest) (*ListUsersByIdpGroupsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListUsersByIdpGroups not implemented")
 }
@@ -911,6 +958,9 @@ func (UnimplementedIdentityReadServiceServer) ListMySessions(context.Context, *L
 }
 func (UnimplementedIdentityReadServiceServer) RevokeMySession(context.Context, *RevokeMySessionRequest) (*RevokeMySessionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RevokeMySession not implemented")
+}
+func (UnimplementedIdentityReadServiceServer) ChangeMyPassword(context.Context, *ChangeMyPasswordRequest) (*ChangeMyPasswordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ChangeMyPassword not implemented")
 }
 func (UnimplementedIdentityReadServiceServer) GetSetupState(context.Context, *GetSetupStateRequest) (*GetSetupStateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetSetupState not implemented")
@@ -1239,6 +1289,24 @@ func _IdentityReadService_ListGroups_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityReadService_SearchGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchGroupsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityReadServiceServer).SearchGroups(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityReadService_SearchGroups_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityReadServiceServer).SearchGroups(ctx, req.(*SearchGroupsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityReadService_ListUsersByIdpGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListUsersByIdpGroupsRequest)
 	if err := dec(in); err != nil {
@@ -1397,6 +1465,24 @@ func _IdentityReadService_RevokeMySession_Handler(srv interface{}, ctx context.C
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(IdentityReadServiceServer).RevokeMySession(ctx, req.(*RevokeMySessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityReadService_ChangeMyPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChangeMyPasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityReadServiceServer).ChangeMyPassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityReadService_ChangeMyPassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityReadServiceServer).ChangeMyPassword(ctx, req.(*ChangeMyPasswordRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1893,6 +1979,10 @@ var IdentityReadService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _IdentityReadService_ListGroups_Handler,
 		},
 		{
+			MethodName: "SearchGroups",
+			Handler:    _IdentityReadService_SearchGroups_Handler,
+		},
+		{
 			MethodName: "ListUsersByIdpGroups",
 			Handler:    _IdentityReadService_ListUsersByIdpGroups_Handler,
 		},
@@ -1927,6 +2017,10 @@ var IdentityReadService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RevokeMySession",
 			Handler:    _IdentityReadService_RevokeMySession_Handler,
+		},
+		{
+			MethodName: "ChangeMyPassword",
+			Handler:    _IdentityReadService_ChangeMyPassword_Handler,
 		},
 		{
 			MethodName: "GetSetupState",

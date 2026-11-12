@@ -791,6 +791,7 @@ type ComplexityRoot struct {
 		RetireTemplate                func(childComplexity int, id string) int
 		RevokeGroupManager            func(childComplexity int, userID string, groupID string) int
 		RevokeMagicLink               func(childComplexity int, token string) int
+		RevokeMySession               func(childComplexity int, sessionID string) int
 		RevokeMySessions              func(childComplexity int) int
 		RevokeRole                    func(childComplexity int, userID string, role string, category *string) int
 		RevokeRoot                    func(childComplexity int, userID string, otp string) int
@@ -1131,6 +1132,7 @@ type ComplexityRoot struct {
 		MyObligations              func(childComplexity int) int
 		MyReport                   func(childComplexity int, caseID string) int
 		MyReports                  func(childComplexity int) int
+		MySessions                 func(childComplexity int) int
 		MyUnreadNotificationCount  func(childComplexity int) int
 		MyWebauthnCredentials      func(childComplexity int) int
 		NotificationPref           func(childComplexity int) int
@@ -1429,6 +1431,7 @@ type ComplexityRoot struct {
 		Active          func(childComplexity int) int
 		AuthenticatedAt func(childComplexity int) int
 		ClientIP        func(childComplexity int) int
+		Current         func(childComplexity int) int
 		ExpiresAt       func(childComplexity int) int
 		IssuedAt        func(childComplexity int) int
 		LastSeenAt      func(childComplexity int) int
@@ -1795,6 +1798,7 @@ type MutationResolver interface {
 	UpdateMyProfile(ctx context.Context, firstName *string, lastName *string, locale *string) (*User, error)
 	RevokeUserSessions(ctx context.Context, userID string, reason *string) (int, error)
 	RevokeMySessions(ctx context.Context) (int, error)
+	RevokeMySession(ctx context.Context, sessionID string) (int, error)
 	CreateLocalUser(ctx context.Context, username string, email string, name string, password string) (*User, error)
 	ResetUserPassword(ctx context.Context, userID string, newPassword string) (bool, error)
 	ResendWelcomeEmail(ctx context.Context, userID string) (bool, error)
@@ -1943,6 +1947,7 @@ type QueryResolver interface {
 	PlatformGroups(ctx context.Context, parentID *string) ([]*PlatformGroup, error)
 	MyManagedGroups(ctx context.Context) ([]*PlatformGroup, error)
 	ListUserSessions(ctx context.Context, userID string) ([]*Session, error)
+	MySessions(ctx context.Context) ([]*Session, error)
 	MyFactors(ctx context.Context) ([]*UserFactor, error)
 	MyWebauthnCredentials(ctx context.Context) ([]*WebauthnCredentialInfo, error)
 	UserFactors(ctx context.Context, userID string) ([]*MfaFactor, error)
@@ -5504,6 +5509,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RevokeMagicLink(childComplexity, args["token"].(string)), true
+	case "Mutation.revokeMySession":
+		if e.ComplexityRoot.Mutation.RevokeMySession == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_revokeMySession_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RevokeMySession(childComplexity, args["sessionId"].(string)), true
 	case "Mutation.revokeMySessions":
 		if e.ComplexityRoot.Mutation.RevokeMySessions == nil {
 			break
@@ -7596,6 +7612,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MyReports(childComplexity), true
+	case "Query.mySessions":
+		if e.ComplexityRoot.Query.MySessions == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.MySessions(childComplexity), true
 	case "Query.myUnreadNotificationCount":
 		if e.ComplexityRoot.Query.MyUnreadNotificationCount == nil {
 			break
@@ -9126,6 +9148,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Session.ClientIP(childComplexity), true
+	case "Session.current":
+		if e.ComplexityRoot.Session.Current == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Session.Current(childComplexity), true
 	case "Session.expiresAt":
 		if e.ComplexityRoot.Session.ExpiresAt == nil {
 			break
@@ -12343,13 +12371,28 @@ type Session {
   # When the session was last used for a signed-in request (RFC 3339, to within
   # identity's throttle window); null when it was never seen.
   lastSeenAt: String
+  # True on the session this request runs on (mySessions only); always false
+  # in the admin listing.
+  current: Boolean!
 }
 
-extend type Query { listUserSessions(userId: ID!): [Session!]! }
+extend type Query {
+  listUserSessions(userId: ID!): [Session!]!
+  # mySessions -> IdentityReadService.ListMySessions: the signed-in caller's
+  # active sessions, newest first, with the one this request runs on marked
+  # current. Self-service (any authenticated user).
+  mySessions: [Session!]!
+}
 
 extend type Mutation {
   revokeUserSessions(userId: ID!, reason: String): Int!
   revokeMySessions: Int!
+  # revokeMySession -> IdentityReadService.RevokeMySession: signs out one of
+  # the caller's OTHER sessions. Returns 1 when it was active and is now ended,
+  # 0 when it had already ended. The current session is refused (use
+  # revokeMySessions to end everything) and a session that is not the
+  # caller's reads as unknown. Self-service.
+  revokeMySession(sessionId: ID!): Int!
 }
 
 # --- Local accounts ---
@@ -16113,6 +16156,8 @@ func (ec *executionContext) childFields_Session(ctx context.Context, field graph
 		return ec.fieldContext_Session_clientIp(ctx, field)
 	case "lastSeenAt":
 		return ec.fieldContext_Session_lastSeenAt(ctx, field)
+	case "current":
+		return ec.fieldContext_Session_current(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Session", field.Name)
 }
@@ -18788,6 +18833,20 @@ func (ec *executionContext) field_Mutation_revokeMagicLink_args(ctx context.Cont
 		return nil, err
 	}
 	args["token"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_revokeMySession_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "sessionId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["sessionId"] = arg0
 	return args, nil
 }
 
@@ -35623,6 +35682,50 @@ func (ec *executionContext) fieldContext_Mutation_revokeMySessions(_ context.Con
 	return graphql.NewScalarFieldContext("Mutation", field, true, true, errors.New("field of type Int does not have child fields"))
 }
 
+func (ec *executionContext) _Mutation_revokeMySession(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_revokeMySession(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RevokeMySession(ctx, fc.Args["sessionId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_revokeMySession(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_revokeMySession_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createLocalUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -44773,6 +44876,38 @@ func (ec *executionContext) fieldContext_Query_listUserSessions(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_mySessions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_mySessions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().MySessions(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*Session) graphql.Marshaler {
+			return ec.marshalNSession2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐSessionᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_mySessions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Session(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_myFactors(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -50331,6 +50466,29 @@ func (ec *executionContext) _Session_lastSeenAt(ctx context.Context, field graph
 }
 func (ec *executionContext) fieldContext_Session_lastSeenAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Session_current(ctx context.Context, field graphql.CollectedField, obj *Session) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Session_current(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Current, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Session_current(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Session", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _SpCertificate_serial(ctx context.Context, field graphql.CollectedField, obj *SpCertificate) (ret graphql.Marshaler) {
@@ -62689,6 +62847,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "revokeMySession":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_revokeMySession(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createLocalUser":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createLocalUser(ctx, field)
@@ -66319,6 +66484,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "mySessions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_mySessions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "myFactors":
 			field := field
 
@@ -69041,6 +69228,11 @@ func (ec *executionContext) _Session(ctx context.Context, sel ast.SelectionSet, 
 		case "lastSeenAt":
 			out.Values[i] = ec._Session_lastSeenAt(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "current":
+			out.Values[i] = ec._Session_current(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		default:

@@ -29,6 +29,8 @@ const (
 	DeliveryService_CreateMagicLink_FullMethodName    = "/steward.delivery.v1.DeliveryService/CreateMagicLink"
 	DeliveryService_RevokeMagicLink_FullMethodName    = "/steward.delivery.v1.DeliveryService/RevokeMagicLink"
 	DeliveryService_ResolveMagicLink_FullMethodName   = "/steward.delivery.v1.DeliveryService/ResolveMagicLink"
+	DeliveryService_ListMagicLinks_FullMethodName     = "/steward.delivery.v1.DeliveryService/ListMagicLinks"
+	DeliveryService_RemoveMagicLink_FullMethodName    = "/steward.delivery.v1.DeliveryService/RemoveMagicLink"
 )
 
 // DeliveryServiceClient is the client API for DeliveryService service.
@@ -56,6 +58,13 @@ type DeliveryServiceClient interface {
 	RevokeMagicLink(ctx context.Context, in *RevokeMagicLinkRequest, opts ...grpc.CallOption) (*RevokeMagicLinkResponse, error)
 	// ResolveMagicLink checks a magic link and returns the version it opens.
 	ResolveMagicLink(ctx context.Context, in *ResolveMagicLinkRequest, opts ...grpc.CallOption) (*ResolveMagicLinkResponse, error)
+	// ListMagicLinks lists the issued links, newest first, with their status.
+	// The result holds bearer tokens: the caller must show it to site admins
+	// only.
+	ListMagicLinks(ctx context.Context, in *ListMagicLinksRequest, opts ...grpc.CallOption) (*ListMagicLinksResponse, error)
+	// RemoveMagicLink deletes a revoked or expired link, so it leaves the list.
+	// An active link is refused (FailedPrecondition): revoke it first.
+	RemoveMagicLink(ctx context.Context, in *RemoveMagicLinkRequest, opts ...grpc.CallOption) (*RemoveMagicLinkResponse, error)
 }
 
 type deliveryServiceClient struct {
@@ -136,6 +145,26 @@ func (c *deliveryServiceClient) ResolveMagicLink(ctx context.Context, in *Resolv
 	return out, nil
 }
 
+func (c *deliveryServiceClient) ListMagicLinks(ctx context.Context, in *ListMagicLinksRequest, opts ...grpc.CallOption) (*ListMagicLinksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMagicLinksResponse)
+	err := c.cc.Invoke(ctx, DeliveryService_ListMagicLinks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *deliveryServiceClient) RemoveMagicLink(ctx context.Context, in *RemoveMagicLinkRequest, opts ...grpc.CallOption) (*RemoveMagicLinkResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveMagicLinkResponse)
+	err := c.cc.Invoke(ctx, DeliveryService_RemoveMagicLink_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DeliveryServiceServer is the server API for DeliveryService service.
 // All implementations must embed UnimplementedDeliveryServiceServer
 // for forward compatibility.
@@ -161,6 +190,13 @@ type DeliveryServiceServer interface {
 	RevokeMagicLink(context.Context, *RevokeMagicLinkRequest) (*RevokeMagicLinkResponse, error)
 	// ResolveMagicLink checks a magic link and returns the version it opens.
 	ResolveMagicLink(context.Context, *ResolveMagicLinkRequest) (*ResolveMagicLinkResponse, error)
+	// ListMagicLinks lists the issued links, newest first, with their status.
+	// The result holds bearer tokens: the caller must show it to site admins
+	// only.
+	ListMagicLinks(context.Context, *ListMagicLinksRequest) (*ListMagicLinksResponse, error)
+	// RemoveMagicLink deletes a revoked or expired link, so it leaves the list.
+	// An active link is refused (FailedPrecondition): revoke it first.
+	RemoveMagicLink(context.Context, *RemoveMagicLinkRequest) (*RemoveMagicLinkResponse, error)
 	mustEmbedUnimplementedDeliveryServiceServer()
 }
 
@@ -191,6 +227,12 @@ func (UnimplementedDeliveryServiceServer) RevokeMagicLink(context.Context, *Revo
 }
 func (UnimplementedDeliveryServiceServer) ResolveMagicLink(context.Context, *ResolveMagicLinkRequest) (*ResolveMagicLinkResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMagicLink not implemented")
+}
+func (UnimplementedDeliveryServiceServer) ListMagicLinks(context.Context, *ListMagicLinksRequest) (*ListMagicLinksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMagicLinks not implemented")
+}
+func (UnimplementedDeliveryServiceServer) RemoveMagicLink(context.Context, *RemoveMagicLinkRequest) (*RemoveMagicLinkResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveMagicLink not implemented")
 }
 func (UnimplementedDeliveryServiceServer) mustEmbedUnimplementedDeliveryServiceServer() {}
 func (UnimplementedDeliveryServiceServer) testEmbeddedByValue()                         {}
@@ -339,6 +381,42 @@ func _DeliveryService_ResolveMagicLink_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DeliveryService_ListMagicLinks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMagicLinksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServiceServer).ListMagicLinks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DeliveryService_ListMagicLinks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServiceServer).ListMagicLinks(ctx, req.(*ListMagicLinksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DeliveryService_RemoveMagicLink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveMagicLinkRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServiceServer).RemoveMagicLink(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DeliveryService_RemoveMagicLink_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServiceServer).RemoveMagicLink(ctx, req.(*RemoveMagicLinkRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DeliveryService_ServiceDesc is the grpc.ServiceDesc for DeliveryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -373,6 +451,14 @@ var DeliveryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveMagicLink",
 			Handler:    _DeliveryService_ResolveMagicLink_Handler,
+		},
+		{
+			MethodName: "ListMagicLinks",
+			Handler:    _DeliveryService_ListMagicLinks_Handler,
+		},
+		{
+			MethodName: "RemoveMagicLink",
+			Handler:    _DeliveryService_RemoveMagicLink_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

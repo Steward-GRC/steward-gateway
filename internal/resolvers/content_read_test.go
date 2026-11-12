@@ -80,7 +80,7 @@ func contentReadCases() []readCase {
 			return job != nil, err
 		}},
 		{"createMagicLink", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, d *countingDeliveryClient, _ *fakeAIClient) (bool, error) {
-			link, err := resolvers.CreateMagicLinkResolver(ctx, d, pc, groups, admin, "pol-1-v1", false)
+			link, err := resolvers.CreateMagicLinkResolver(ctx, d, pc, groups, admin, "pol-1-v1")
 			return link != nil, err
 		}},
 		{"policyVersionSummary", func(ctx context.Context, pc *diffingPolicyClient, groups corev1.CategoryServiceClient, admin *fakeBreakGlassAdmin, _ *countingDeliveryClient, ai *fakeAIClient) (bool, error) {

@@ -108,7 +108,10 @@ func RequestPDFExport(ctx context.Context, client deliveryv1.DeliveryServiceClie
 // CreateMagicLinkResolver mints a magic-link token for a published policy version under the
 // version's read decision. The link opens the real content, so an obfuscated reader gets nothing.
 // A link outlives the approval seat and can be passed on, so a draft stays editors-only here.
-func CreateMagicLinkResolver(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyVersionID string, sensitive bool) (*MagicLink, error) {
+// Whether the link is sensitive (email prompt, watermark, 48 hour life) is decided by
+// steward-delivery from the version and its policy, never by the caller: the GraphQL
+// `sensitive` argument is accepted for older clients and not forwarded (gateway#76).
+func CreateMagicLinkResolver(ctx context.Context, client deliveryv1.DeliveryServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, policyVersionID string) (*MagicLink, error) {
 	claims, ok := principal.FromContext(ctx)
 	if !ok || claims.UserID() == "" {
 		return nil, fmt.Errorf("unauthenticated")
@@ -121,7 +124,6 @@ func CreateMagicLinkResolver(ctx context.Context, client deliveryv1.DeliveryServ
 	resp, err := client.CreateMagicLink(ctx, &deliveryv1.CreateMagicLinkRequest{
 		PolicyVersionId: policyVersionID,
 		CreatedByUserId: claims.UserID(),
-		Sensitive:       sensitive,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("delivery create magic link: %w", err)

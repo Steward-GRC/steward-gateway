@@ -49,6 +49,13 @@ tasks:
         if [ -n "$unformatted" ]; then echo "gofmt needed on:"; echo "$unformatted"; exit 1; fi
       - golangci-lint run
       - yamllint .
+  vectors:refresh:
+    desc: "Refresh the vendored ordered vectors from a go-authz commit: task vectors:refresh COMMIT=<full sha>"
+    requires:
+      vars: [COMMIT]
+    cmds:
+      - gh api "repos/Bugs5382/go-authz/contents/testdata/ordered.json?ref={{.COMMIT}}" -H "Accept{{":"}} application/vnd.github.raw" > internal/resolvers/testdata/ordered.json
+      - printf 'repo{{":"}} Bugs5382/go-authz\ncommit{{":"}} {{.COMMIT}}\npath{{":"}} testdata/ordered.json\ndate{{":"}} %s\n' "$(gh api "repos/Bugs5382/go-authz/commits/{{.COMMIT}}" -q .commit.committer.date | cut -c1-10)" > internal/resolvers/testdata/ordered.SOURCE
   lint-init:
     desc: Install lint dependencies (golangci-lint is built with the local Go toolchain)
     cmds:

@@ -358,6 +358,12 @@ type fakeAIProviderClient struct {
 	lastProviderConfig *aiv1.SetProviderConfigRequest
 	lastCredential     *aiv1.SetProviderCredentialRequest
 	lastNotice         *aiv1.AcceptDataNoticeRequest
+	lastMonthlyLimit   *aiv1.SetMonthlyLimitRequest
+}
+
+func (f *fakeAIProviderClient) SetMonthlyLimit(_ context.Context, in *aiv1.SetMonthlyLimitRequest, _ ...grpc.CallOption) (*aiv1.SetMonthlyLimitResponse, error) {
+	f.lastMonthlyLimit = in
+	return &aiv1.SetMonthlyLimitResponse{Limit: in.GetLimit()}, nil
 }
 
 func (f *fakeAIProviderClient) SetProviderConfig(_ context.Context, in *aiv1.SetProviderConfigRequest, _ ...grpc.CallOption) (*aiv1.SetProviderConfigResponse, error) {
@@ -394,6 +400,58 @@ func TestAIConfigResolver_mapsSettingsWithoutTheCredential(t *testing.T) {
 	}
 	if _, err := resolvers.AIConfigResolver(ctxWithRoles(t, "erin", []string{"reader"}), client); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("a reader must be refused, got %v", err)
+	}
+}
+
+func TestAIConfigResolver_exposesTheMonthlyLimit(t *testing.T) {
+	client := &fakeAIClient{getConfigResp: &aiv1.GetAIConfigResponse{Config: &aiv1.AIConfig{
+		MonthlyLimit: 5000, DataNotice: &aiv1.DataNotice{CurrentVersion: "2", AcceptedVersion: "1"},
+	}}}
+	got, err := resolvers.AIConfigResolver(ctxWithRoles(t, "alice", []string{"site-admin"}), client)
+	if err != nil {
+		t.Fatalf("AIConfigResolver: %v", err)
+	}
+	if got.MonthlyLimit != 5000 {
+		t.Fatalf("monthlyLimit not mapped: %+v", got)
+	}
+	if got.DataNotice.CurrentVersion != "2" || got.DataNotice.AcceptedVersion != "1" {
+		t.Fatalf("dataNotice not mapped: %+v", got.DataNotice)
+	}
+	none := &fakeAIClient{getConfigResp: &aiv1.GetAIConfigResponse{Config: &aiv1.AIConfig{}}}
+	got, err = resolvers.AIConfigResolver(ctxWithRoles(t, "alice", []string{"site-admin"}), none)
+	if err != nil || got.MonthlyLimit != 0 {
+		t.Fatalf("no limit must read as 0, got %+v, %v", got, err)
+	}
+}
+
+func TestSetAIMonthlyLimitResolver_forwardsAndReturnsTheLimitInForce(t *testing.T) {
+	client := &fakeAIProviderClient{}
+	got, err := resolvers.SetAIMonthlyLimitResolver(ctxWithRoles(t, "alice", []string{"site-admin"}), client, 1200)
+	if err != nil {
+		t.Fatalf("SetAIMonthlyLimitResolver: %v", err)
+	}
+	if got != 1200 || client.lastMonthlyLimit.GetLimit() != 1200 {
+		t.Fatalf("limit not forwarded or returned: got %d, req %+v", got, client.lastMonthlyLimit)
+	}
+	cleared, err := resolvers.SetAIMonthlyLimitResolver(ctxWithRoles(t, "alice", []string{"site-admin"}), client, 0)
+	if err != nil || cleared != 0 || client.lastMonthlyLimit.GetLimit() != 0 {
+		t.Fatalf("0 must clear the limit, got %d, %v", cleared, err)
+	}
+}
+
+func TestSetAIMonthlyLimitResolver_requiresSiteAdmin(t *testing.T) {
+	client := &fakeAIProviderClient{}
+	_, err := resolvers.SetAIMonthlyLimitResolver(ctxWithRoles(t, "frank", []string{"template-admin"}), client, 10)
+	if status.Code(err) != codes.PermissionDenied || client.lastMonthlyLimit != nil {
+		t.Fatalf("a non-site-admin must be refused before ai is called, got %v", err)
+	}
+}
+
+func TestSetAIMonthlyLimitResolver_refusesANegativeLimit(t *testing.T) {
+	client := &fakeAIProviderClient{}
+	_, err := resolvers.SetAIMonthlyLimitResolver(ctxWithRoles(t, "alice", []string{"site-admin"}), client, -1)
+	if status.Code(err) != codes.InvalidArgument || client.lastMonthlyLimit != nil {
+		t.Fatalf("a negative limit must be refused before ai is called, got %v", err)
 	}
 }
 

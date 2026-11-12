@@ -60,6 +60,7 @@ type ComplexityRoot struct {
 		Deployment      func(childComplexity int) int
 		Enabled         func(childComplexity int) int
 		Model           func(childComplexity int) int
+		MonthlyLimit    func(childComplexity int) int
 		Provider        func(childComplexity int) int
 		Region          func(childComplexity int) int
 		TopK            func(childComplexity int) int
@@ -799,6 +800,7 @@ type ComplexityRoot struct {
 		SaveDraft                     func(childComplexity int, policyID string, contentJSON string, templateVersionID *string) int
 		SendEnrollEmailOtp            func(childComplexity int) int
 		SetAIEnabled                  func(childComplexity int, enabled bool) int
+		SetAIMonthlyLimit             func(childComplexity int, limit int) int
 		SetAIProviderConfig           func(childComplexity int, input AIProviderConfigInput) int
 		SetAIProviderCredential       func(childComplexity int, credential string) int
 		SetAIRetrievalConfig          func(childComplexity int, topK int) int
@@ -1699,6 +1701,7 @@ type MutationResolver interface {
 	SetAIProviderCredential(ctx context.Context, credential string) (*AICredentialStatus, error)
 	TestAIProvider(ctx context.Context) (*AIProviderTestResult, error)
 	AcceptAIDataNotice(ctx context.Context, noticeVersion string) (*AIDataNotice, error)
+	SetAIMonthlyLimit(ctx context.Context, limit int) (int, error)
 	SetAIRetrievalConfig(ctx context.Context, topK int) (*AIRetrievalConfig, error)
 	SetUserAiQueryLimit(ctx context.Context, userID string, limit int) (*AIUserQueryLimit, error)
 	CreatePolicyAppendix(ctx context.Context, policyID string, title *string, contentJSON string) (*PolicyAppendix, error)
@@ -2102,6 +2105,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AIConfig.Model(childComplexity), true
+	case "AIConfig.monthlyLimit":
+		if e.ComplexityRoot.AIConfig.MonthlyLimit == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AIConfig.MonthlyLimit(childComplexity), true
 	case "AIConfig.provider":
 		if e.ComplexityRoot.AIConfig.Provider == nil {
 			break
@@ -5582,6 +5591,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetAIEnabled(childComplexity, args["enabled"].(bool)), true
+	case "Mutation.setAIMonthlyLimit":
+		if e.ComplexityRoot.Mutation.SetAIMonthlyLimit == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setAIMonthlyLimit_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetAIMonthlyLimit(childComplexity, args["limit"].(int)), true
 	case "Mutation.setAIProviderConfig":
 		if e.ComplexityRoot.Mutation.SetAIProviderConfig == nil {
 			break
@@ -10691,6 +10711,8 @@ type AIConfig {
   credentialSet: Boolean!
   credentialLast4: String!
   topK: Int!
+  "Provider requests allowed per calendar month (UTC); 0 means no limit."
+  monthlyLimit: Int!
   dataNotice: AIDataNotice!
 }
 
@@ -10796,6 +10818,13 @@ extend type Mutation {
   turning the module on is refused until it is accepted.
   """
   acceptAIDataNotice(noticeVersion: String!): AIDataNotice!
+  """
+  Site-admin only. Sets the organisation's monthly limit on provider requests
+  (calendar month, UTC). Pass 0 to remove the limit; a negative value is
+  refused. Returns the limit now in force. The web locks this card on an
+  appliance (diagnostics.appliance), which configures AI on its own box.
+  """
+  setAIMonthlyLimit(limit: Int!): Int!
   """
   Site-admin only. Sets the retrieval candidate count (top_k) the ai service
   pulls before ranking when answering over policy content, in the DB-backed
@@ -13957,6 +13986,8 @@ func (ec *executionContext) childFields_AIConfig(ctx context.Context, field grap
 		return ec.fieldContext_AIConfig_credentialLast4(ctx, field)
 	case "topK":
 		return ec.fieldContext_AIConfig_topK(ctx, field)
+	case "monthlyLimit":
+		return ec.fieldContext_AIConfig_monthlyLimit(ctx, field)
 	case "dataNotice":
 		return ec.fieldContext_AIConfig_dataNotice(ctx, field)
 	}
@@ -18939,6 +18970,20 @@ func (ec *executionContext) field_Mutation_setAIEnabled_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setAIMonthlyLimit_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNInt2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_setAIProviderConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -22407,6 +22452,29 @@ func (ec *executionContext) _AIConfig_topK(ctx context.Context, field graphql.Co
 	)
 }
 func (ec *executionContext) fieldContext_AIConfig_topK(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AIConfig", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _AIConfig_monthlyLimit(ctx context.Context, field graphql.CollectedField, obj *AIConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AIConfig_monthlyLimit(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.MonthlyLimit, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AIConfig_monthlyLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("AIConfig", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
@@ -31435,6 +31503,50 @@ func (ec *executionContext) fieldContext_Mutation_acceptAIDataNotice(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_acceptAIDataNotice_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setAIMonthlyLimit(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setAIMonthlyLimit(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetAIMonthlyLimit(ctx, fc.Args["limit"].(int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setAIMonthlyLimit(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setAIMonthlyLimit_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -57250,6 +57362,11 @@ func (ec *executionContext) _AIConfig(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "monthlyLimit":
+			out.Values[i] = ec._AIConfig_monthlyLimit(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "dataNotice":
 			out.Values[i] = ec._AIConfig_dataNotice(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -62013,6 +62130,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "acceptAIDataNotice":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_acceptAIDataNotice(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setAIMonthlyLimit":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setAIMonthlyLimit(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

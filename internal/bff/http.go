@@ -161,7 +161,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request"})
 		return
 	}
-	res, err := h.Auth.VerifyPassword(r.Context(), in.Username, in.Password)
+	res, err := h.Auth.VerifyPassword(r.Context(), h.resolveLoginIdentifier(r.Context(), in.Username), in.Password)
 	if errors.Is(err, ErrInvalidCredentials) {
 		log.Trace(l, "local login: password rejected", log.F("flow", "local_login"), log.F("reason", "invalid_credentials"))
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})

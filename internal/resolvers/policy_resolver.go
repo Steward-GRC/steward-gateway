@@ -11,7 +11,7 @@ import (
 
 	"github.com/Bugs5382/go-apperr/apperrgrpc"
 	log "github.com/Bugs5382/go-log"
-	authz "github.com/Steward-GRC/steward-authz"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -103,7 +103,7 @@ func policyFromProto(p *corev1.Policy) *Policy {
 	return gql
 }
 
-// policyResource builds the steward-authz Resource for p, keyed by policy
+// policyResource builds the the permission catalog (internal/authz) Resource for p, keyed by policy
 // number: its category lineage by name (scoped grants are keyed by name and
 // inherit down) and the lineage ids. With no category client, or when the
 // lineage can't be read, the lineage is the home category id alone.
@@ -279,7 +279,7 @@ func resolvePolicyReadModel(ctx context.Context, policies []*Policy, policyClien
 		return []*Policy{}, nil
 	}
 	var breakGlassUntil map[string]string
-	subj.BreakGlass, breakGlassUntil = activeBreakGlassGrants(ctx, adminClient, subj.SiteAdmin())
+	subj.BreakGlass, breakGlassUntil = activeBreakGlassGrants(ctx, adminClient, authz.IsSiteAdmin(subj))
 	seats := newPendingSeats(workflow)
 	visible := make([]*Policy, 0, len(policies))
 	for _, p := range policies {
@@ -492,7 +492,7 @@ func versionReadDecisionChecked(ctx context.Context, client corev1.PolicyService
 	if err != nil {
 		return authz.EffectDeny, false, nil
 	}
-	subj.BreakGlass = activeBreakGlassFor(ctx, adminClient, subj.SiteAdmin())
+	subj.BreakGlass = activeBreakGlassFor(ctx, adminClient, authz.IsSiteAdmin(subj))
 	resp, err := client.GetPolicy(ctx, &corev1.GetPolicyRequest{Id: policyID})
 	if err != nil {
 		if status.Code(err) == codes.NotFound {

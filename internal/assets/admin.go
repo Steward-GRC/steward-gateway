@@ -12,8 +12,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	authz "github.com/Steward-GRC/steward-authz"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 )
 

@@ -17,8 +17,8 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
-	stewardauthz "github.com/Steward-GRC/steward-authz"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	"github.com/Steward-GRC/steward-gateway/internal/authz"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 )
 
@@ -118,7 +118,7 @@ func (g *Gate) Middleware() graphql.OperationMiddleware {
 // allowed reports whether the operation may run during maintenance: site-admins
 // always may; everyone else only when every top-level selection is whitelisted.
 func (g *Gate) allowed(ctx context.Context) bool {
-	if c, ok := principal.FromContext(ctx); ok && c != nil && principal.HasRole(c, string(stewardauthz.RoleSiteAdmin)) {
+	if c, ok := principal.FromContext(ctx); ok && c != nil && principal.HasRole(c, string(authz.RoleSiteAdmin)) {
 		return true
 	}
 	oc := graphql.GetOperationContext(ctx)

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	authz "github.com/Steward-GRC/steward-authz"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 
 	"github.com/Steward-GRC/steward-gateway/internal/live"
 	"google.golang.org/grpc/codes"

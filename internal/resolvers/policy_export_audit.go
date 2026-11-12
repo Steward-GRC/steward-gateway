@@ -11,10 +11,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	authz "github.com/Steward-GRC/steward-authz"
 	auditv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/audit/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 )
 

@@ -8,8 +8,8 @@ import (
 	"sort"
 
 	log "github.com/Bugs5382/go-log"
-	authz "github.com/Steward-GRC/steward-authz"
 	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 )
 
 // workflowDefFromProto maps a workflowv1.WorkflowDef proto onto the gqlgen WorkflowDef model.

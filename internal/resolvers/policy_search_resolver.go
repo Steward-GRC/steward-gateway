@@ -16,6 +16,7 @@ import (
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
+	"github.com/Steward-GRC/steward-gateway/internal/authz"
 )
 
 // searchPolicies (steward-gateway#41): core ranks the published text, the gateway decides who
@@ -96,7 +97,7 @@ func SearchPolicies(ctx context.Context, client corev1.PolicyServiceClient, cate
 	searchLog.Debug("search policies", log.F("query_len", len(query)), log.F("first", size), log.F("offset", offset))
 
 	// A grant-only read is searched like an obfuscated one.
-	grants := activeBreakGlassFor(ctx, adminClient, subj.SiteAdmin())
+	grants := activeBreakGlassFor(ctx, adminClient, authz.IsSiteAdmin(subj))
 
 	chunk := min(size+1, searchMaxPage)
 	hits := make([]*PolicySearchHit, 0, size)

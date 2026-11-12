@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	authz "github.com/Steward-GRC/steward-authz"
 	auditv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/audit/v1"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

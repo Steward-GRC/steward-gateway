@@ -14,10 +14,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	authz "github.com/Steward-GRC/steward-authz"
 	collabv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/collab/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 )
 
 // The appendix life cycle (#123). An appendix belongs to a policy, not to one

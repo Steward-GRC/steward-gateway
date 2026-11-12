@@ -178,14 +178,14 @@ func TestUpload_CoreRefusalsPassThroughUnchanged(t *testing.T) {
 	}
 }
 
-// The status codes stay as they are today.
+// The status codes stay as they are today; Unavailable carries its own typed text.
 func TestUpload_CoreErrorStatusCodesAreUnchanged(t *testing.T) {
 	cases := []struct {
 		code codes.Code
 		want int
 		text string
 	}{
-		{codes.Unavailable, http.StatusServiceUnavailable, "Failed to store image"},
+		{codes.Unavailable, http.StatusServiceUnavailable, "Uploads are unavailable right now."},
 		{codes.Internal, http.StatusInternalServerError, "Failed to store image"},
 		{codes.PermissionDenied, http.StatusForbidden, "Failed to store image"},
 	}

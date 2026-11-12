@@ -22,6 +22,7 @@ import (
 // decidedPolicy is what one policy contributes to the list: whether the caller
 // may see it, and its title. It is resolved once per policy for the request.
 type decidedPolicy struct {
+	number  string
 	title   string
 	visible bool
 }
@@ -143,5 +144,5 @@ func decidedPolicyFor(ctx context.Context, logger log.Logger, policies corev1.Po
 	visible := effect != authz.EffectDeny && !breakGlass
 	logger.Debug("decided approvals: policy read decision",
 		log.F("policy_id", policyID), log.F("effect", string(effect)), log.F("break_glass_only", breakGlass), log.F("visible", visible))
-	return &decidedPolicy{title: pr.GetPolicy().GetTitle(), visible: visible}, nil
+	return &decidedPolicy{number: pr.GetPolicy().GetNumber(), title: pr.GetPolicy().GetTitle(), visible: visible}, nil
 }

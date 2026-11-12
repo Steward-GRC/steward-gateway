@@ -841,6 +841,35 @@ type NotifTypeDef struct {
 	Delivery  NotifDelivery `json:"delivery"`
 }
 
+type Notification struct {
+	ID          string            `json:"id"`
+	Kind        string            `json:"kind"`
+	Category    NotifCategory     `json:"category"`
+	Title       string            `json:"title"`
+	Line        string            `json:"line"`
+	NeedsAction bool              `json:"needsAction"`
+	Link        *NotificationLink `json:"link,omitempty"`
+	CreatedAt   string            `json:"createdAt"`
+	ReadAt      *string           `json:"readAt,omitempty"`
+}
+
+type NotificationFilter struct {
+	NeedsAction *bool          `json:"needsAction,omitempty"`
+	Unread      *bool          `json:"unread,omitempty"`
+	Category    *NotifCategory `json:"category,omitempty"`
+}
+
+type NotificationLink struct {
+	Kind NotificationLinkKind `json:"kind"`
+	Ref  string               `json:"ref"`
+}
+
+type NotificationPage struct {
+	Items     []*Notification `json:"items"`
+	EndCursor *string         `json:"endCursor,omitempty"`
+	HasMore   bool            `json:"hasMore"`
+}
+
 type NotificationPref struct {
 	UserID string `json:"userId"`
 	Email  bool   `json:"email"`
@@ -3122,6 +3151,63 @@ func (e *NotifDelivery) UnmarshalJSON(b []byte) error {
 }
 
 func (e NotifDelivery) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type NotificationLinkKind string
+
+const (
+	NotificationLinkKindApproval NotificationLinkKind = "APPROVAL"
+	NotificationLinkKindCase     NotificationLinkKind = "CASE"
+	NotificationLinkKindPolicy   NotificationLinkKind = "POLICY"
+)
+
+var AllNotificationLinkKind = []NotificationLinkKind{
+	NotificationLinkKindApproval,
+	NotificationLinkKindCase,
+	NotificationLinkKindPolicy,
+}
+
+func (e NotificationLinkKind) IsValid() bool {
+	switch e {
+	case NotificationLinkKindApproval, NotificationLinkKindCase, NotificationLinkKindPolicy:
+		return true
+	}
+	return false
+}
+
+func (e NotificationLinkKind) String() string {
+	return string(e)
+}
+
+func (e *NotificationLinkKind) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = NotificationLinkKind(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid NotificationLinkKind", str)
+	}
+	return nil
+}
+
+func (e NotificationLinkKind) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *NotificationLinkKind) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e NotificationLinkKind) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

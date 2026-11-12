@@ -64,6 +64,7 @@ type Resolver struct {
 	ReportingClient  obligationsv1.ReportingServiceClient
 	ObligationClient obligationsv1.ObligationServiceClient
 	WelcomeClient    obligationsv1.WelcomeServiceClient
+	InboxClient      obligationsv1.InboxServiceClient
 
 	// audit
 	AuditClient auditv1.AuditServiceClient
@@ -129,6 +130,11 @@ type AuditEmitter interface {
 	Emit(ctx context.Context, ev *auditv1.AuditEvent) error
 }
 
+// inboxDeps are the clients the notification inbox resolvers use.
+func (r *Resolver) inboxDeps() InboxDeps {
+	return InboxDeps{Inbox: r.InboxClient, Policies: r.PolicyClient, Categories: r.CategoryClient, Admin: r.IdentityAdminClient}
+}
+
 // FromClients fills the backend clients from c.
 func (r *Resolver) FromClients(c *backend.Clients) *Resolver {
 	r.IdentityClient, r.IdentityAdminClient, r.SSOAdminClient = c.IdentityRead, c.IdentityAdmin, c.IdentitySSOAdmin
@@ -140,6 +146,7 @@ func (r *Resolver) FromClients(c *backend.Clients) *Resolver {
 	r.VersionLinkClient = c.VersionLink
 	r.WorkflowClient = c.Workflow
 	r.AckClient, r.NotifPrefClient, r.ReportingClient, r.ObligationClient, r.WelcomeClient = c.Ack, c.NotifPref, c.Reporting, c.Obligation, c.Welcome
+	r.InboxClient = c.Inbox
 	r.AuditClient = c.Audit
 	r.DeliveryClient = c.Delivery
 	r.CollabClient, r.CollabRoomClient = c.CollabToken, c.CollabRoom

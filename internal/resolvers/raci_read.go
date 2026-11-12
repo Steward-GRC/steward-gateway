@@ -49,10 +49,15 @@ func sensitivityGate(subj authz.Subject, p *Policy) authz.Effect {
 	return authz.EffectDeny
 }
 
-// meritRACIReadEffect decides read for one policy, in order: override allow,
-// override deny, break glass, the category rules (meritRead), then the
-// sensitive gate.
+// meritRACIReadEffect decides read for one policy, in order: the root override,
+// override allow, override deny, break glass, the category rules (meritRead),
+// then the sensitive gate. Root is a global approver and global manager, so it
+// always reads: no category rule, sensitivity or per-policy deny applies, and
+// its content is never obfuscated.
 func meritRACIReadEffect(subj authz.Subject, p *Policy, meritRead bool) authz.Effect {
+	if subj.Root {
+		return authz.EffectAllow
+	}
 	switch subjOverrideFor(subj, p.Number) {
 	case authz.GrantAllow:
 		return authz.EffectAllow

@@ -395,9 +395,9 @@ func TestSearchAndAnswerScopeGroupMustBeAuthorized(t *testing.T) {
 	}
 }
 
-func TestSearchAndAnswerSiteAdminReadsAllCategories(t *testing.T) {
+func TestSearchAndAnswerRootReadsAllCategories(t *testing.T) {
 	client := &fakeAIClient{searchResp: &aiv1.SearchAndAnswerResponse{}}
-	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "alice", RolesValue: []string{"site-admin"}, ReadSensitiveValue: true})
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "alice", RolesValue: []string{"site-admin"}, IsRootValue: true, ReadSensitiveValue: true})
 	if _, err := resolvers.SearchAndAnswerResolver(ctx, client, nil, "q", nil); err != nil {
 		t.Fatalf("SearchAndAnswer: %v", err)
 	}

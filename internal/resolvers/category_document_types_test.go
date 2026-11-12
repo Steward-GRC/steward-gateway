@@ -148,7 +148,7 @@ func TestCreatePolicy_RefusedTypeReachesTheClientCoded(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			pc, gc := draftPointerEnv(nil)
 			lp := &lockPolicyClient{fakePolicyClient: pc, createErr: codedCoreError(t, codes.FailedPrecondition, 4007, "CATEGORY_REFUSES_TYPE", tc.msg, tc.md)}
-			out := lockGraphQL(t, ctxWithRoles(t, "bob", []string{"site-admin"}), &resolvers.Resolver{PolicyClient: lp, CategoryClient: gc},
+			out := lockGraphQL(t, ctxRoot(t, "bob"), &resolvers.Resolver{PolicyClient: lp, CategoryClient: gc},
 				`mutation ($home: ID!, $type: DocumentType) { createPolicy(homeCategoryId: $home, documentType: $type, sensitivity: STANDARD, title: "A document") { id } }`,
 				map[string]any{"home": tc.category, "type": tc.docType})
 			wantCoded(t, out, 4007, "CATEGORY_REFUSES_TYPE", tc.msg)
@@ -169,7 +169,7 @@ func TestCreatePolicy_RefusedTypeReachesTheClientCoded(t *testing.T) {
 func TestCreatePolicy_ForwardsTheDocumentTypeForCoreToCheck(t *testing.T) {
 	pc := &fakePolicyClient{}
 	dt := resolvers.DocumentTypeProcedure
-	if _, err := resolvers.CreatePolicy(ctxWithRoles(t, "bob", []string{"site-admin"}), pc, nil, "category-conduct", "A document", resolvers.SensitivityStandard, nil, &dt); err != nil {
+	if _, err := resolvers.CreatePolicy(ctxRoot(t, "bob"), pc, nil, "category-conduct", "A document", resolvers.SensitivityStandard, nil, &dt); err != nil {
 		t.Fatalf("CreatePolicy: %v", err)
 	}
 	if pc.lastCreate.GetDocumentType() != corev1.DocumentType_DOCUMENT_TYPE_PROCEDURE || pc.lastCreate.GetHomeCategoryId() != "category-conduct" {

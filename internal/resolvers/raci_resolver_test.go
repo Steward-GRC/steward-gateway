@@ -5,7 +5,6 @@ package resolvers_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	log "github.com/Bugs5382/go-log"
@@ -15,6 +14,8 @@ import (
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // raciIdentityClient stubs IdentityReadServiceClient for RACI smoke tests.
@@ -31,7 +32,7 @@ type raciIdentityClient struct {
 func (f *raciIdentityClient) GetUser(_ context.Context, in *identityv1.GetUserRequest, _ ...grpc.CallOption) (*identityv1.GetUserResponse, error) {
 	u, ok := f.users[in.GetUserId()]
 	if !ok {
-		return nil, errors.New("user not found")
+		return nil, status.Error(codes.NotFound, "user not found")
 	}
 	return &identityv1.GetUserResponse{User: u}, nil
 }

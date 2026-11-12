@@ -5,12 +5,14 @@ package resolvers
 
 import (
 	"context"
+	"strings"
 
 	authz "github.com/Steward-GRC/steward-authz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 )
 
 // ackTriggerToProto maps a GQL AckTrigger to its proto counterpart.
@@ -305,12 +307,46 @@ func CountCategoryDocuments(ctx context.Context, client corev1.CategoryServiceCl
 	return &CategoryDocumentCounts{Policies: int(resp.GetPolicies()), Procedures: int(resp.GetProcedures())}, nil
 }
 
-// SetCategoryGovernance persists a category's governance. idpGroupIds and
+// validateCategoryOwners checks every owner is a person: a user id that
+// identity knows. A group, Everyone or any other subject is refused, and so is
+// an id identity has no user for. Owners are stored as user ids.
+func validateCategoryOwners(ctx context.Context, ic identityv1.IdentityReadServiceClient, owners []string) error {
+	if len(owners) == 0 {
+		return nil
+	}
+	if ic == nil {
+		return status.Error(codes.Unavailable, "identity service unavailable")
+	}
+	seen := make(map[string]struct{}, len(owners))
+	for _, o := range owners {
+		if _, dup := seen[o]; dup {
+			continue
+		}
+		seen[o] = struct{}{}
+		// A user id is a UUID; anything shaped like a subject ("group:ops",
+		// "everyone:*") is not a person.
+		if o == "" || strings.Contains(o, ":") {
+			return status.Error(codes.InvalidArgument, "category owners must be people: a group or Everyone cannot own a category")
+		}
+		if _, err := ic.GetUser(ctx, &identityv1.GetUserRequest{UserId: o}); err != nil {
+			if status.Code(err) == codes.NotFound {
+				return status.Errorf(codes.InvalidArgument, "category owner %s is not a user", o)
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+// SetCategoryGovernance persists a category's governance. Owners are people
+// only (checked against identity); idpGroupIds and
 // exclusionGroupIds are tri-state: nil leaves the stored (possibly inherited)
-// value alone, a non-nil slice (even empty) overrides it.
+// value alone, a non-nil slice (even empty) overrides it. Manage does not
+// gate it: it is global-admin only.
 func SetCategoryGovernance(
 	ctx context.Context,
 	client corev1.CategoryServiceClient,
+	identity identityv1.IdentityReadServiceClient,
 	id string,
 	owners []string,
 	idpGroupIds []string,
@@ -325,6 +361,9 @@ func SetCategoryGovernance(
 	}
 	uid, err := claimsUserID(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := validateCategoryOwners(ctx, identity, owners); err != nil {
 		return nil, err
 	}
 	resp, err := client.SetGovernance(ctx, &corev1.SetGovernanceRequest{

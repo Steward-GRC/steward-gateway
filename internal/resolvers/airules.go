@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	authz "github.com/Steward-GRC/steward-authz"
+	"github.com/Bugs5382/go-authz/ordered"
 
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
@@ -19,14 +19,9 @@ import (
 // The gateway's AI authorization rules: the read scope every AI request
 // carries and the category gate on an operation's optional category.
 
-// isSiteAdmin reports whether claims holds the site-admin role.
-func isSiteAdmin(claims principal.Claims) bool {
-	return principal.HasRole(claims, string(authz.RoleSiteAdmin))
-}
-
-// aiReadScope is the caller's AI read scope. A site admin or root reads every
-// category; anyone else reads the categories the category rules let them read
-// on merit (owners included). Sensitive documents need the individual
+// aiReadScope is the caller's AI read scope. Root reads every category;
+// anyone else, a site admin included, reads the categories the category rules
+// let them read (owners included). Sensitive documents need the individual
 // read-sensitive grant either way.
 func aiReadScope(ctx context.Context, categoryClient corev1.CategoryServiceClient) (*aiv1.ReadScope, error) {
 	subj, err := subjectFromCtx(ctx)
@@ -34,21 +29,21 @@ func aiReadScope(ctx context.Context, categoryClient corev1.CategoryServiceClien
 		return nil, err
 	}
 	scope := &aiv1.ReadScope{IncludeSensitive: subj.ReadSensitive}
-	if subj.SiteAdmin() || subj.Root {
+	if subj.Root {
 		scope.AllCategories = true
 		return scope, nil
 	}
 	if categoryClient == nil {
 		return scope, nil
 	}
-	scope.CategoryIds = readableCategoryIDs(ctx, categoryClient, meritSubject(subj))
+	scope.CategoryIds = readableCategoryIDs(ctx, categoryClient, personFromSubject(subj))
 	return scope, nil
 }
 
 // readableCategoryIDs walks the category tree from the roots and returns every
 // category whose rules let subj read. A category whose chain can't be built is
 // left out.
-func readableCategoryIDs(ctx context.Context, categoryClient corev1.CategoryServiceClient, subj authz.Subject) []string {
+func readableCategoryIDs(ctx context.Context, categoryClient corev1.CategoryServiceClient, person ordered.Person) []string {
 	out := []string{}
 	seen := map[string]bool{}
 	queue := []string{""}
@@ -66,11 +61,11 @@ func readableCategoryIDs(ctx context.Context, categoryClient corev1.CategoryServ
 			}
 			seen[id] = true
 			queue = append(queue, id)
-			chain, err := buildCategoryChain(ctx, categoryClient, id)
+			access, err := loadCategoryAccess(ctx, categoryClient, id)
 			if err != nil {
 				continue
 			}
-			if authz.Resolve(ctx, subj, chain).Read.Allowed {
+			if access.decide(person).Read.Allowed {
 				out = append(out, id)
 			}
 		}
@@ -88,10 +83,11 @@ const (
 )
 
 // authorizeAICategoryScope checks the caller may target category gid with an
-// AI operation. An empty gid asks for no category. A site admin may target any
-// category; anyone else needs the grant on gid through the category rules.
+// AI operation. An empty gid asks for no category. Root may target any
+// category; anyone else, a site admin included, needs the grant on gid through
+// the category rules.
 func authorizeAICategoryScope(ctx context.Context, categoryClient corev1.CategoryServiceClient, claims principal.Claims, gid string, grant aiScopeGrant) error {
-	if gid == "" || isSiteAdmin(claims) {
+	if gid == "" || claims.IsRoot() {
 		return nil
 	}
 	if categoryClient != nil {

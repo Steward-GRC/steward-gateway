@@ -52,7 +52,7 @@ func TestCoAuthoring_EditMatrix(t *testing.T) {
 	}{
 		{
 			name:      "site-admin edits (deny never applies)",
-			claims:    principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}},
+			claims:    principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}, IsRootValue: true},
 			rules:     []*corev1.CategoryRule{authorRule("admin-u", corev1.GrantEffect_GRANT_EFFECT_DENY)},
 			wantAllow: true,
 		},
@@ -188,7 +188,7 @@ func TestCoAuthoring_DiscardDraftMatrix(t *testing.T) {
 	}{
 		{
 			name:      "site-admin may discard",
-			claims:    principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}},
+			claims:    principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}, IsRootValue: true},
 			wantAllow: true,
 		},
 		{
@@ -304,7 +304,7 @@ func TestCreatePolicy_CategoryAuthorGate(t *testing.T) {
 			map[string][]*corev1.CategoryRule{"g-cat": {}},
 		)
 		pc := &fakePolicyClient{}
-		ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}})
+		ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "admin-u", RolesValue: []string{"site-admin"}, IsRootValue: true})
 
 		_, err := resolvers.CreatePolicy(ctx, pc, gc, "g-cat", "T", resolvers.SensitivityStandard, nil, nil)
 		if err != nil {

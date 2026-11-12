@@ -320,6 +320,39 @@ so is `first` under 1. A blank query finds nothing.
   (the gateway reads at most five core pages per request).
 - Neither the query nor any document text is logged, only the query's length.
 
+## Category access
+
+The gateway decides category access with go-authz's `ordered` engine (`github.com/Bugs5382/go-authz/ordered`,
+pinned at the merged commit in `go.mod`). Core stores the rows and the owners and evaluates nothing;
+the gateway reads a category's whole chain with one `GetEffectiveRuleset` call (the category, then
+each ancestor, nearest first, with owners and rules) and asks the engine.
+
+- **Rows and cells.** A rule is one row: a subject (a user, a directory group or Everyone) and a
+  cell per action: `read`, `author`, `approve`, `manage`, `ack`. A cell is `ALLOW`, `DENY` or
+  `BLANK`. `RaciRule`, `RaciRuleInput` and `RaciDecision` carry all five (`manage`, `manageReason`,
+  `manageCode` included).
+- **Decision.** Per action, from the top: the first row that matches the person and has a non-blank
+  cell for that action wins. A cell answers only its own action. The category's own rows come
+  first, then the parent chain's.
+- **Implications.** An allowed `author`, `approve` or `manage` confers `read` over a `read` deny.
+  `manage` implies `read` and `author` only. `ack` requires `read`.
+- **Owners** are people only (`setCategoryGovernance` refuses a group, Everyone or a user id that
+  identity does not know with `InvalidArgument`), inherited down the tree, and always hold `read`,
+  `author`, `approve` and `manage`, whatever a row says. They are not required to `ack`.
+- **Everyone** is an explicit row and covers every person, a site admin included. A new category
+  starts with Everyone: Read. A site admin who is not root follows the rows; break-glass is their
+  fallback for reading.
+- **Root** is the one exempt seat (identity's `is_root`): global `read`, `author`, `approve` and
+  `manage`; `ack` follows the rows. A deny configured for root is stored and never applied. The
+  simulator returns the action as allowed with code `ROOT` and a `blocked:` reason, and lists the
+  entry in `configuredBlock`.
+- **Reasons.** Each action has a human string and a code beside it: `ENTRY`, `DEFAULT_DENY`,
+  `OWNER`, `ROOT`, `REQUIRES`.
+- **Approver pool.** `categoryApprovers` is the owners plus everyone whose `approve` is allowed,
+  owners first, then root (a global approver). `viewerIsApprover` is true for root.
+- **Manage** is for moving and reordering documents. It does not gate `setCategoryRuleset` or
+  `setCategoryGovernance`, which stay global-admin only. `PolicyViewerCan.manage` reports it.
+
 ## Break-glass reads
 
 A site admin who sees a document obfuscated can ask for a time-boxed reveal of that one document
@@ -373,7 +406,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - core ContactService: ListContactBlocks, CreateContactBlock, UpdateContactBlock, DeleteContactBlock, SetContactBlockArchived, ListPolicyContactBlocks, SetPolicyContactBlocks
 - core SettingsService: GetGlobalSettings, SetGlobalSettings, SetEmailServiceConfig, EmailServiceConfigStatus
 - core ReferenceService: ListReferences, CreateReference, UpdateReference, DeleteReference, SetReferenceArchived, ListPolicyReferences, SetPolicyReferences
-- core CategoryService: CreateCategory, GetCategory, ListCategoryChildren, SetCategoryDefaults, RenameCategory, DeleteCategory, MoveCategory, ReorderCategories, SetGovernance, GetEffectiveGovernance, GetCategoryRuleset, SetCategoryRuleset
+- core CategoryService: CreateCategory, GetCategory, ListCategoryChildren, SetCategoryDefaults, RenameCategory, DeleteCategory, MoveCategory, ReorderCategories, SetGovernance, GetEffectiveGovernance, GetCategoryRuleset, GetEffectiveRuleset, SetCategoryRuleset
 - core PolicyService: CreatePolicy, GetPolicy, GetPolicyByNumber, ListPolicies, GetPolicyVersion, ListPolicyVersions, SaveDraft, PublishDraft, DiscardDraft, DeletePolicy, RetirePolicy, RecordBreakGlassRead, SetPolicyOwner, ListPoliciesByOwner, ReassignUserPolicies, MovePolicy, PreviewMovePolicies, MovePolicies, DiffVersions, GetEffectiveTemplate, SetPolicyTemplate, SetPolicySensitivity, RenamePolicy, SetAck, ReindexPolicy, ReindexPolicyVersion
 - delivery DeliveryService: GetRenderedContent, GetDiff, RequestPDFExport, GetPDFDownloadLink, CreateMagicLink, RevokeMagicLink, ListMagicLinks, RemoveMagicLink
 - reporting IntakeService: SubmitAnonymousReport, CheckReport, ReplyToReport, SubmitNamedReport, ListMyReports, GetMyReport, ReplyToMyReport

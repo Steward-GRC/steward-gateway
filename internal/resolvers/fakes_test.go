@@ -66,6 +66,25 @@ func (f *raciCategoryClient) GetCategoryRuleset(_ context.Context, in *corev1.Ge
 	return &corev1.GetCategoryRulesetResponse{Rules: rules}, nil
 }
 
+// effectiveRuleset answers GetEffectiveRuleset the way core does: the category
+// first, then each ancestor, each with its owners and its rules in order.
+func effectiveRuleset(groups map[string]*corev1.Category, rulesets map[string][]*corev1.CategoryRule, id string) (*corev1.GetEffectiveRulesetResponse, error) {
+	out := &corev1.GetEffectiveRulesetResponse{}
+	for cur, n := id, 0; cur != "" && n < 20; n++ {
+		g, ok := groups[cur]
+		if !ok {
+			return nil, status.Error(codes.NotFound, "category not found")
+		}
+		out.Levels = append(out.Levels, &corev1.EffectiveLevel{CategoryId: g.Id, Name: g.Name, Owners: g.Owners, Rules: rulesets[cur]})
+		cur = g.ParentId
+	}
+	return out, nil
+}
+
+func (f *raciCategoryClient) GetEffectiveRuleset(_ context.Context, in *corev1.GetEffectiveRulesetRequest, _ ...grpc.CallOption) (*corev1.GetEffectiveRulesetResponse, error) {
+	return effectiveRuleset(f.groups, f.rulesets, in.CategoryId)
+}
+
 func (f *raciCategoryClient) SetCategoryRuleset(_ context.Context, in *corev1.SetCategoryRulesetRequest, _ ...grpc.CallOption) (*corev1.SetCategoryRulesetResponse, error) {
 	f.rulesets[in.CategoryId] = in.Rules
 	return &corev1.SetCategoryRulesetResponse{Rules: in.Rules}, nil

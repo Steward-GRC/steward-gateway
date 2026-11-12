@@ -1100,6 +1100,7 @@ type ComplexityRoot struct {
 		CanBreakGlass     func(childComplexity int) int
 		ContentObfuscated func(childComplexity int) int
 		Edit              func(childComplexity int) int
+		Manage            func(childComplexity int) int
 		Read              func(childComplexity int) int
 		Submit            func(childComplexity int) int
 	}
@@ -1227,21 +1228,37 @@ type ComplexityRoot struct {
 		Timezone func(childComplexity int) int
 	}
 
+	RaciConfiguredBlock struct {
+		Action      func(childComplexity int) int
+		CategoryID  func(childComplexity int) int
+		SubjectKind func(childComplexity int) int
+		SubjectRef  func(childComplexity int) int
+	}
+
 	RaciDecision struct {
-		Ack           func(childComplexity int) int
-		AckReason     func(childComplexity int) int
-		Approve       func(childComplexity int) int
-		ApproveReason func(childComplexity int) int
-		Author        func(childComplexity int) int
-		AuthorReason  func(childComplexity int) int
-		Read          func(childComplexity int) int
-		ReadReason    func(childComplexity int) int
+		Ack             func(childComplexity int) int
+		AckCode         func(childComplexity int) int
+		AckReason       func(childComplexity int) int
+		Approve         func(childComplexity int) int
+		ApproveCode     func(childComplexity int) int
+		ApproveReason   func(childComplexity int) int
+		Author          func(childComplexity int) int
+		AuthorCode      func(childComplexity int) int
+		AuthorReason    func(childComplexity int) int
+		ConfiguredBlock func(childComplexity int) int
+		Manage          func(childComplexity int) int
+		ManageCode      func(childComplexity int) int
+		ManageReason    func(childComplexity int) int
+		Read            func(childComplexity int) int
+		ReadCode        func(childComplexity int) int
+		ReadReason      func(childComplexity int) int
 	}
 
 	RaciRule struct {
 		Ack         func(childComplexity int) int
 		Approve     func(childComplexity int) int
 		Author      func(childComplexity int) int
+		Manage      func(childComplexity int) int
 		Read        func(childComplexity int) int
 		SubjectKind func(childComplexity int) int
 		SubjectRef  func(childComplexity int) int
@@ -7294,6 +7311,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PolicyViewerCan.Edit(childComplexity), true
+	case "PolicyViewerCan.manage":
+		if e.ComplexityRoot.PolicyViewerCan.Manage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyViewerCan.Manage(childComplexity), true
 	case "PolicyViewerCan.read":
 		if e.ComplexityRoot.PolicyViewerCan.Read == nil {
 			break
@@ -8417,12 +8440,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.QuietHours.Timezone(childComplexity), true
 
+	case "RaciConfiguredBlock.action":
+		if e.ComplexityRoot.RaciConfiguredBlock.Action == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciConfiguredBlock.Action(childComplexity), true
+	case "RaciConfiguredBlock.categoryId":
+		if e.ComplexityRoot.RaciConfiguredBlock.CategoryID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciConfiguredBlock.CategoryID(childComplexity), true
+	case "RaciConfiguredBlock.subjectKind":
+		if e.ComplexityRoot.RaciConfiguredBlock.SubjectKind == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciConfiguredBlock.SubjectKind(childComplexity), true
+	case "RaciConfiguredBlock.subjectRef":
+		if e.ComplexityRoot.RaciConfiguredBlock.SubjectRef == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciConfiguredBlock.SubjectRef(childComplexity), true
+
 	case "RaciDecision.ack":
 		if e.ComplexityRoot.RaciDecision.Ack == nil {
 			break
 		}
 
 		return e.ComplexityRoot.RaciDecision.Ack(childComplexity), true
+	case "RaciDecision.ackCode":
+		if e.ComplexityRoot.RaciDecision.AckCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciDecision.AckCode(childComplexity), true
 	case "RaciDecision.ackReason":
 		if e.ComplexityRoot.RaciDecision.AckReason == nil {
 			break
@@ -8435,6 +8489,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RaciDecision.Approve(childComplexity), true
+	case "RaciDecision.approveCode":
+		if e.ComplexityRoot.RaciDecision.ApproveCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciDecision.ApproveCode(childComplexity), true
 	case "RaciDecision.approveReason":
 		if e.ComplexityRoot.RaciDecision.ApproveReason == nil {
 			break
@@ -8447,18 +8507,54 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RaciDecision.Author(childComplexity), true
+	case "RaciDecision.authorCode":
+		if e.ComplexityRoot.RaciDecision.AuthorCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciDecision.AuthorCode(childComplexity), true
 	case "RaciDecision.authorReason":
 		if e.ComplexityRoot.RaciDecision.AuthorReason == nil {
 			break
 		}
 
 		return e.ComplexityRoot.RaciDecision.AuthorReason(childComplexity), true
+	case "RaciDecision.configuredBlock":
+		if e.ComplexityRoot.RaciDecision.ConfiguredBlock == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciDecision.ConfiguredBlock(childComplexity), true
+	case "RaciDecision.manage":
+		if e.ComplexityRoot.RaciDecision.Manage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciDecision.Manage(childComplexity), true
+	case "RaciDecision.manageCode":
+		if e.ComplexityRoot.RaciDecision.ManageCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciDecision.ManageCode(childComplexity), true
+	case "RaciDecision.manageReason":
+		if e.ComplexityRoot.RaciDecision.ManageReason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciDecision.ManageReason(childComplexity), true
 	case "RaciDecision.read":
 		if e.ComplexityRoot.RaciDecision.Read == nil {
 			break
 		}
 
 		return e.ComplexityRoot.RaciDecision.Read(childComplexity), true
+	case "RaciDecision.readCode":
+		if e.ComplexityRoot.RaciDecision.ReadCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciDecision.ReadCode(childComplexity), true
 	case "RaciDecision.readReason":
 		if e.ComplexityRoot.RaciDecision.ReadReason == nil {
 			break
@@ -8484,6 +8580,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RaciRule.Author(childComplexity), true
+	case "RaciRule.manage":
+		if e.ComplexityRoot.RaciRule.Manage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RaciRule.Manage(childComplexity), true
 	case "RaciRule.read":
 		if e.ComplexityRoot.RaciRule.Read == nil {
 			break
@@ -11720,6 +11822,7 @@ type PolicyViewerCan {
   edit: Boolean!             # the viewer may author/edit (scoped, in-category)
   submit: Boolean!           # the viewer may submit for approval (scoped)
   approve: Boolean!          # the viewer may approve (scoped)
+  manage: Boolean!           # the viewer may move and reorder documents in this category (Manage, an owner or root)
   contentObfuscated: Boolean! # body is served obfuscated (excluded site admin)
   canBreakGlass: Boolean!    # the viewer may break-glass to reveal real content
   # breakGlassUntil: RFC 3339 instant at which the viewer's own active
@@ -12127,10 +12230,16 @@ extend type Mutation {
   setPolicyDefinitionEntries(policyId: ID!, definitionIds: [ID!]!): [DefinitionEntry!]!
 }
 
-# --- RACI category rulesets ---
+# --- RACI category rulesets (decided by the go-authz ordered engine) ---
 enum RaciGrant { BLANK ALLOW DENY }
 enum RaciSubjectKind { EVERYONE GROUP USER }
 
+# One row of a category's access rules: a subject and a cell per action. The
+# decision is per action, read from the top: the first row that matches the
+# person and has a non-blank cell for that action decides, then the parent
+# category's rows. Manage lets a person move and reorder documents; it implies
+# Read and Author only, and does not gate editing the rules or the governance
+# (those stay global-admin only).
 type RaciRule {
   subjectKind: RaciSubjectKind!
   subjectRef: String!
@@ -12138,6 +12247,7 @@ type RaciRule {
   ack: RaciGrant!
   approve: RaciGrant!
   author: RaciGrant!
+  manage: RaciGrant!
 }
 input RaciRuleInput {
   subjectKind: RaciSubjectKind!
@@ -12146,11 +12256,32 @@ input RaciRuleInput {
   ack: RaciGrant!
   approve: RaciGrant!
   author: RaciGrant!
+  # Defaults to BLANK so a client that does not know Manage yet keeps working.
+  manage: RaciGrant! = BLANK
 }
 type CategoryRuleset { categoryId: ID!  rules: [RaciRule!]! }
+
+# Why one action was decided as it was, as a code the UI can switch on beside
+# the human string. ENTRY: a row decided (directly or through a higher action).
+# DEFAULT_DENY: no row decides. OWNER: an owner of the category or a parent.
+# ROOT: the root seat. REQUIRES: a required action (Ack needs Read) is denied.
+enum RaciReasonCode { ENTRY DEFAULT_DENY OWNER ROOT REQUIRES }
+enum RaciAction { READ AUTHOR APPROVE MANAGE ACK }
+
+# A deny that is configured for root: stored, never applied (root is always
+# allowed), and shown by the simulator as blocked.
+type RaciConfiguredBlock {
+  action: RaciAction!
+  categoryId: ID!
+  subjectKind: RaciSubjectKind!
+  subjectRef: String!
+}
 type RaciDecision {
-  read: Boolean!  ack: Boolean!  approve: Boolean!  author: Boolean!
-  readReason: String!  ackReason: String!  approveReason: String!  authorReason: String!
+  read: Boolean!  ack: Boolean!  approve: Boolean!  author: Boolean!  manage: Boolean!
+  readReason: String!  ackReason: String!  approveReason: String!  authorReason: String!  manageReason: String!
+  readCode: RaciReasonCode!  ackCode: RaciReasonCode!  approveCode: RaciReasonCode!  authorCode: RaciReasonCode!  manageCode: RaciReasonCode!
+  # Empty unless the person is root and a row would have denied an action.
+  configuredBlock: [RaciConfiguredBlock!]!
 }
 extend type Query {
   categoryRuleset(categoryId: ID!): CategoryRuleset!
@@ -16000,6 +16131,8 @@ func (ec *executionContext) childFields_PolicyViewerCan(ctx context.Context, fie
 		return ec.fieldContext_PolicyViewerCan_submit(ctx, field)
 	case "approve":
 		return ec.fieldContext_PolicyViewerCan_approve(ctx, field)
+	case "manage":
+		return ec.fieldContext_PolicyViewerCan_manage(ctx, field)
 	case "contentObfuscated":
 		return ec.fieldContext_PolicyViewerCan_contentObfuscated(ctx, field)
 	case "canBreakGlass":
@@ -16024,6 +16157,20 @@ func (ec *executionContext) childFields_QuietHours(ctx context.Context, field gr
 	return nil, fmt.Errorf("no field named %q was found under type QuietHours", field.Name)
 }
 
+func (ec *executionContext) childFields_RaciConfiguredBlock(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "action":
+		return ec.fieldContext_RaciConfiguredBlock_action(ctx, field)
+	case "categoryId":
+		return ec.fieldContext_RaciConfiguredBlock_categoryId(ctx, field)
+	case "subjectKind":
+		return ec.fieldContext_RaciConfiguredBlock_subjectKind(ctx, field)
+	case "subjectRef":
+		return ec.fieldContext_RaciConfiguredBlock_subjectRef(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type RaciConfiguredBlock", field.Name)
+}
+
 func (ec *executionContext) childFields_RaciDecision(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "read":
@@ -16034,6 +16181,8 @@ func (ec *executionContext) childFields_RaciDecision(ctx context.Context, field 
 		return ec.fieldContext_RaciDecision_approve(ctx, field)
 	case "author":
 		return ec.fieldContext_RaciDecision_author(ctx, field)
+	case "manage":
+		return ec.fieldContext_RaciDecision_manage(ctx, field)
 	case "readReason":
 		return ec.fieldContext_RaciDecision_readReason(ctx, field)
 	case "ackReason":
@@ -16042,6 +16191,20 @@ func (ec *executionContext) childFields_RaciDecision(ctx context.Context, field 
 		return ec.fieldContext_RaciDecision_approveReason(ctx, field)
 	case "authorReason":
 		return ec.fieldContext_RaciDecision_authorReason(ctx, field)
+	case "manageReason":
+		return ec.fieldContext_RaciDecision_manageReason(ctx, field)
+	case "readCode":
+		return ec.fieldContext_RaciDecision_readCode(ctx, field)
+	case "ackCode":
+		return ec.fieldContext_RaciDecision_ackCode(ctx, field)
+	case "approveCode":
+		return ec.fieldContext_RaciDecision_approveCode(ctx, field)
+	case "authorCode":
+		return ec.fieldContext_RaciDecision_authorCode(ctx, field)
+	case "manageCode":
+		return ec.fieldContext_RaciDecision_manageCode(ctx, field)
+	case "configuredBlock":
+		return ec.fieldContext_RaciDecision_configuredBlock(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type RaciDecision", field.Name)
 }
@@ -16060,6 +16223,8 @@ func (ec *executionContext) childFields_RaciRule(ctx context.Context, field grap
 		return ec.fieldContext_RaciRule_approve(ctx, field)
 	case "author":
 		return ec.fieldContext_RaciRule_author(ctx, field)
+	case "manage":
+		return ec.fieldContext_RaciRule_manage(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type RaciRule", field.Name)
 }
@@ -43001,6 +43166,29 @@ func (ec *executionContext) fieldContext_PolicyViewerCan_approve(_ context.Conte
 	return graphql.NewScalarFieldContext("PolicyViewerCan", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _PolicyViewerCan_manage(ctx context.Context, field graphql.CollectedField, obj *PolicyViewerCan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyViewerCan_manage(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Manage, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyViewerCan_manage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyViewerCan", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _PolicyViewerCan_contentObfuscated(ctx context.Context, field graphql.CollectedField, obj *PolicyViewerCan) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -47831,6 +48019,98 @@ func (ec *executionContext) fieldContext_QuietHours_timezone(_ context.Context, 
 	return graphql.NewScalarFieldContext("QuietHours", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _RaciConfiguredBlock_action(ctx context.Context, field graphql.CollectedField, obj *RaciConfiguredBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciConfiguredBlock_action(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Action, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v RaciAction) graphql.Marshaler {
+			return ec.marshalNRaciAction2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciAction(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciConfiguredBlock_action(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciConfiguredBlock", field, false, false, errors.New("field of type RaciAction does not have child fields"))
+}
+
+func (ec *executionContext) _RaciConfiguredBlock_categoryId(ctx context.Context, field graphql.CollectedField, obj *RaciConfiguredBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciConfiguredBlock_categoryId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CategoryID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciConfiguredBlock_categoryId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciConfiguredBlock", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RaciConfiguredBlock_subjectKind(ctx context.Context, field graphql.CollectedField, obj *RaciConfiguredBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciConfiguredBlock_subjectKind(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubjectKind, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v RaciSubjectKind) graphql.Marshaler {
+			return ec.marshalNRaciSubjectKind2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciSubjectKind(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciConfiguredBlock_subjectKind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciConfiguredBlock", field, false, false, errors.New("field of type RaciSubjectKind does not have child fields"))
+}
+
+func (ec *executionContext) _RaciConfiguredBlock_subjectRef(ctx context.Context, field graphql.CollectedField, obj *RaciConfiguredBlock) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciConfiguredBlock_subjectRef(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SubjectRef, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciConfiguredBlock_subjectRef(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciConfiguredBlock", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _RaciDecision_read(ctx context.Context, field graphql.CollectedField, obj *RaciDecision) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -47920,6 +48200,29 @@ func (ec *executionContext) _RaciDecision_author(ctx context.Context, field grap
 	)
 }
 func (ec *executionContext) fieldContext_RaciDecision_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciDecision", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _RaciDecision_manage(ctx context.Context, field graphql.CollectedField, obj *RaciDecision) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciDecision_manage(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Manage, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciDecision_manage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("RaciDecision", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
@@ -48013,6 +48316,176 @@ func (ec *executionContext) _RaciDecision_authorReason(ctx context.Context, fiel
 }
 func (ec *executionContext) fieldContext_RaciDecision_authorReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("RaciDecision", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RaciDecision_manageReason(ctx context.Context, field graphql.CollectedField, obj *RaciDecision) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciDecision_manageReason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ManageReason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciDecision_manageReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciDecision", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RaciDecision_readCode(ctx context.Context, field graphql.CollectedField, obj *RaciDecision) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciDecision_readCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ReadCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v RaciReasonCode) graphql.Marshaler {
+			return ec.marshalNRaciReasonCode2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciReasonCode(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciDecision_readCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciDecision", field, false, false, errors.New("field of type RaciReasonCode does not have child fields"))
+}
+
+func (ec *executionContext) _RaciDecision_ackCode(ctx context.Context, field graphql.CollectedField, obj *RaciDecision) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciDecision_ackCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AckCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v RaciReasonCode) graphql.Marshaler {
+			return ec.marshalNRaciReasonCode2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciReasonCode(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciDecision_ackCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciDecision", field, false, false, errors.New("field of type RaciReasonCode does not have child fields"))
+}
+
+func (ec *executionContext) _RaciDecision_approveCode(ctx context.Context, field graphql.CollectedField, obj *RaciDecision) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciDecision_approveCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ApproveCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v RaciReasonCode) graphql.Marshaler {
+			return ec.marshalNRaciReasonCode2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciReasonCode(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciDecision_approveCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciDecision", field, false, false, errors.New("field of type RaciReasonCode does not have child fields"))
+}
+
+func (ec *executionContext) _RaciDecision_authorCode(ctx context.Context, field graphql.CollectedField, obj *RaciDecision) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciDecision_authorCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AuthorCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v RaciReasonCode) graphql.Marshaler {
+			return ec.marshalNRaciReasonCode2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciReasonCode(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciDecision_authorCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciDecision", field, false, false, errors.New("field of type RaciReasonCode does not have child fields"))
+}
+
+func (ec *executionContext) _RaciDecision_manageCode(ctx context.Context, field graphql.CollectedField, obj *RaciDecision) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciDecision_manageCode(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ManageCode, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v RaciReasonCode) graphql.Marshaler {
+			return ec.marshalNRaciReasonCode2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciReasonCode(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciDecision_manageCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciDecision", field, false, false, errors.New("field of type RaciReasonCode does not have child fields"))
+}
+
+func (ec *executionContext) _RaciDecision_configuredBlock(ctx context.Context, field graphql.CollectedField, obj *RaciDecision) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciDecision_configuredBlock(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ConfiguredBlock, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*RaciConfiguredBlock) graphql.Marshaler {
+			return ec.marshalNRaciConfiguredBlock2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciConfiguredBlockᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciDecision_configuredBlock(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RaciDecision",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RaciConfiguredBlock(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _RaciRule_subjectKind(ctx context.Context, field graphql.CollectedField, obj *RaciRule) (ret graphql.Marshaler) {
@@ -48150,6 +48623,29 @@ func (ec *executionContext) _RaciRule_author(ctx context.Context, field graphql.
 	)
 }
 func (ec *executionContext) fieldContext_RaciRule_author(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RaciRule", field, false, false, errors.New("field of type RaciGrant does not have child fields"))
+}
+
+func (ec *executionContext) _RaciRule_manage(ctx context.Context, field graphql.CollectedField, obj *RaciRule) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RaciRule_manage(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Manage, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v RaciGrant) graphql.Marshaler {
+			return ec.marshalNRaciGrant2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciGrant(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RaciRule_manage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("RaciRule", field, false, false, errors.New("field of type RaciGrant does not have child fields"))
 }
 
@@ -57355,7 +57851,11 @@ func (ec *executionContext) unmarshalInputRaciRuleInput(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"subjectKind", "subjectRef", "read", "ack", "approve", "author"}
+	if _, present := asMap["manage"]; !present {
+		asMap["manage"] = "BLANK"
+	}
+
+	fieldsInOrder := [...]string{"subjectKind", "subjectRef", "read", "ack", "approve", "author", "manage"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -57404,6 +57904,13 @@ func (ec *executionContext) unmarshalInputRaciRuleInput(ctx context.Context, obj
 				return it, err
 			}
 			it.Author = data
+		case "manage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manage"))
+			data, err := ec.unmarshalNRaciGrant2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciGrant(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Manage = data
 		}
 	}
 	return it, nil
@@ -66193,6 +66700,11 @@ func (ec *executionContext) _PolicyViewerCan(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "manage":
+			out.Values[i] = ec._PolicyViewerCan_manage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "contentObfuscated":
 			out.Values[i] = ec._PolicyViewerCan_contentObfuscated(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -68845,6 +69357,59 @@ func (ec *executionContext) _QuietHours(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var raciConfiguredBlockImplementors = []string{"RaciConfiguredBlock"}
+
+func (ec *executionContext) _RaciConfiguredBlock(ctx context.Context, sel ast.SelectionSet, obj *RaciConfiguredBlock) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, raciConfiguredBlockImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RaciConfiguredBlock")
+		case "action":
+			out.Values[i] = ec._RaciConfiguredBlock_action(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "categoryId":
+			out.Values[i] = ec._RaciConfiguredBlock_categoryId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subjectKind":
+			out.Values[i] = ec._RaciConfiguredBlock_subjectKind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subjectRef":
+			out.Values[i] = ec._RaciConfiguredBlock_subjectRef(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var raciDecisionImplementors = []string{"RaciDecision"}
 
 func (ec *executionContext) _RaciDecision(ctx context.Context, sel ast.SelectionSet, obj *RaciDecision) graphql.Marshaler {
@@ -68877,6 +69442,11 @@ func (ec *executionContext) _RaciDecision(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "manage":
+			out.Values[i] = ec._RaciDecision_manage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "readReason":
 			out.Values[i] = ec._RaciDecision_readReason(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -68894,6 +69464,41 @@ func (ec *executionContext) _RaciDecision(ctx context.Context, sel ast.Selection
 			}
 		case "authorReason":
 			out.Values[i] = ec._RaciDecision_authorReason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "manageReason":
+			out.Values[i] = ec._RaciDecision_manageReason(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "readCode":
+			out.Values[i] = ec._RaciDecision_readCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ackCode":
+			out.Values[i] = ec._RaciDecision_ackCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "approveCode":
+			out.Values[i] = ec._RaciDecision_approveCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "authorCode":
+			out.Values[i] = ec._RaciDecision_authorCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "manageCode":
+			out.Values[i] = ec._RaciDecision_manageCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "configuredBlock":
+			out.Values[i] = ec._RaciDecision_configuredBlock(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -68957,6 +69562,11 @@ func (ec *executionContext) _RaciRule(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "author":
 			out.Values[i] = ec._RaciRule_author(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "manage":
+			out.Values[i] = ec._RaciRule_manage(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -75444,6 +76054,42 @@ func (ec *executionContext) marshalNPolicyViewerCan2ᚖgithubᚗcomᚋStewardᚑ
 	return ec._PolicyViewerCan(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNRaciAction2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciAction(ctx context.Context, v any) (RaciAction, error) {
+	var res RaciAction
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRaciAction2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciAction(ctx context.Context, sel ast.SelectionSet, v RaciAction) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNRaciConfiguredBlock2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciConfiguredBlockᚄ(ctx context.Context, sel ast.SelectionSet, v []*RaciConfiguredBlock) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNRaciConfiguredBlock2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciConfiguredBlock(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRaciConfiguredBlock2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciConfiguredBlock(ctx context.Context, sel ast.SelectionSet, v *RaciConfiguredBlock) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RaciConfiguredBlock(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNRaciDecision2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciDecision(ctx context.Context, sel ast.SelectionSet, v RaciDecision) graphql.Marshaler {
 	return ec._RaciDecision(ctx, sel, &v)
 }
@@ -75465,6 +76111,16 @@ func (ec *executionContext) unmarshalNRaciGrant2githubᚗcomᚋStewardᚑGRCᚋs
 }
 
 func (ec *executionContext) marshalNRaciGrant2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciGrant(ctx context.Context, sel ast.SelectionSet, v RaciGrant) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNRaciReasonCode2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciReasonCode(ctx context.Context, v any) (RaciReasonCode, error) {
+	var res RaciReasonCode
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRaciReasonCode2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRaciReasonCode(ctx context.Context, sel ast.SelectionSet, v RaciReasonCode) graphql.Marshaler {
 	return v
 }
 

@@ -31,7 +31,7 @@ func TestListPoliciesByOwner_MapsRows(t *testing.T) {
 			{Id: "p2", OwnerUserId: "victim"},
 		},
 	}}
-	ctx := ctxWithRoles(t, "admin-1", []string{"site-admin"})
+	ctx := ctxRoot(t, "admin-1")
 	out, err := resolvers.ListPoliciesByOwner(ctx, client, nil, nil, nil, nil, "victim", new(true))
 	if err != nil {
 		t.Fatalf("ListPoliciesByOwner: %v", err)

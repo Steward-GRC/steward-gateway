@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
 )
@@ -407,15 +408,18 @@ func TestReviewSuggestions_ACoreFailureIsRelayed(t *testing.T) {
 func TestReviewSuggestions_AnObfuscatedReaderGetsNoProposedTextOrRoundText(t *testing.T) {
 	pc, gc, _ := breakGlassReadSetup(t, true) // the site admin sees this policy obfuscated
 	e := buildThrEnv(pc, gc)
+	// The site admin follows the rules, so a denied read cannot also author: they take
+	// part as an approver holding a seat, and still see the policy obfuscated.
+	e.wf.statusResp.StageAssignees[0].Assignees = append(e.wf.statusResp.StageAssignees[0].Assignees, &workflowv1.StageAssignee{UserId: "sa", State: "pending"})
 	e.core.threads = []*corev1.ReviewThread{{
-		Id: "t-1", PolicyVersionId: thrVersion, Quote: "seven years", Occurrence: 1, ApproverUserId: thrCharlie, CreatedBy: thrCharlie,
-		Messages: []*corev1.ReviewMessage{{Id: "m-1", AuthorUserId: thrCharlie, Body: "the secret clause", CreatedAt: timestamppb.Now()}},
+		Id: "t-1", PolicyVersionId: thrVersion, Quote: "seven years", Occurrence: 1, ApproverUserId: "sa", CreatedBy: "sa",
+		Messages: []*corev1.ReviewMessage{{Id: "m-1", AuthorUserId: "sa", Body: "the secret clause", CreatedAt: timestamppb.Now()}},
 		Suggestion: &corev1.ReviewSuggestion{
 			Rounds: []*corev1.SuggestionRound{
-				{Seq: 1, Side: corev1.ReviewSide_REVIEW_SIDE_REVIEWER, UserId: thrCharlie, Text: "six secret years", CreatedAt: timestamppb.Now()},
+				{Seq: 1, Side: corev1.ReviewSide_REVIEW_SIDE_REVIEWER, UserId: "sa", Text: "six secret years", CreatedAt: timestamppb.Now()},
 				{Seq: 2, Side: corev1.ReviewSide_REVIEW_SIDE_AUTHOR, UserId: thrAuthor, Text: "five secret years", CreatedAt: timestamppb.Now()},
 			},
-			Outcome: corev1.SuggestionOutcome_SUGGESTION_OUTCOME_AGREED, Reason: "fine", ClosedBy: thrCharlie, ClosedText: "five secret years",
+			Outcome: corev1.SuggestionOutcome_SUGGESTION_OUTCOME_AGREED, Reason: "fine", ClosedBy: "sa", ClosedText: "five secret years",
 		},
 	}}
 	syncSuggestion(e.core.threads[0].Suggestion)
@@ -429,7 +433,7 @@ func TestReviewSuggestions_AnObfuscatedReaderGetsNoProposedTextOrRoundText(t *te
 	if s.Text != "" || len(s.Rounds) != 2 || s.Rounds[0].Text != "" || s.Rounds[1].Text != "" {
 		t.Fatalf("suggestion = %+v, want the text and round texts blank with the rounds kept", s)
 	}
-	if s.ClosedText != nil || s.Outcome == nil || *s.Outcome != resolvers.SuggestionOutcomeAgreed || s.Rounds[0].UserID != thrCharlie || s.Turn != resolvers.SuggestionSideReviewer {
+	if s.ClosedText != nil || s.Outcome == nil || *s.Outcome != resolvers.SuggestionOutcomeAgreed || s.Rounds[0].UserID != "sa" || s.Turn != resolvers.SuggestionSideReviewer {
 		t.Fatalf("suggestion = %+v, want closedText hidden but the outcome, turn and who kept", s)
 	}
 }

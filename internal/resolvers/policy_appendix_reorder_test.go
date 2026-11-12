@@ -87,7 +87,7 @@ func TestReorderPolicyAppendices_MakesNoDraft(t *testing.T) {
 }
 
 // gateway: a site admin may edit any policy, so may reorder it.
-func TestReorderPolicyAppendices_SiteAdminMay(t *testing.T) {
+func TestReorderPolicyAppendices_RootMay(t *testing.T) {
 	e := newApxEnv(t)
 	ids := threeApx(t, e)
 	slices.Reverse(ids)

@@ -343,6 +343,7 @@ type PolicyViewerCan {
   edit: Boolean!             # the viewer may author/edit (scoped, in-category)
   submit: Boolean!           # the viewer may submit for approval (scoped)
   approve: Boolean!          # the viewer may approve (scoped)
+  manage: Boolean!           # the viewer may move and reorder documents in this category (Manage, an owner or root)
   contentObfuscated: Boolean! # body is served obfuscated (excluded site admin)
   canBreakGlass: Boolean!    # the viewer may break-glass to reveal real content
   # breakGlassUntil: RFC 3339 instant at which the viewer's own active
@@ -750,10 +751,16 @@ extend type Mutation {
   setPolicyDefinitionEntries(policyId: ID!, definitionIds: [ID!]!): [DefinitionEntry!]!
 }
 
-# --- RACI category rulesets ---
+# --- RACI category rulesets (decided by the go-authz ordered engine) ---
 enum RaciGrant { BLANK ALLOW DENY }
 enum RaciSubjectKind { EVERYONE GROUP USER }
 
+# One row of a category's access rules: a subject and a cell per action. The
+# decision is per action, read from the top: the first row that matches the
+# person and has a non-blank cell for that action decides, then the parent
+# category's rows. Manage lets a person move and reorder documents; it implies
+# Read and Author only, and does not gate editing the rules or the governance
+# (those stay global-admin only).
 type RaciRule {
   subjectKind: RaciSubjectKind!
   subjectRef: String!
@@ -761,6 +768,7 @@ type RaciRule {
   ack: RaciGrant!
   approve: RaciGrant!
   author: RaciGrant!
+  manage: RaciGrant!
 }
 input RaciRuleInput {
   subjectKind: RaciSubjectKind!
@@ -769,11 +777,32 @@ input RaciRuleInput {
   ack: RaciGrant!
   approve: RaciGrant!
   author: RaciGrant!
+  # Defaults to BLANK so a client that does not know Manage yet keeps working.
+  manage: RaciGrant! = BLANK
 }
 type CategoryRuleset { categoryId: ID!  rules: [RaciRule!]! }
+
+# Why one action was decided as it was, as a code the UI can switch on beside
+# the human string. ENTRY: a row decided (directly or through a higher action).
+# DEFAULT_DENY: no row decides. OWNER: an owner of the category or a parent.
+# ROOT: the root seat. REQUIRES: a required action (Ack needs Read) is denied.
+enum RaciReasonCode { ENTRY DEFAULT_DENY OWNER ROOT REQUIRES }
+enum RaciAction { READ AUTHOR APPROVE MANAGE ACK }
+
+# A deny that is configured for root: stored, never applied (root is always
+# allowed), and shown by the simulator as blocked.
+type RaciConfiguredBlock {
+  action: RaciAction!
+  categoryId: ID!
+  subjectKind: RaciSubjectKind!
+  subjectRef: String!
+}
 type RaciDecision {
-  read: Boolean!  ack: Boolean!  approve: Boolean!  author: Boolean!
-  readReason: String!  ackReason: String!  approveReason: String!  authorReason: String!
+  read: Boolean!  ack: Boolean!  approve: Boolean!  author: Boolean!  manage: Boolean!
+  readReason: String!  ackReason: String!  approveReason: String!  authorReason: String!  manageReason: String!
+  readCode: RaciReasonCode!  ackCode: RaciReasonCode!  approveCode: RaciReasonCode!  authorCode: RaciReasonCode!  manageCode: RaciReasonCode!
+  # Empty unless the person is root and a row would have denied an action.
+  configuredBlock: [RaciConfiguredBlock!]!
 }
 extend type Query {
   categoryRuleset(categoryId: ID!): CategoryRuleset!

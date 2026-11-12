@@ -73,3 +73,10 @@ func backendCodedErr(code codes.Code, num int, symbol, domain string, md map[str
 	}
 	return st.Err()
 }
+
+// ctxRoot is a signed-in root site admin: the one seat the category rules do
+// not bind.
+func ctxRoot(t *testing.T, uid string) context.Context {
+	t.Helper()
+	return ctxWithStubClaims(t, principal.Static{UserIDValue: uid, RolesValue: []string{"site-admin"}, IsRootValue: true})
+}

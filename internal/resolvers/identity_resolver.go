@@ -7,6 +7,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/Bugs5382/go-authz/ordered"
 	authz "github.com/Steward-GRC/steward-authz"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
@@ -269,7 +270,7 @@ func mergeUniqueCategories(existing, add []string) []string {
 // names of every category where the caller authors or approves on merit (the
 // category rules, without site admin or root).
 func meritScopeCategories(ctx context.Context, gc corev1.CategoryServiceClient, uid string, idpGroups []string) (authorCats, approverCats []string) {
-	merit := authz.Subject{UserID: uid, Groups: idpGroups}
+	merit := ordered.Person{ID: uid, Groups: idpGroups}
 	seen := make(map[string]bool)
 	queue := []string{""}
 	for len(queue) > 0 {
@@ -286,11 +287,11 @@ func meritScopeCategories(ctx context.Context, gc corev1.CategoryServiceClient, 
 				continue
 			}
 			seen[id] = true
-			chain, err := buildCategoryChain(ctx, gc, id)
+			access, err := loadCategoryAccess(ctx, gc, id)
 			if err != nil {
 				continue
 			}
-			res := authz.Resolve(ctx, merit, chain)
+			res := access.decide(merit)
 			if res.Author.Allowed {
 				authorCats = append(authorCats, g.GetName())
 			}

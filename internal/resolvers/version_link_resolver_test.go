@@ -333,7 +333,7 @@ func vlCtx(t *testing.T, user string) context.Context {
 	t.Helper()
 	switch user {
 	case "alice":
-		return ctxWithStubClaims(t, principal.Static{UserIDValue: user, RolesValue: []string{"site-admin"}})
+		return ctxWithStubClaims(t, principal.Static{UserIDValue: user, RolesValue: []string{"site-admin"}, IsRootValue: true})
 	case "outsider":
 		return ctxWithStubClaims(t, principal.Static{UserIDValue: user, RolesValue: []string{"reader"}, IdpGroupsValue: []string{"Outsiders"}})
 	}
@@ -931,7 +931,7 @@ func TestDefinitions_TitleRefusalsReachTheClientAsCodes(t *testing.T) {
 				fakeDefinitionLibraryClient: fakeDefinitionLibraryClient{library: defLibrary()},
 				err:                         status.Error(c.core, "definition title: "+vlLeakMarker),
 			}
-			ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "alice", RolesValue: []string{"site-admin"}})
+			ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "alice", RolesValue: []string{"site-admin"}, IsRootValue: true})
 			in := &resolvers.DefinitionEntryInput{CategoryID: "cat-1", Term: "RTO", Definition: "A meaning."}
 
 			_, err := resolvers.CreateDefinitionResolver(ctx, client, in)
@@ -951,7 +951,7 @@ func TestDefinitions_OtherCoreFailuresStayFaults(t *testing.T) {
 		fakeDefinitionLibraryClient: fakeDefinitionLibraryClient{library: defLibrary()},
 		err:                         status.Error(codes.Internal, "boom "+vlLeakMarker),
 	}
-	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "alice", RolesValue: []string{"site-admin"}})
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "alice", RolesValue: []string{"site-admin"}, IsRootValue: true})
 	_, err := resolvers.CreateDefinitionResolver(ctx, client, &resolvers.DefinitionEntryInput{CategoryID: "cat-1", Term: "RTO", Definition: "x"})
 	if vlCode(err) != codes.Internal {
 		t.Fatalf("got %v, want an Internal fault the presenter hides", err)

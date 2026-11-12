@@ -73,7 +73,9 @@ func apxCtx(t *testing.T, user string) context.Context {
 	t.Helper()
 	roles := []string{"reader"}
 	if user == "alice" {
-		roles = []string{"site-admin"}
+		// Alice is the root site admin: a site admin who is not root follows
+		// the category rules like anyone else.
+		return ctxRoot(t, user)
 	}
 	return ctxWithStubClaims(t, principal.Static{UserIDValue: user, RolesValue: roles})
 }

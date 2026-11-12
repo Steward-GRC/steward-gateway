@@ -199,3 +199,81 @@ func TestServe_KeepsBytesSameOrigin(t *testing.T) {
 		t.Fatalf("Cross-Origin-Resource-Policy = %q, want same-origin", got)
 	}
 }
+
+func uploadWithCoreError(t *testing.T, err error) *httptest.ResponseRecorder {
+	t.Helper()
+	h := New(&fakeAssetClient{uploadErr: err}, log.Nop())
+	body, ct := multipartBody(t, "file", "logo.png", "image/png", []byte("\x89PNG image!"))
+	req := withStaff(httptest.NewRequest(http.MethodPost, "/api/assets", body), "user-1")
+	req.Header.Set("Content-Type", ct)
+	rec := httptest.NewRecorder()
+	h.Upload(rec, req)
+	return rec
+}
+
+func decodeError(t *testing.T, rec *httptest.ResponseRecorder) map[string]any {
+	t.Helper()
+	var got map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("body is not JSON: %v (%q)", err, rec.Body.String())
+	}
+	return got
+}
+
+func TestUpload_CoreUnavailable_TypedRefusal(t *testing.T) {
+	rec := uploadWithCoreError(t, status.Error(codes.Unavailable, "asset: no object store configured"))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", rec.Code)
+	}
+	got := decodeError(t, rec)
+	if got["error"] != "Uploads are unavailable right now." {
+		t.Errorf("error = %v", got["error"])
+	}
+	if got["code"] != "uploads_unavailable" {
+		t.Errorf("code = %v, want uploads_unavailable", got["code"])
+	}
+}
+
+// Every other refusal keeps its status and text and carries no code field.
+func TestUpload_OtherStatusesUnchanged(t *testing.T) {
+	cases := []struct {
+		name     string
+		err      error
+		wantCode int
+		wantMsg  string
+	}{
+		{"invalid argument", status.Error(codes.InvalidArgument, "asset: unsupported content type"), http.StatusBadRequest, "asset: unsupported content type"},
+		{"not found", status.Error(codes.NotFound, "x"), http.StatusNotFound, "Failed to store image"},
+		{"permission denied", status.Error(codes.PermissionDenied, "x"), http.StatusForbidden, "Failed to store image"},
+		{"internal", status.Error(codes.Internal, "x"), http.StatusInternalServerError, "Failed to store image"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := uploadWithCoreError(t, tc.err)
+			if rec.Code != tc.wantCode {
+				t.Fatalf("status = %d, want %d", rec.Code, tc.wantCode)
+			}
+			got := decodeError(t, rec)
+			if got["error"] != tc.wantMsg {
+				t.Errorf("error = %v, want %q", got["error"], tc.wantMsg)
+			}
+			if _, has := got["code"]; has {
+				t.Errorf("unexpected code field: %v", got["code"])
+			}
+		})
+	}
+}
+
+func TestServe_CoreUnavailable_Is503NotNotFound(t *testing.T) {
+	h := New(&fakeAssetClient{getErr: status.Error(codes.Unavailable, "no object store")}, log.Nop())
+	req := withStaff(httptest.NewRequest(http.MethodGet, "/api/assets/a1", nil), "user-1")
+	req.SetPathValue("id", "a1")
+	rec := httptest.NewRecorder()
+	h.Serve(rec, req)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", rec.Code)
+	}
+	if got := decodeError(t, rec); got["error"] == "Asset not found" {
+		t.Errorf("an unavailable store must not read as not found: %v", got)
+	}
+}

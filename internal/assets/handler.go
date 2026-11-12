@@ -113,14 +113,25 @@ type uploadResponse struct {
 	Filename    string `json:"filename,omitempty"`
 }
 
+// codeUploadsUnavailable is the machine-readable code on the 503 answered when
+// core cannot store an upload (no object store configured, or it is down).
+const codeUploadsUnavailable = "uploads_unavailable"
+
 type errorResponse struct {
 	Error string `json:"error"`
+	// Code is a stable machine-readable reason, set only where a client
+	// should react to it; most refusals carry the text alone.
+	Code string `json:"code,omitempty"`
 }
 
 func writeError(w http.ResponseWriter, statusCode int, msg string) {
+	writeCodedError(w, statusCode, msg, "")
+}
+
+func writeCodedError(w http.ResponseWriter, statusCode int, msg, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	_ = json.NewEncoder(w).Encode(errorResponse{Error: msg})
+	_ = json.NewEncoder(w).Encode(errorResponse{Error: msg, Code: code})
 }
 
 func httpStatusForGRPC(err error) int {
@@ -200,6 +211,11 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		code := httpStatusForGRPC(err)
 		lg.Warn("asset upload: core refused", log.F("grpc_code", status.Code(err).String()), took)
+		if status.Code(err) == codes.Unavailable {
+			lg.Debug("asset upload: answering typed uploads_unavailable refusal")
+			writeCodedError(w, http.StatusServiceUnavailable, "Uploads are unavailable right now.", codeUploadsUnavailable)
+			return
+		}
 		msg := "Failed to store image"
 		if code == http.StatusBadRequest {
 			msg = status.Convert(err).Message()
@@ -236,6 +252,10 @@ func (h *Handler) Serve(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.Ctx(r.Context()).Debug("asset read: core refused", log.F("asset_id", id),
 			log.F("grpc_code", status.Code(err).String()), log.F("duration_ms", time.Since(start).Milliseconds()))
+		if status.Code(err) == codes.Unavailable {
+			writeError(w, http.StatusServiceUnavailable, "Images are unavailable right now.")
+			return
+		}
 		writeError(w, httpStatusForGRPC(err), "Asset not found")
 		return
 	}

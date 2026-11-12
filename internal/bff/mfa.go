@@ -101,6 +101,7 @@ func (h *Handler) mfaRequired(r *http.Request) bool {
 // IdentityClient is the identity surface the sign-in flows use; the
 // generated IdentityReadServiceClient satisfies it.
 type IdentityClient interface {
+	ResolveLoginEmail(ctx context.Context, in *identityv1.ResolveLoginEmailRequest, opts ...grpc.CallOption) (*identityv1.ResolveLoginEmailResponse, error)
 	GetUserByEmail(ctx context.Context, in *identityv1.GetUserByEmailRequest, opts ...grpc.CallOption) (*identityv1.GetUserByEmailResponse, error)
 	JitProvisionByEmail(ctx context.Context, in *identityv1.JitProvisionByEmailRequest, opts ...grpc.CallOption) (*identityv1.JitProvisionByEmailResponse, error)
 	GetUser(ctx context.Context, in *identityv1.GetUserRequest, opts ...grpc.CallOption) (*identityv1.GetUserResponse, error)

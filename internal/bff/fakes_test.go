@@ -5,6 +5,7 @@ package bff
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -91,6 +92,13 @@ type fakeMfaIdentity struct {
 	btgErr error
 
 	discover *identityv1.DiscoverResponse
+
+	// loginEmails maps a lower-cased username to the email ResolveLoginEmail
+	// answers; a username not in it answers an empty email, as identity does
+	// for an unknown, disabled or SSO account.
+	loginEmails   map[string]string
+	loginEmailErr error
+	loginEmailReq []string
 
 	assertOptions  string
 	assertSession  string
@@ -244,4 +252,12 @@ func (f *fakeMfaIdentity) CheckBreakGlassEligibility(_ context.Context, in *iden
 		return f.btg, nil
 	}
 	return &identityv1.CheckBreakGlassEligibilityResponse{}, nil
+}
+
+func (f *fakeMfaIdentity) ResolveLoginEmail(_ context.Context, in *identityv1.ResolveLoginEmailRequest, _ ...grpc.CallOption) (*identityv1.ResolveLoginEmailResponse, error) {
+	f.loginEmailReq = append(f.loginEmailReq, in.GetUsername())
+	if f.loginEmailErr != nil {
+		return nil, f.loginEmailErr
+	}
+	return &identityv1.ResolveLoginEmailResponse{Email: f.loginEmails[strings.ToLower(strings.TrimSpace(in.GetUsername()))]}, nil
 }

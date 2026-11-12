@@ -1066,6 +1066,7 @@ type ComplexityRoot struct {
 		ManagedGroupMembers        func(childComplexity int, groupID string) int
 		Me                         func(childComplexity int) int
 		MyAckSummary               func(childComplexity int) int
+		MyAcknowledgments          func(childComplexity int, limit *int) int
 		MyDrafts                   func(childComplexity int) int
 		MyFactors                  func(childComplexity int) int
 		MyManagedGroups            func(childComplexity int) int
@@ -1155,6 +1156,15 @@ type ComplexityRoot struct {
 		ReassignedAuthorGrants func(childComplexity int) int
 		ReassignedOwnerCount   func(childComplexity int) int
 		ReassignedPolicyIds    func(childComplexity int) int
+	}
+
+	RecentAcknowledgment struct {
+		AckedAt         func(childComplexity int) int
+		Number          func(childComplexity int) int
+		PolicyID        func(childComplexity int) int
+		PolicyVersionID func(childComplexity int) int
+		Title           func(childComplexity int) int
+		VersionNo       func(childComplexity int) int
 	}
 
 	Reference struct {
@@ -1860,6 +1870,7 @@ type QueryResolver interface {
 	ImpersonationStatus(ctx context.Context) (*ImpersonationSession, error)
 	MyObligations(ctx context.Context) ([]*Obligation, error)
 	MyAckSummary(ctx context.Context) (*AckSummary, error)
+	MyAcknowledgments(ctx context.Context, limit *int) ([]*RecentAcknowledgment, error)
 	ObligatedAudienceCount(ctx context.Context, policyID string) (int, error)
 	AckStatus(ctx context.Context, policyVersionID string) (*AckStatus, error)
 	NotificationPref(ctx context.Context) (*NotificationPref, error)
@@ -7212,6 +7223,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.MyAckSummary(childComplexity), true
+	case "Query.myAcknowledgments":
+		if e.ComplexityRoot.Query.MyAcknowledgments == nil {
+			break
+		}
+
+		args, err := ec.field_Query_myAcknowledgments_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.MyAcknowledgments(childComplexity, args["limit"].(*int)), true
 	case "Query.myDrafts":
 		if e.ComplexityRoot.Query.MyDrafts == nil {
 			break
@@ -7925,6 +7947,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ReassignUserPoliciesResult.ReassignedPolicyIds(childComplexity), true
+
+	case "RecentAcknowledgment.ackedAt":
+		if e.ComplexityRoot.RecentAcknowledgment.AckedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecentAcknowledgment.AckedAt(childComplexity), true
+	case "RecentAcknowledgment.number":
+		if e.ComplexityRoot.RecentAcknowledgment.Number == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecentAcknowledgment.Number(childComplexity), true
+	case "RecentAcknowledgment.policyId":
+		if e.ComplexityRoot.RecentAcknowledgment.PolicyID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecentAcknowledgment.PolicyID(childComplexity), true
+	case "RecentAcknowledgment.policyVersionId":
+		if e.ComplexityRoot.RecentAcknowledgment.PolicyVersionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecentAcknowledgment.PolicyVersionID(childComplexity), true
+	case "RecentAcknowledgment.title":
+		if e.ComplexityRoot.RecentAcknowledgment.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecentAcknowledgment.Title(childComplexity), true
+	case "RecentAcknowledgment.versionNo":
+		if e.ComplexityRoot.RecentAcknowledgment.VersionNo == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RecentAcknowledgment.VersionNo(childComplexity), true
 
 	case "Reference.archived":
 		if e.ComplexityRoot.Reference.Archived == nil {
@@ -12109,6 +12168,17 @@ type Acknowledgment {
   ackedAt: String!
 }
 
+# One acknowledgement the caller recorded, named by its policy: the row of the
+# "Recently acknowledged" card on My work.
+type RecentAcknowledgment {
+  policyId: ID!
+  number: String!
+  title: String!
+  versionNo: Int!
+  policyVersionId: ID!
+  ackedAt: String!
+}
+
 type AckStatus {
   acknowledged: Boolean!
   ackedAt: String   # ISO-8601; null when acknowledged=false
@@ -12200,6 +12270,9 @@ type AckExport {
 extend type Query {
   myObligations: [Obligation!]!
   myAckSummary: AckSummary!
+  # The caller's own acknowledgements, newest first. Always the signed-in user's,
+  # never another person's. limit defaults to 10 and is capped at 100.
+  myAcknowledgments(limit: Int): [RecentAcknowledgment!]!
   obligatedAudienceCount(policyId: ID!): Int!
   ackStatus(policyVersionId: ID!): AckStatus!
   notificationPref: NotificationPref! @deprecated(reason: "Use notificationSettings.channels")
@@ -14955,6 +15028,24 @@ func (ec *executionContext) childFields_ReassignUserPoliciesResult(ctx context.C
 		return ec.fieldContext_ReassignUserPoliciesResult_reassignedAuthorGrants(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type ReassignUserPoliciesResult", field.Name)
+}
+
+func (ec *executionContext) childFields_RecentAcknowledgment(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "policyId":
+		return ec.fieldContext_RecentAcknowledgment_policyId(ctx, field)
+	case "number":
+		return ec.fieldContext_RecentAcknowledgment_number(ctx, field)
+	case "title":
+		return ec.fieldContext_RecentAcknowledgment_title(ctx, field)
+	case "versionNo":
+		return ec.fieldContext_RecentAcknowledgment_versionNo(ctx, field)
+	case "policyVersionId":
+		return ec.fieldContext_RecentAcknowledgment_policyVersionId(ctx, field)
+	case "ackedAt":
+		return ec.fieldContext_RecentAcknowledgment_ackedAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type RecentAcknowledgment", field.Name)
 }
 
 func (ec *executionContext) childFields_Reference(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -20180,6 +20271,20 @@ func (ec *executionContext) field_Query_managedGroupMembers_args(ctx context.Con
 		return nil, err
 	}
 	args["groupId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_myAcknowledgments_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg0
 	return args, nil
 }
 
@@ -43114,6 +43219,50 @@ func (ec *executionContext) fieldContext_Query_myAckSummary(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_myAcknowledgments(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_myAcknowledgments(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().MyAcknowledgments(ctx, fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*RecentAcknowledgment) graphql.Marshaler {
+			return ec.marshalNRecentAcknowledgment2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRecentAcknowledgmentᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_myAcknowledgments(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_RecentAcknowledgment(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_myAcknowledgments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_obligatedAudienceCount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -44887,6 +45036,144 @@ func (ec *executionContext) _ReassignUserPoliciesResult_reassignedAuthorGrants(c
 }
 func (ec *executionContext) fieldContext_ReassignUserPoliciesResult_reassignedAuthorGrants(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("ReassignUserPoliciesResult", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _RecentAcknowledgment_policyId(ctx context.Context, field graphql.CollectedField, obj *RecentAcknowledgment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecentAcknowledgment_policyId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PolicyID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecentAcknowledgment_policyId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecentAcknowledgment", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RecentAcknowledgment_number(ctx context.Context, field graphql.CollectedField, obj *RecentAcknowledgment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecentAcknowledgment_number(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Number, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecentAcknowledgment_number(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecentAcknowledgment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RecentAcknowledgment_title(ctx context.Context, field graphql.CollectedField, obj *RecentAcknowledgment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecentAcknowledgment_title(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecentAcknowledgment_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecentAcknowledgment", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _RecentAcknowledgment_versionNo(ctx context.Context, field graphql.CollectedField, obj *RecentAcknowledgment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecentAcknowledgment_versionNo(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.VersionNo, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecentAcknowledgment_versionNo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecentAcknowledgment", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _RecentAcknowledgment_policyVersionId(ctx context.Context, field graphql.CollectedField, obj *RecentAcknowledgment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecentAcknowledgment_policyVersionId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PolicyVersionID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecentAcknowledgment_policyVersionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecentAcknowledgment", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _RecentAcknowledgment_ackedAt(ctx context.Context, field graphql.CollectedField, obj *RecentAcknowledgment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_RecentAcknowledgment_ackedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AckedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_RecentAcknowledgment_ackedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("RecentAcknowledgment", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _Reference_id(ctx context.Context, field graphql.CollectedField, obj *Reference) (ret graphql.Marshaler) {
@@ -63630,6 +63917,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "myAcknowledgments":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_myAcknowledgments(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "obligatedAudienceCount":
 			field := field
 
@@ -64551,6 +64860,69 @@ func (ec *executionContext) _ReassignUserPoliciesResult(ctx context.Context, sel
 			}
 		case "reassignedAuthorGrants":
 			out.Values[i] = ec._ReassignUserPoliciesResult_reassignedAuthorGrants(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var recentAcknowledgmentImplementors = []string{"RecentAcknowledgment"}
+
+func (ec *executionContext) _RecentAcknowledgment(ctx context.Context, sel ast.SelectionSet, obj *RecentAcknowledgment) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, recentAcknowledgmentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RecentAcknowledgment")
+		case "policyId":
+			out.Values[i] = ec._RecentAcknowledgment_policyId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "number":
+			out.Values[i] = ec._RecentAcknowledgment_number(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._RecentAcknowledgment_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "versionNo":
+			out.Values[i] = ec._RecentAcknowledgment_versionNo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "policyVersionId":
+			out.Values[i] = ec._RecentAcknowledgment_policyVersionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ackedAt":
+			out.Values[i] = ec._RecentAcknowledgment_ackedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -70810,6 +71182,32 @@ func (ec *executionContext) marshalNReassignUserPoliciesResult2ᚖgithubᚗcom�
 		return graphql.Null
 	}
 	return ec._ReassignUserPoliciesResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRecentAcknowledgment2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRecentAcknowledgmentᚄ(ctx context.Context, sel ast.SelectionSet, v []*RecentAcknowledgment) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNRecentAcknowledgment2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRecentAcknowledgment(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRecentAcknowledgment2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐRecentAcknowledgment(ctx context.Context, sel ast.SelectionSet, v *RecentAcknowledgment) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RecentAcknowledgment(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNReference2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐReference(ctx context.Context, sel ast.SelectionSet, v Reference) graphql.Marshaler {

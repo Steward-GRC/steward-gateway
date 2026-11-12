@@ -7,8 +7,10 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"math"
 	"time"
 
+	log "github.com/Bugs5382/go-log"
 	authz "github.com/Steward-GRC/steward-authz"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	obligationsv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/obligations/v1"
@@ -176,6 +178,47 @@ func MyAckSummaryResolver(ctx context.Context, client obligationsv1.ObligationSe
 		Required: int(resp.GetRequired()),
 		Done:     int(resp.GetDone()),
 	}, nil
+}
+
+// MyAcknowledgmentsResolver returns the authenticated user's own acknowledgements, newest first.
+// The user id comes from the session claims, never from the query. A missing or negative limit is
+// sent as 0, which the obligations service reads as its default.
+func MyAcknowledgmentsResolver(ctx context.Context, logger log.Logger, client obligationsv1.ObligationServiceClient, limit *int) ([]*RecentAcknowledgment, error) {
+	claims, ok := principal.FromContext(ctx)
+	if !ok || claims.UserID() == "" {
+		logger.Debug("my acknowledgments refused: unauthenticated")
+		return nil, fmt.Errorf("unauthenticated")
+	}
+	userID := claims.UserID()
+	var n int32
+	if limit != nil && *limit > 0 {
+		n = int32(min(*limit, math.MaxInt32))
+	}
+	logger.Debug("my acknowledgments requested", log.F("user_id", userID), log.F("limit", n))
+	start := time.Now()
+	resp, err := client.ListMyAcknowledgments(ctx, &obligationsv1.ListMyAcknowledgmentsRequest{UserId: userID, Limit: n})
+	if err != nil {
+		logger.Error(err, "my acknowledgments failed", log.F("user_id", userID), log.F("limit", n),
+			log.F("duration_ms", time.Since(start).Milliseconds()))
+		return nil, fmt.Errorf("compliance my acknowledgments: %w", err)
+	}
+	out := make([]*RecentAcknowledgment, 0, len(resp.GetAcknowledgments()))
+	for _, a := range resp.GetAcknowledgments() {
+		item := &RecentAcknowledgment{
+			PolicyID:        a.GetPolicyId(),
+			Number:          a.GetNumber(),
+			Title:           a.GetTitle(),
+			VersionNo:       int(a.GetVersionNo()),
+			PolicyVersionID: a.GetPolicyVersionId(),
+		}
+		if t := a.GetAckedAt(); t != nil {
+			item.AckedAt = t.AsTime().UTC().Format(time.RFC3339)
+		}
+		out = append(out, item)
+	}
+	logger.Debug("my acknowledgments answered", log.F("user_id", userID), log.F("count", len(out)),
+		log.F("duration_ms", time.Since(start).Milliseconds()))
+	return out, nil
 }
 
 // ObligatedAudienceCountResolver returns the number of users obligated to acknowledge a policy.

@@ -1036,6 +1036,15 @@ type ReassignUserPoliciesResult struct {
 	ReassignedAuthorGrants int      `json:"reassignedAuthorGrants"`
 }
 
+type RecentAcknowledgment struct {
+	PolicyID        string `json:"policyId"`
+	Number          string `json:"number"`
+	Title           string `json:"title"`
+	VersionNo       int    `json:"versionNo"`
+	PolicyVersionID string `json:"policyVersionId"`
+	AckedAt         string `json:"ackedAt"`
+}
+
 type Reference struct {
 	ID              string        `json:"id"`
 	Label           string        `json:"label"`

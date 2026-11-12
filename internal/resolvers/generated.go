@@ -1113,7 +1113,7 @@ type ComplexityRoot struct {
 		AiEnabled                  func(childComplexity int) int
 		AiHealth                   func(childComplexity int) int
 		AiJob                      func(childComplexity int, jobID string) int
-		AiJobResultContent         func(childComplexity int, resultRef string) int
+		AiJobResultContent         func(childComplexity int, resultRef string, jobID *string) int
 		AiRetrievalConfig          func(childComplexity int) int
 		AppendixDiff               func(childComplexity int, id string, contentJSON *string) int
 		AssetSettings              func(childComplexity int) int
@@ -1919,7 +1919,7 @@ type QueryResolver interface {
 	TopPolicyQuestions(ctx context.Context, limit *int) ([]string, error)
 	PolicyVersionSummary(ctx context.Context, versionID string) (*PolicySummaryResult, error)
 	RelatedPolicySuggestions(ctx context.Context, policyID string, first *int) ([]*RelatedPolicySuggestion, error)
-	AiJobResultContent(ctx context.Context, resultRef string) (*AIJobResultContent, error)
+	AiJobResultContent(ctx context.Context, resultRef string, jobID *string) (*AIJobResultContent, error)
 	AiHealth(ctx context.Context) (*AIHealth, error)
 	AiEnabled(ctx context.Context) (bool, error)
 	AiConfig(ctx context.Context) (*AIConfig, error)
@@ -7392,7 +7392,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.AiJobResultContent(childComplexity, args["resultRef"].(string)), true
+		return e.ComplexityRoot.Query.AiJobResultContent(childComplexity, args["resultRef"].(string), args["jobId"].(*string)), true
 	case "Query.aiRetrievalConfig":
 		if e.ComplexityRoot.Query.AiRetrievalConfig == nil {
 			break
@@ -10862,6 +10862,10 @@ extend type Mutation {
 }
 
 # --- aiJobResultContent: fetch async AI job content by resultRef ---
+# The optional jobId lets the gateway fall back to the job's stored result once
+# the cached content has expired (about 24 h); without it an expired ref is
+# not found. The fallback serves only the job's submitter; a foreign or
+# unknown jobId is AI_JOB_NOT_FOUND.
 # This is the fetch-by-resultRef query the AIJobStatus/AIJobResult doc
 # comments above point to. Content is kept out of AIJobStatus/
 # AIJobResult on purpose (see their doc comments): polling/subscribing is one
@@ -10905,7 +10909,7 @@ extend type Query {
   user's job, or whose result has no recorded owner is refused with the same
   not-found error.
   """
-  aiJobResultContent(resultRef: String!): AIJobResultContent!
+  aiJobResultContent(resultRef: String!, jobId: ID): AIJobResultContent!
 }
 
 # --- AI health + kill switch (best-effort degrade) ---
@@ -21053,6 +21057,14 @@ func (ec *executionContext) field_Query_aiJobResultContent_args(ctx context.Cont
 		return nil, err
 	}
 	args["resultRef"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "jobId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["jobId"] = arg1
 	return args, nil
 }
 
@@ -43467,7 +43479,7 @@ func (ec *executionContext) _Query_aiJobResultContent(ctx context.Context, field
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().AiJobResultContent(ctx, fc.Args["resultRef"].(string))
+			return ec.Resolvers.Query().AiJobResultContent(ctx, fc.Args["resultRef"].(string), fc.Args["jobId"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *AIJobResultContent) graphql.Marshaler {

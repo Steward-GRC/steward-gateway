@@ -193,7 +193,7 @@ func TestExportAcksRequiresAdmin(t *testing.T) {
 
 func TestQueryAuditLogRequiresAuditRead(t *testing.T) {
 	// QueryAuditLog is now gated on audit.read. author lacks it -> denied.
-	_, err := resolvers.QueryAuditLogResolver(ctxWithRoles(t, "u", []string{"author"}), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	_, err := resolvers.QueryAuditLogResolver(ctxWithRoles(t, "u", []string{"author"}), log.Nop(), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, resolvers.AuditLogFilter{})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("QueryAuditLogResolver with author: want PermissionDenied, got %v", err)
 	}

@@ -1053,7 +1053,7 @@ type ComplexityRoot struct {
 		AssetSettings              func(childComplexity int) int
 		AssignmentHistory          func(childComplexity int, policyVersionID string, stageIndex int) int
 		AuditLegalHolds            func(childComplexity int, includeReleased *bool) int
-		AuditLog                   func(childComplexity int, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) int
+		AuditLog                   func(childComplexity int, tier *string, groupID *string, actorUserID *string, subject *string, actions []string, subjectType *string, actorGroupID *string, pageSize *int, pageToken *string) int
 		AuditSegment               func(childComplexity int, fromRecordID string, toRecordID string) int
 		AuthoringAssist            func(childComplexity int, input AuthoringAssistInput) int
 		Category                   func(childComplexity int, id string) int
@@ -1836,7 +1836,7 @@ type QueryResolver interface {
 	PolicyAppendices(ctx context.Context, policyID string, includeRetired *bool) ([]*PolicyAppendix, error)
 	PolicyAppendix(ctx context.Context, id string) (*PolicyAppendix, error)
 	AppendixDiff(ctx context.Context, id string, contentJSON *string) ([]*SectionDiff, error)
-	AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, pageSize *int, pageToken *string) (*AuditQueryPage, error)
+	AuditLog(ctx context.Context, tier *string, groupID *string, actorUserID *string, subject *string, actions []string, subjectType *string, actorGroupID *string, pageSize *int, pageToken *string) (*AuditQueryPage, error)
 	AuditSegment(ctx context.Context, fromRecordID string, toRecordID string) (*AuditSegment, error)
 	VerifyAuditChain(ctx context.Context, fromRecordID string, toRecordID string) (*AuditChainVerification, error)
 	AuditLegalHolds(ctx context.Context, includeReleased *bool) ([]*AuditLegalHold, error)
@@ -7019,7 +7019,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.AuditLog(childComplexity, args["tier"].(*string), args["groupId"].(*string), args["actorUserId"].(*string), args["subject"].(*string), args["pageSize"].(*int), args["pageToken"].(*string)), true
+		return e.ComplexityRoot.Query.AuditLog(childComplexity, args["tier"].(*string), args["groupId"].(*string), args["actorUserId"].(*string), args["subject"].(*string), args["actions"].([]string), args["subjectType"].(*string), args["actorGroupId"].(*string), args["pageSize"].(*int), args["pageToken"].(*string)), true
 	case "Query.auditSegment":
 		if e.ComplexityRoot.Query.AuditSegment == nil {
 			break
@@ -10759,7 +10759,12 @@ type AuditLegalHold {
 }
 
 extend type Query {
-  auditLog(tier: String, groupId: ID, actorUserId: ID, subject: String, pageSize: Int, pageToken: String): AuditQueryPage!
+  # Every filter is optional and they combine (all must match). actions: records whose action is
+  # one of these codes. subjectType: the kind before the colon in a subject ("policy" in
+  # "policy:POL-000001"); it combines with subject. actorGroupId: records made by a member of that
+  # group; a group with no members returns no records. A group manager may only name a group they
+  # manage in actorGroupId.
+  auditLog(tier: String, groupId: ID, actorUserId: ID, subject: String, actions: [String!], subjectType: String, actorGroupId: ID, pageSize: Int, pageToken: String): AuditQueryPage!
   auditSegment(fromRecordId: String!, toRecordId: String!): AuditSegment!
   verifyAuditChain(fromRecordId: String!, toRecordId: String!): AuditChainVerification!
   # Oldest first; released holds only with includeReleased.
@@ -20140,22 +20145,46 @@ func (ec *executionContext) field_Query_auditLog_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["subject"] = arg3
-	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize",
-		func(ctx context.Context, v any) (*int, error) {
-			return ec.unmarshalOInt2ᚖint(ctx, v)
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "actions",
+		func(ctx context.Context, v any) ([]string, error) {
+			return ec.unmarshalOString2ᚕstringᚄ(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["pageSize"] = arg4
-	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "pageToken",
+	args["actions"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "subjectType",
 		func(ctx context.Context, v any) (*string, error) {
 			return ec.unmarshalOString2ᚖstring(ctx, v)
 		})
 	if err != nil {
 		return nil, err
 	}
-	args["pageToken"] = arg5
+	args["subjectType"] = arg5
+	arg6, err := graphql.ProcessArgField(ctx, rawArgs, "actorGroupId",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOID2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["actorGroupId"] = arg6
+	arg7, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg7
+	arg8, err := graphql.ProcessArgField(ctx, rawArgs, "pageToken",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["pageToken"] = arg8
 	return args, nil
 }
 
@@ -41349,7 +41378,7 @@ func (ec *executionContext) _Query_auditLog(ctx context.Context, field graphql.C
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().AuditLog(ctx, fc.Args["tier"].(*string), fc.Args["groupId"].(*string), fc.Args["actorUserId"].(*string), fc.Args["subject"].(*string), fc.Args["pageSize"].(*int), fc.Args["pageToken"].(*string))
+			return ec.Resolvers.Query().AuditLog(ctx, fc.Args["tier"].(*string), fc.Args["groupId"].(*string), fc.Args["actorUserId"].(*string), fc.Args["subject"].(*string), fc.Args["actions"].([]string), fc.Args["subjectType"].(*string), fc.Args["actorGroupId"].(*string), fc.Args["pageSize"].(*int), fc.Args["pageToken"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *AuditQueryPage) graphql.Marshaler {

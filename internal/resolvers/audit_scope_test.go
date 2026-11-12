@@ -5,6 +5,7 @@ package resolvers_test
 
 import (
 	"context"
+	log "github.com/Bugs5382/go-log"
 	"testing"
 
 	auditv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/audit/v1"
@@ -33,8 +34,8 @@ func TestQueryAuditLogSendsAGroupManagersManagedGroups(t *testing.T) {
 	read := managerRead()
 	group := "g-sec"
 
-	if _, err := resolvers.QueryAuditLogResolver(groupManagerCtx(t), client, read, nil, nil, nil,
-		nil, &group, nil, nil, nil, nil); err != nil {
+	if _, err := resolvers.QueryAuditLogResolver(groupManagerCtx(t), log.Nop(), client, read, nil, nil, nil,
+		nil, &group, nil, nil, nil, nil, resolvers.AuditLogFilter{}); err != nil {
 		t.Fatalf("QueryAuditLog: %v", err)
 	}
 	got := client.lastQueryReq.GetRequester()
@@ -66,7 +67,7 @@ func TestAuditReadsSkipTheManagedGroupLookupForAuditRead(t *testing.T) {
 	read := managerRead()
 	ctx := ctxWithRoles(t, "u-compliance", []string{"compliance-admin"})
 
-	if _, err := resolvers.QueryAuditLogResolver(ctx, client, read, nil, nil, nil, nil, nil, nil, nil, nil, nil); err != nil {
+	if _, err := resolvers.QueryAuditLogResolver(ctx, log.Nop(), client, read, nil, nil, nil, nil, nil, nil, nil, nil, nil, resolvers.AuditLogFilter{}); err != nil {
 		t.Fatalf("QueryAuditLog: %v", err)
 	}
 	if _, err := resolvers.VerifyAuditChainResolver(ctx, client, read, "1", "10"); err != nil {
@@ -81,7 +82,7 @@ func TestAuditReadsRefuseACallerWhoManagesNoGroup(t *testing.T) {
 	client := &fakeAuditClient{}
 	ctx := ctxWithRoles(t, "u-reader", []string{"reader"})
 
-	_, err := resolvers.QueryAuditLogResolver(ctx, client, managerRead(), nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	_, err := resolvers.QueryAuditLogResolver(ctx, log.Nop(), client, managerRead(), nil, nil, nil, nil, nil, nil, nil, nil, nil, resolvers.AuditLogFilter{})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("query: want PermissionDenied, got %v", err)
 	}
@@ -105,8 +106,8 @@ func (failingUserRead) GetUser(context.Context, *identityv1.GetUserRequest, ...g
 func TestAuditReadsReturnAnIdentityFailure(t *testing.T) {
 	client := &fakeAuditClient{}
 
-	_, err := resolvers.QueryAuditLogResolver(groupManagerCtx(t), client, failingUserRead{}, nil, nil, nil,
-		nil, nil, nil, nil, nil, nil)
+	_, err := resolvers.QueryAuditLogResolver(groupManagerCtx(t), log.Nop(), client, failingUserRead{}, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, resolvers.AuditLogFilter{})
 	if status.Code(err) != codes.Unavailable {
 		t.Fatalf("want Unavailable, got %v", err)
 	}

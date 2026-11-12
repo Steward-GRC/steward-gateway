@@ -5,6 +5,7 @@ package resolvers_test
 
 import (
 	"context"
+	log "github.com/Bugs5382/go-log"
 	"testing"
 	"time"
 
@@ -80,9 +81,9 @@ func TestQueryAuditLogForwardsFilters(t *testing.T) {
 	groupID := "g-1"
 	actor := "u-9"
 	pageSize := 25
-	out, err := resolvers.QueryAuditLogResolver(ctxWithRoles(t, "auditor-1", []string{"site-admin"}), client,
+	out, err := resolvers.QueryAuditLogResolver(ctxWithRoles(t, "auditor-1", []string{"site-admin"}), log.Nop(), client,
 		nil, nil, nil, nil,
-		&tier, &groupID, &actor, nil, &pageSize, nil)
+		&tier, &groupID, &actor, nil, &pageSize, nil, resolvers.AuditLogFilter{})
 	if err != nil {
 		t.Fatalf("QueryAuditLog: %v", err)
 	}
@@ -112,9 +113,9 @@ func TestQueryAuditLogForwardsFilters(t *testing.T) {
 
 func TestQueryAuditLogUnauthenticated(t *testing.T) {
 	client := &fakeAuditClient{}
-	_, err := resolvers.QueryAuditLogResolver(context.Background(), client,
+	_, err := resolvers.QueryAuditLogResolver(context.Background(), log.Nop(), client,
 		nil, nil, nil, nil,
-		nil, nil, nil, nil, nil, nil)
+		nil, nil, nil, nil, nil, nil, resolvers.AuditLogFilter{})
 	if err == nil {
 		t.Fatal("expected unauthenticated error")
 	}

@@ -165,9 +165,20 @@ func viewerCanFor(subj authz.Subject, res authz.Resource, readD authz.Effect, ra
 		ack = raci.ackUngated
 	default:
 		ack = raci.action.Acknowledge.Allowed
+		if subj.Root {
+			// Root always reads, so the read gate on the acknowledge rule is
+			// met; Ack stays the one per-category thing for root.
+			ack = raci.ackUngated
+		}
 	}
 	if docType == DocumentTypeProcedure {
 		ack = false
+	}
+	if subj.Root {
+		// Root is a global approver and manager (Manage implies Read and
+		// Author): everything is allowed, nothing is obfuscated or offered as
+		// break-glass.
+		return &PolicyViewerCan{Read: true, Edit: true, Submit: true, Approve: true, Ack: ack}
 	}
 	return &PolicyViewerCan{
 		Read:              readD != authz.EffectDeny,

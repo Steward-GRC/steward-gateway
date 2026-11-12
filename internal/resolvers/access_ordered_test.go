@@ -202,9 +202,21 @@ func levelsFor(rs ordered.RuleSet, category string) []*corev1.EffectiveLevel {
 
 func TestOrderedVectorsThroughTheMapping(t *testing.T) {
 	v := loadVectors(t)
-	if !reflect.DeepEqual(v.Options.Superusers, accessModel().Superusers) {
-		t.Fatalf("the vectors' superuser seat %+v differs from the gateway's %+v", v.Options.Superusers, accessModel().Superusers)
+	// The vectors' seat also exempts root from Approve. The gateway's does not
+	// (the owner's rule: Approve follows the rows), so it must be the vectors'
+	// seat without approve; the vectors run under their own seat so the engine
+	// and the mapping are still checked against the shared expectations.
+	wantSeat := &ordered.Superusers{Subjects: v.Options.Superusers.Subjects}
+	for _, a := range v.Options.Superusers.Actions {
+		if a != actApprove {
+			wantSeat.Actions = append(wantSeat.Actions, a)
+		}
 	}
+	if !reflect.DeepEqual(wantSeat, accessModel().Superusers) {
+		t.Fatalf("the gateway's superuser seat %+v is not the vectors' %+v without approve", accessModel().Superusers, v.Options.Superusers)
+	}
+	vectorModel := accessModel()
+	vectorModel.Superusers = v.Options.Superusers
 	ran, skipped := 0, 0
 	for _, c := range v.Cases {
 		if !representable(c.RuleSet) {
@@ -214,7 +226,7 @@ func TestOrderedVectorsThroughTheMapping(t *testing.T) {
 		ran++
 		t.Run(c.Name, func(t *testing.T) {
 			access := newCategoryAccess(levelsFor(c.RuleSet, c.Category))
-			d := accessModel().Decide(access.rs, c.Person, access.leaf, c.Action)
+			d := vectorModel.Decide(access.rs, c.Person, access.leaf, c.Action)
 			if d.Allowed != c.Expect.Allowed || d.Reason != c.Expect.Reason || d.GatedBy != c.Expect.GatedBy {
 				t.Fatalf("decision = %+v, want allowed=%v reason=%q gatedBy=%q", d, c.Expect.Allowed, c.Expect.Reason, c.Expect.GatedBy)
 			}
@@ -320,18 +332,45 @@ func TestNonRootSiteAdminFollowsADeny(t *testing.T) {
 	}
 }
 
-func TestRootIsExemptExceptForAck(t *testing.T) {
+func TestRootIsExemptForReadAuthorAndManageOnly(t *testing.T) {
 	ackDeny := everyoneRow()
 	ackDeny.Read, ackDeny.Ack = allowEffect, denyEffect
 	d := oneLevel(nil, ackDeny).decide(personFromSubject(authz.Subject{UserID: "r", Root: true}))
-	if !d.Read.Allowed || !d.Author.Allowed || !d.Approve.Allowed || !d.Manage.Allowed {
-		t.Fatalf("root must hold Read, Author, Approve and Manage: %+v", d)
+	if !d.Read.Allowed || !d.Author.Allowed || !d.Manage.Allowed {
+		t.Fatalf("root must hold Read, Author and Manage: %+v", d)
+	}
+	if d.Approve.Allowed {
+		t.Fatalf("root's Approve follows the rows: no row allows it: %+v", d.Approve)
 	}
 	if d.Ack.Allowed {
 		t.Fatal("root's Ack follows the rule: a deny must apply")
 	}
 	if d.AckUngated {
 		t.Fatal("the ungated Ack is the rule alone: a deny still applies")
+	}
+}
+
+// Root's Approve is decided by the rows like anyone's: an allow brings it in, a
+// deny applies, and nothing is reported as blocked for it.
+func TestRootApproveFollowsTheRows(t *testing.T) {
+	root := personFromSubject(authz.Subject{UserID: "r", Root: true})
+	allow := userRow("r")
+	allow.Approve = allowEffect
+	if d := oneLevel(nil, allow).decide(root); !d.Approve.Allowed {
+		t.Fatalf("an Approve allow row must bring root in: %+v", d.Approve)
+	}
+	deny := userRow("r")
+	deny.Read, deny.Approve = denyEffect, denyEffect
+	d := oneLevel(nil, deny).decide(root)
+	if d.Approve.Allowed || d.Approve.ConfiguredBlock != nil {
+		t.Fatalf("a deny of Approve applies to root and is not a configured block: %+v", d.Approve)
+	}
+	if !d.Read.Allowed || d.Read.ConfiguredBlock == nil {
+		t.Fatalf("a deny of Read is still ignored and reported for root: %+v", d.Read)
+	}
+	owned := oneLevel([]string{"r"})
+	if d := owned.decide(root); !d.Approve.Allowed {
+		t.Fatalf("owning the category still approves: %+v", d.Approve)
 	}
 }
 
@@ -512,7 +551,10 @@ func TestViewerCanManageAndStrippedSiteAdmin(t *testing.T) {
 		t.Fatalf("a non-root site admin follows the rules: %+v", admin)
 	}
 	root := decide(authz.Subject{UserID: "r", Root: true})
-	if !root.Manage || !root.Edit || !root.Approve || !root.Read {
-		t.Fatalf("root holds everything: %+v", root)
+	if !root.Manage || !root.Edit || !root.Submit || !root.Read || root.ContentObfuscated || root.CanBreakGlass {
+		t.Fatalf("root reads, edits and manages everywhere: %+v", root)
+	}
+	if root.Approve {
+		t.Fatalf("root approves only where a row or ownership allows: %+v", root)
 	}
 }

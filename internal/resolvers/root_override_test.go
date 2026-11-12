@@ -34,8 +34,8 @@ func rootPolicyView(t *testing.T, rules []*corev1.CategoryRule, sens corev1.Sens
 
 func requireRootAll(t *testing.T, vc *resolvers.PolicyViewerCan) {
 	t.Helper()
-	if !vc.Read || vc.ContentObfuscated || vc.CanBreakGlass || !vc.Edit || !vc.Submit || !vc.Approve {
-		t.Fatalf("root must read, edit, submit and approve with no obfuscation or break-glass; got %+v", vc)
+	if !vc.Read || vc.ContentObfuscated || vc.CanBreakGlass || !vc.Edit || !vc.Submit || !vc.Manage {
+		t.Fatalf("root must read, edit, submit and manage with no obfuscation or break-glass; got %+v", vc)
 	}
 }
 

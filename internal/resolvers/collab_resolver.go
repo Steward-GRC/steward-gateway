@@ -13,10 +13,10 @@ import (
 )
 
 // IssueCollabToken mints a collaboration token for the caller on one draft,
-// gated on the effective-author model like saveDraft. Collab mints for the
+// gated on collab's own edit check (authorizeCollabEditor). Collab mints for the
 // go-grpc-actor actor and resolves the presence name itself.
 func IssueCollabToken(ctx context.Context, client collabv1.CollabTokenServiceClient, policyClient corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, input IssueCollabTokenInput) (*IssueCollabTokenPayload, error) {
-	if _, err := authorizeEffectiveAuthor(ctx, policyClient, categoryClient, input.PolicyID); err != nil {
+	if _, err := authorizeCollabEditor(ctx, policyClient, categoryClient, input.PolicyID); err != nil {
 		return nil, err
 	}
 	resp, err := client.IssueToken(ctx, &collabv1.IssueTokenRequest{

@@ -35,6 +35,10 @@ var errAppendixForbidden = status.Error(codes.PermissionDenied, "You don't have 
 type appendixAccess struct {
 	// editor is true when the caller may edit the policy.
 	editor bool
+	// insight is true when the caller sees the diff and the contributors: an
+	// editor, a site admin, or compliance (the catalog's compliance.report).
+	// It adds no right to write.
+	insight bool
 	// effect is the read effect on the policy: allow, or obfuscate to scramble the text.
 	effect authz.Effect
 }
@@ -63,8 +67,14 @@ func (r *Resolver) appendixAccessFor(ctx context.Context, op, policyID string) (
 			log.F("op", op), log.F("policy_id", policyID), log.F("code", status.Code(aerr).String()))
 		return appendixAccess{}, aerr
 	}
+	access.insight = access.editor
+	if !access.insight {
+		if subj, serr := subjectFromCtx(ctx); serr == nil {
+			access.insight = authz.IsSiteAdmin(subj) || authz.HasCapability(subj, authz.ComplianceReport)
+		}
+	}
 	log.Trace(logger, "appendix access decided", log.F("op", op), log.F("policy_id", policyID),
-		log.F("editor", access.editor), log.F("effect", string(effect)))
+		log.F("editor", access.editor), log.F("insight", access.insight), log.F("effect", string(effect)))
 	return access, nil
 }
 
@@ -408,8 +418,8 @@ func (r *Resolver) ReorderPolicyAppendicesResolver(ctx context.Context, policyID
 // the open draft, or contentJSON when the author passes what they are typing,
 // which goes to core as it is (core validates it; InvalidArgument passes
 // through). It writes nothing. Who may: whoever may edit the policy, decided as
-// for the appendix drafts; the author, admin and compliance rule of the mock
-// stays with the on-hold access model, so nobody else is let in here. An
+// for the appendix drafts, a site admin, and compliance (the catalog's
+// compliance.report, held by the compliance-admin role); the mock's rule. An
 // obfuscated reader gets the section shape without the word diff, as for the
 // policy version diff. The appendix text is never logged.
 func (r *Resolver) AppendixDiffResolver(ctx context.Context, id string, contentJSON *string) ([]*SectionDiff, error) {
@@ -432,8 +442,8 @@ func (r *Resolver) AppendixDiffResolver(ctx context.Context, id string, contentJ
 	if err != nil {
 		return nil, err
 	}
-	if !access.editor {
-		logger.Info("appendix diff refused: the caller may not edit the policy",
+	if !access.insight {
+		logger.Info("appendix diff refused: the caller is not an author, site admin or compliance",
 			log.F("appendix_id", id), log.F("policy_id", policyID))
 		return nil, errAppendixForbidden
 	}
@@ -552,7 +562,7 @@ func rfc3339(t *timestamppb.Timestamp) string {
 
 func rfc3339OrNil(t *timestamppb.Timestamp) *string { return nilIfEmpty(rfc3339(t)) }
 
-// appendixVersionToModel is one row. Editors get the contributors; an
+// appendixVersionToModel is one row. Editors, site admins and compliance get the contributors; an
 // obfuscating read decision scrambles the text.
 func appendixVersionToModel(ctx context.Context, people *appendixPeople, v *corev1.AppendixVersion, access appendixAccess) *AppendixVersion {
 	if v == nil {
@@ -567,7 +577,7 @@ func appendixVersionToModel(ctx context.Context, people *appendixPeople, v *core
 		content = obfuscateContentJSON(content)
 	}
 	contributors := []*AppendixContributor{}
-	if access.editor {
+	if access.insight {
 		contributors = people.of(ctx, v.GetContributorIds())
 	}
 	return &AppendixVersion{
@@ -598,6 +608,9 @@ func shapePolicyAppendix(ctx context.Context, people *appendixPeople, a *corev1.
 		if out.Published != nil {
 			out.Versions = append(out.Versions, out.Published)
 			out.PublishedVersions = append(out.PublishedVersions, out.Published)
+		}
+		if access.insight {
+			out.Contributors = people.of(ctx, a.GetContributorIds())
 		}
 		return out
 	}

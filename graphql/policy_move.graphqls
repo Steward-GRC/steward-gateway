@@ -1,11 +1,12 @@
 extend type Query {
-  # Site-admin: the dry run of movePolicies. What moving these documents to the
+  # The dry run of movePolicies (same gate: Manage on each document's category and Author
+  # on the target, or the site-admin role). What moving these documents to the
   # category would do, in the order asked. Nothing changes.
   previewMovePolicies(policyIds: [ID!]!, homeCategoryId: ID!): MovePoliciesPreview!
 }
 
 extend type Mutation {
-  # Site-admin: move several documents to one category, all or nothing. Each is
+  # Move several documents to one category, all or nothing. Each is
   # renumbered from the target's sequence, in order. Refused whole (MOVE_REFUSED,
   # naming the first document that cannot move and why) if any would be refused.
   movePolicies(policyIds: [ID!]!, homeCategoryId: ID!): MovePoliciesResult!

@@ -151,22 +151,22 @@ func viewerCanFor(subj authz.Subject, res authz.Resource, readD authz.Effect, ra
 	if docType == DocumentTypeProcedure {
 		ack = false
 	}
-	if subj.Root {
-		// Root is a global approver and manager (Manage implies Read and
-		// Author): everything is allowed, nothing is obfuscated or offered as
-		// break-glass. Ack stays the one per-category thing for root.
-		return &PolicyViewerCan{Read: true, Edit: true, Submit: true, Approve: true, Manage: true, Ack: ack}
-	}
 	roleSubj := subj
 	roleSubj.Roles = slices.DeleteFunc(slices.Clone(subj.Roles), func(r authz.Role) bool { return r == authz.RoleSiteAdmin })
 	allowed := func(p authz.Permission) bool { return authz.Authorize(roleSubj, p, &res).Allowed() }
+	approve := allowed(authz.PolicyApprove) || raci.action.Approve.Allowed
+	if subj.Root {
+		// Root reads, edits and manages everywhere: nothing is obfuscated or
+		// offered as break-glass. Approve and Ack follow the rows.
+		return &PolicyViewerCan{Read: true, Edit: true, Submit: true, Approve: approve, Manage: true, Ack: ack}
+	}
 	return &PolicyViewerCan{
 		Read:              readD != authz.EffectDeny,
 		ContentObfuscated: readD == authz.EffectObfuscate,
 		CanBreakGlass:     readD == authz.EffectObfuscate,
 		Edit:              allowed(authz.PolicyAuthor) || raci.action.Author.Allowed || isPrimaryAuthor,
 		Submit:            allowed(authz.PolicySubmit) || raci.action.Author.Allowed || isPrimaryAuthor,
-		Approve:           allowed(authz.PolicyApprove) || raci.action.Approve.Allowed,
+		Approve:           approve,
 		Manage:            raci.action.Manage.Allowed,
 		Ack:               ack,
 	}
@@ -1037,10 +1037,11 @@ func SetPolicyOwner(ctx context.Context, client corev1.PolicyServiceClient, cate
 	return policyAfterAct(ctx, policyFromProto(resp.GetPolicy()), client, categoryClient, adminClient, identity, workflow)
 }
 
-// MovePolicy moves a policy to another category and renumbers it there. Site
-// admin only.
+// MovePolicy moves a policy to another category and renumbers it there. Needs
+// Manage on the policy's category and Author on the target, or the site-admin
+// role (see authorizeMove).
 func MovePolicy(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, adminClient identityv1.IdentityAdminServiceClient, identity identityv1.IdentityReadServiceClient, workflow workflowv1.WorkflowServiceClient, policyID, homeCategoryID string) (*Policy, error) {
-	actor, err := requireSiteAdmin(ctx)
+	actor, err := authorizeMove(ctx, client, categoryClient, []string{policyID}, homeCategoryID)
 	if err != nil {
 		return nil, err
 	}

@@ -62,6 +62,9 @@ func newApxEnv(t *testing.T) *apxEnv {
 		"bob":   {Id: "bob", Name: "Bob Author", Enabled: true},
 		"alice": {Id: "alice", Name: "Alice Admin", Enabled: true},
 		"erin":  {Id: "erin", Name: "Erin Reader", Enabled: true},
+		"sam":   {Id: "sam", Name: "Sam Admin", Enabled: true},
+		"carl":  {Id: "carl", Name: "Carl Compliance", Enabled: true},
+		"tess":  {Id: "tess", Name: "Tess Templates", Enabled: true},
 	}
 	return &apxEnv{core: core, users: users, r: &resolvers.Resolver{
 		PolicyAppendixClient: core, PolicyClient: pc, CategoryClient: gc, IdentityAdminClient: noGrant(),
@@ -76,6 +79,15 @@ func apxCtx(t *testing.T, user string) context.Context {
 		// Alice is the root site admin: a site admin who is not root follows
 		// the category rules like anyone else.
 		return ctxRoot(t, user)
+	}
+	switch user {
+	case "sam":
+		// A site admin who is not root and has no rule on the category.
+		roles = []string{"site-admin"}
+	case "carl":
+		roles = []string{"compliance-admin"}
+	case "tess":
+		roles = []string{"template-admin"}
 	}
 	return ctxWithStubClaims(t, principal.Static{UserIDValue: user, RolesValue: roles})
 }

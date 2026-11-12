@@ -14,6 +14,7 @@ import (
 
 	aiv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/ai/v1"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	"github.com/Steward-GRC/steward-gateway/internal/principal"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
 )
 
@@ -61,7 +62,8 @@ func TestSummarizeChangesSubmitsASummarizeJobWithTheDiff(t *testing.T) {
 }
 
 func TestSummarizeChangesRegenerateIsForwarded(t *testing.T) {
-	pc, groups, ctx := diffSetup(t, false)
+	pc, groups, _ := diffSetup(t, false)
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "root-1", IsRootValue: true})
 	ai := &fakeAIClient{submitResp: &aiv1.SubmitAIJobResponse{JobId: "job-1"}}
 	yes := true
 
@@ -136,7 +138,8 @@ func TestSummarizeChangesNoChangesIsRefused(t *testing.T) {
 }
 
 func TestRegenerateVersionSummarySubmitsAVersionScopeJob(t *testing.T) {
-	pc, groups, ctx := diffSetup(t, false)
+	pc, groups, _ := diffSetup(t, false)
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "root-1", IsRootValue: true})
 	pc.versions["pol-1-v2"].ContentJson = `{"root":{"type":"root","children":[{"type":"paragraph","children":[{"type":"text","text":"Keep devices locked."}]},{"type":"paragraph","children":[{"type":"text","text":"Report loss."}]}]}}`
 	ai := &fakeAIClient{submitResp: &aiv1.SubmitAIJobResponse{JobId: "job-2"}}
 
@@ -186,11 +189,89 @@ func TestRegenerateVersionSummaryRefusals(t *testing.T) {
 		}
 	})
 	t.Run("ai unavailable", func(t *testing.T) {
-		pc, groups, ctx := diffSetup(t, false)
+		pc, groups, _ := diffSetup(t, false)
+		ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "root-1", IsRootValue: true})
 		ai := &fakeAIClient{submitErr: status.Error(codes.Unavailable, "ai down")}
 		res, err := resolvers.RegenerateVersionSummaryResolver(ctx, ai, pc, groups, noGrant(), nil, "pol-1-v2")
 		if err == nil || res != nil || status.Code(err) != codes.Unavailable {
 			t.Fatalf("got %v, %v; want Unavailable and no job", res, err)
 		}
 	})
+}
+
+// Regenerating replaces the summary every reader sees, so it needs the Author
+// right on the version's category (steward-gateway#203): the ordered engine
+// (a row, Manage, a category owner), the policy's own owner, or root. Being
+// able to read the version is not enough.
+func TestRegenerateVersionSummary_AuthorGate(t *testing.T) {
+	reader := func(id string) principal.Static {
+		return principal.Static{UserIDValue: id, RolesValue: []string{"reader"}}
+	}
+	cases := []struct {
+		name      string
+		claims    principal.Static
+		rules     []*corev1.CategoryRule
+		owners    []string
+		policyOwn string
+		wantAllow bool
+	}{
+		{name: "reader who can read", claims: reader("u")},
+		{name: "author row", claims: reader("u"), rules: []*corev1.CategoryRule{authorOnlyRule("u")}, wantAllow: true},
+		{name: "manage row implies author", claims: reader("u"), rules: []*corev1.CategoryRule{manageRule("u", allowCell)}, wantAllow: true},
+		{name: "category owner", claims: reader("u"), owners: []string{"u"}, wantAllow: true},
+		{name: "policy owner", claims: reader("u"), policyOwn: "u", wantAllow: true},
+		{name: "root", claims: principal.Static{UserIDValue: "u", IsRootValue: true}, wantAllow: true},
+		{name: "non-root site admin with no author rule", claims: principal.Static{UserIDValue: "u", RolesValue: []string{"site-admin"}}},
+		{name: "author denied", claims: reader("u"), rules: []*corev1.CategoryRule{ruleFor("u", func(r *corev1.CategoryRule) { r.Author = denyCell })}},
+		{name: "approver-only row", claims: reader("u"), rules: []*corev1.CategoryRule{ruleFor("u", func(r *corev1.CategoryRule) { r.Approve = allowCell })}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pc, groups, _ := diffSetup(t, false)
+			rc := groups.(*raciCategoryClient)
+			rc.rulesets["g-it"] = append(rc.rulesets["g-it"], tc.rules...)
+			rc.groups["g-it"].Owners = tc.owners
+			pc.policies["pol-1"].OwnerUserId = tc.policyOwn
+			ai := &fakeAIClient{submitResp: &aiv1.SubmitAIJobResponse{JobId: "job-3"}}
+			ctx := ctxWithStubClaims(t, tc.claims)
+
+			_, err := resolvers.RegenerateVersionSummaryResolver(ctx, ai, pc, groups, noGrant(), nil, "pol-1-v2")
+			if tc.wantAllow {
+				if err != nil || ai.lastSubmitReq == nil {
+					t.Fatalf("err = %v, submitted = %v; want a job", err, ai.lastSubmitReq)
+				}
+				return
+			}
+			if status.Code(err) != codes.PermissionDenied || ai.lastSubmitReq != nil {
+				t.Fatalf("err = %v, submitted = %v; want PermissionDenied and no job", err, ai.lastSubmitReq)
+			}
+		})
+	}
+}
+
+// summarizeChanges with regenerate overwrites the stored changes summary, so it
+// takes the same Author right; without regenerate a reader may still ask.
+func TestSummarizeChanges_RegenerateNeedsAuthor(t *testing.T) {
+	yes, no := true, false
+	pc, groups, _ := diffSetup(t, false)
+	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u", RolesValue: []string{"reader"}})
+
+	for _, regen := range []*bool{nil, &no} {
+		ai := &fakeAIClient{submitResp: &aiv1.SubmitAIJobResponse{JobId: "job-4"}}
+		if _, err := resolvers.SummarizeChangesResolver(ctx, ai, pc, groups, noGrant(), nil, "pol-1-v1", "pol-1-v2", regen); err != nil {
+			t.Fatalf("reader without regenerate: %v", err)
+		}
+	}
+	ai := &fakeAIClient{}
+	_, err := resolvers.SummarizeChangesResolver(ctx, ai, pc, groups, noGrant(), nil, "pol-1-v1", "pol-1-v2", &yes)
+	if status.Code(err) != codes.PermissionDenied || ai.lastSubmitReq != nil {
+		t.Fatalf("reader regenerating: err = %v, submitted = %v; want PermissionDenied and no job", err, ai.lastSubmitReq)
+	}
+
+	rc := groups.(*raciCategoryClient)
+	rc.rulesets["g-it"] = append(rc.rulesets["g-it"], authorOnlyRule("u"))
+	ai = &fakeAIClient{submitResp: &aiv1.SubmitAIJobResponse{JobId: "job-5"}}
+	if _, err := resolvers.SummarizeChangesResolver(ctx, ai, pc, groups, noGrant(), nil, "pol-1-v1", "pol-1-v2", &yes); err != nil {
+		t.Fatalf("author regenerating: %v", err)
+	}
 }

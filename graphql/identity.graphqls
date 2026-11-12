@@ -108,7 +108,8 @@ extend type Query {
   #   which only site-admin holds). searchUsers never sets it: a picker must not offer a deleted account.
   # resolveUserLabels -> resolve a list of user ids to display names; no directory enumeration, no user.manage permission required.
   # searchUsers -> lightweight typeahead: any authenticated caller, returns id+name pairs for users whose
-  #   email contains `query` (backed by IdentityReadService.ListUsersByEmail). No full directory
+  #   first name, last name, full name, username or email contains `query`, case-insensitively, deleted
+  #   accounts left out (backed by IdentityReadService.ListUsersByEmail). No full directory
   #   enumeration — the required `query` arg prevents open-ended sweeps. Results capped at `limit`
   #   (default 20, server-side max 200 per the underlying RPC).
   me: User!
@@ -154,6 +155,16 @@ extend type Query {
   # and reporting's REPORTING_OFFICER_GROUPS name by id, not core's categories
   # (the admin app's "Groups" pages). Site-admin only.
   platformGroups(parentId: ID): [PlatformGroup!]!
+  # searchPlatformGroups -> IdentityReadService.SearchGroups: the group typeahead of
+  # the category access picker. The identity groups, at any depth, whose name
+  # contains `query` (case-insensitive), by name, so a rule names a group that
+  # exists in the directory. People are found with searchUsers; owners are people
+  # only. Open to whoever edits category access (group.manage or template.manage),
+  # not only site admins. `query` is trimmed and needs 2 or more characters
+  # (INVALID_ARGUMENT otherwise), so the directory cannot be listed. `limit`
+  # defaults to 20 and is capped at 50. Groups have no description yet, so only
+  # the name is matched.
+  searchPlatformGroups(query: String!, limit: Int): [PlatformGroup!]!
   # myManagedGroups -> IdentityReadService.GetUser for the caller, then
   # GetGroup for each of their managedGroupIds: the platform groups the
   # signed-in caller is a LOCAL group-manager of, sorted by name, for the

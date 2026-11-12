@@ -10,9 +10,9 @@ import (
 )
 
 // PreviewMovePolicies is the dry run of MovePolicies: what moving the documents
-// to the category would do, in the order asked. Nothing changes. Site admin only.
-func PreviewMovePolicies(ctx context.Context, client corev1.PolicyServiceClient, policyIDs []string, homeCategoryID string) (*MovePoliciesPreview, error) {
-	actor, err := requireSiteAdmin(ctx)
+// to the category would do, in the order asked. Nothing changes. Needs Manage on each document's category and Author on the target, or the site-admin role.
+func PreviewMovePolicies(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, policyIDs []string, homeCategoryID string) (*MovePoliciesPreview, error) {
+	actor, err := authorizeMove(ctx, client, categoryClient, policyIDs, homeCategoryID)
 	if err != nil {
 		return nil, err
 	}
@@ -27,9 +27,9 @@ func PreviewMovePolicies(ctx context.Context, client corev1.PolicyServiceClient,
 
 // MovePolicies moves several documents to one category, all or nothing. A
 // document core refuses refuses the whole batch with core's coded MOVE_REFUSED,
-// which the error presenter relays as it is. Site admin only.
-func MovePolicies(ctx context.Context, client corev1.PolicyServiceClient, policyIDs []string, homeCategoryID string) (*MovePoliciesResult, error) {
-	actor, err := requireSiteAdmin(ctx)
+// which the error presenter relays as it is. Gated like PreviewMovePolicies.
+func MovePolicies(ctx context.Context, client corev1.PolicyServiceClient, categoryClient corev1.CategoryServiceClient, policyIDs []string, homeCategoryID string) (*MovePoliciesResult, error) {
+	actor, err := authorizeMove(ctx, client, categoryClient, policyIDs, homeCategoryID)
 	if err != nil {
 		return nil, err
 	}

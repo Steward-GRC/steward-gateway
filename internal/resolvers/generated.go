@@ -1202,6 +1202,7 @@ type ComplexityRoot struct {
 		ResolveUserLabels          func(childComplexity int, ids []string) int
 		ReviewThreads              func(childComplexity int, policyVersionID string) int
 		SearchAndAnswer            func(childComplexity int, question string, categoryID *string) int
+		SearchPlatformGroups       func(childComplexity int, query string, limit *int) int
 		SearchPolicies             func(childComplexity int, query string, documentType *DocumentType, first *int, after *string) int
 		SearchUsers                func(childComplexity int, query string, limit *int) int
 		SimulateCategory           func(childComplexity int, categoryID string, userID string, draftRules []*RaciRuleInput) int
@@ -1994,6 +1995,7 @@ type QueryResolver interface {
 	PreviewUserDeletion(ctx context.Context, userID string) (*UserDeletionPreview, error)
 	ManagedGroupMembers(ctx context.Context, groupID string) ([]*User, error)
 	PlatformGroups(ctx context.Context, parentID *string) ([]*PlatformGroup, error)
+	SearchPlatformGroups(ctx context.Context, query string, limit *int) ([]*PlatformGroup, error)
 	MyManagedGroups(ctx context.Context) ([]*PlatformGroup, error)
 	ListUserSessions(ctx context.Context, userID string) ([]*Session, error)
 	MySessions(ctx context.Context) ([]*Session, error)
@@ -8247,6 +8249,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.SearchAndAnswer(childComplexity, args["question"].(string), args["categoryId"].(*string)), true
+	case "Query.searchPlatformGroups":
+		if e.ComplexityRoot.Query.SearchPlatformGroups == nil {
+			break
+		}
+
+		args, err := ec.field_Query_searchPlatformGroups_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SearchPlatformGroups(childComplexity, args["query"].(string), args["limit"].(*int)), true
 	case "Query.searchPolicies":
 		if e.ComplexityRoot.Query.SearchPolicies == nil {
 			break
@@ -11622,7 +11635,8 @@ extend type Mutation {
   retirePolicy(id: ID!): Policy!
   # Site-admin: reassign a policy's owner (author).
   setPolicyOwner(policyId: ID!, ownerUserId: ID!): Policy!
-  # Site-admin: move a policy to another section; renumbers to the target's sequence.
+  # Move a policy to another section; renumbers to the target's sequence. Needs Manage on
+  # the policy's category and Author on the target, or the site-admin role.
   movePolicy(policyId: ID!, homeCategoryId: ID!): Policy!
   # Flip a policy's classification (STANDARD <-> SENSITIVE) in place. This is a
   # direct metadata change — it does NOT create a new version and does NOT trigger
@@ -12268,8 +12282,9 @@ type CategoryRuleset { categoryId: ID!  rules: [RaciRule!]! }
 enum RaciReasonCode { ENTRY DEFAULT_DENY OWNER ROOT REQUIRES }
 enum RaciAction { READ AUTHOR APPROVE MANAGE ACK }
 
-# A deny that is configured for root: stored, never applied (root is always
-# allowed), and shown by the simulator as blocked.
+# A deny of Read, Author or Manage that is configured for root: stored, never
+# applied (root always holds those three), and shown by the simulator as
+# blocked. A deny of Approve or Ack applies to root and is not listed.
 type RaciConfiguredBlock {
   action: RaciAction!
   categoryId: ID!
@@ -12280,7 +12295,7 @@ type RaciDecision {
   read: Boolean!  ack: Boolean!  approve: Boolean!  author: Boolean!  manage: Boolean!
   readReason: String!  ackReason: String!  approveReason: String!  authorReason: String!  manageReason: String!
   readCode: RaciReasonCode!  ackCode: RaciReasonCode!  approveCode: RaciReasonCode!  authorCode: RaciReasonCode!  manageCode: RaciReasonCode!
-  # Empty unless the person is root and a row would have denied an action.
+  # Empty unless the person is root and a row would have denied Read, Author or Manage.
   configuredBlock: [RaciConfiguredBlock!]!
 }
 extend type Query {
@@ -12533,7 +12548,8 @@ extend type Query {
   #   which only site-admin holds). searchUsers never sets it: a picker must not offer a deleted account.
   # resolveUserLabels -> resolve a list of user ids to display names; no directory enumeration, no user.manage permission required.
   # searchUsers -> lightweight typeahead: any authenticated caller, returns id+name pairs for users whose
-  #   email contains ` + "`" + `query` + "`" + ` (backed by IdentityReadService.ListUsersByEmail). No full directory
+  #   first name, last name, full name, username or email contains ` + "`" + `query` + "`" + `, case-insensitively, deleted
+  #   accounts left out (backed by IdentityReadService.ListUsersByEmail). No full directory
   #   enumeration — the required ` + "`" + `query` + "`" + ` arg prevents open-ended sweeps. Results capped at ` + "`" + `limit` + "`" + `
   #   (default 20, server-side max 200 per the underlying RPC).
   me: User!
@@ -12579,6 +12595,16 @@ extend type Query {
   # and reporting's REPORTING_OFFICER_GROUPS name by id, not core's categories
   # (the admin app's "Groups" pages). Site-admin only.
   platformGroups(parentId: ID): [PlatformGroup!]!
+  # searchPlatformGroups -> IdentityReadService.SearchGroups: the group typeahead of
+  # the category access picker. The identity groups, at any depth, whose name
+  # contains ` + "`" + `query` + "`" + ` (case-insensitive), by name, so a rule names a group that
+  # exists in the directory. People are found with searchUsers; owners are people
+  # only. Open to whoever edits category access (group.manage or template.manage),
+  # not only site admins. ` + "`" + `query` + "`" + ` is trimmed and needs 2 or more characters
+  # (INVALID_ARGUMENT otherwise), so the directory cannot be listed. ` + "`" + `limit` + "`" + `
+  # defaults to 20 and is capped at 50. Groups have no description yet, so only
+  # the name is matched.
+  searchPlatformGroups(query: String!, limit: Int): [PlatformGroup!]!
   # myManagedGroups -> IdentityReadService.GetUser for the caller, then
   # GetGroup for each of their managedGroupIds: the platform groups the
   # signed-in caller is a LOCAL group-manager of, sorted by name, for the
@@ -13283,13 +13309,14 @@ extend type Query {
 }
 `, BuiltIn: false},
 	{Name: "../../graphql/policy_move.graphqls", Input: `extend type Query {
-  # Site-admin: the dry run of movePolicies. What moving these documents to the
+  # The dry run of movePolicies (same gate: Manage on each document's category and Author
+  # on the target, or the site-admin role). What moving these documents to the
   # category would do, in the order asked. Nothing changes.
   previewMovePolicies(policyIds: [ID!]!, homeCategoryId: ID!): MovePoliciesPreview!
 }
 
 extend type Mutation {
-  # Site-admin: move several documents to one category, all or nothing. Each is
+  # Move several documents to one category, all or nothing. Each is
   # renumbered from the target's sequence, in order. Refused whole (MOVE_REFUSED,
   # naming the first document that cannot move and why) if any would be refused.
   movePolicies(policyIds: [ID!]!, homeCategoryId: ID!): MovePoliciesResult!
@@ -22354,6 +22381,28 @@ func (ec *executionContext) field_Query_searchAndAnswer_args(ctx context.Context
 		return nil, err
 	}
 	args["categoryId"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_searchPlatformGroups_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "query",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["query"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
 	return args, nil
 }
 
@@ -46055,6 +46104,50 @@ func (ec *executionContext) fieldContext_Query_platformGroups(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_searchPlatformGroups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_searchPlatformGroups(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SearchPlatformGroups(ctx, fc.Args["query"].(string), fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*PlatformGroup) graphql.Marshaler {
+			return ec.marshalNPlatformGroup2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐPlatformGroupᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_searchPlatformGroups(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_PlatformGroup(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_searchPlatformGroups_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_myManagedGroups(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -68228,6 +68321,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_platformGroups(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "searchPlatformGroups":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_searchPlatformGroups(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

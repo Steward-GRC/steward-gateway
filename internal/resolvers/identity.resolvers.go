@@ -144,6 +144,11 @@ func (r *mutationResolver) ResetUserPassword(ctx context.Context, userID string,
 	return ResetUserPasswordResolver(ctx, r.IdentityAdminClient, userID, newPassword)
 }
 
+// ChangeMyPassword is the resolver for the changeMyPassword field.
+func (r *mutationResolver) ChangeMyPassword(ctx context.Context, currentPassword string, newPassword string) (bool, error) {
+	return ChangeMyPasswordResolver(ctx, r.logger(), r.IdentityClient, currentPassword, newPassword)
+}
+
 // ResendWelcomeEmail is the resolver for the resendWelcomeEmail field.
 func (r *mutationResolver) ResendWelcomeEmail(ctx context.Context, userID string) (bool, error) {
 	return ResendWelcomeEmailResolver(ctx, r.WelcomeClient, userID)

@@ -168,3 +168,8 @@ func TestDenyIfImpersonating_BlocksTheAuditRetentionMutations(t *testing.T) {
 		require.Error(t, denyIfImpersonating(ctx, name), "%q must be blocked while impersonating", name)
 	}
 }
+
+func TestDenyIfImpersonating_ChangeMyPasswordBlocked(t *testing.T) {
+	require.Error(t, denyIfImpersonating(impersonatingCtx(), "changeMyPassword"),
+		"changing the signed-in person's password must be refused while acting as them")
+}

@@ -22,6 +22,7 @@ const impersonationBlockedMsg = "not allowed while acting as another user"
 // while a request is impersonating — even though writes are generally allowed during impersonation.
 var impersonationDenylist = map[string]struct{}{
 	"resetUserPassword": {},
+	"changeMyPassword":  {},
 
 	"enrollTotpBegin":          {},
 	"enrollTotpConfirm":        {},

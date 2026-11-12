@@ -9,8 +9,8 @@ import (
 	"net/http"
 
 	log "github.com/Bugs5382/go-log"
-	stewardauthz "github.com/Steward-GRC/steward-authz"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	"github.com/Steward-GRC/steward-gateway/internal/authz"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -155,7 +155,7 @@ func (h *Handlers) provisionSSO(ctx context.Context, rootID string, in *ssoInput
 
 	authCtx := principal.WithClaims(ctx, principal.Static{
 		UserIDValue: rootID,
-		RolesValue:  []string{string(stewardauthz.RoleSiteAdmin)},
+		RolesValue:  []string{string(authz.RoleSiteAdmin)},
 		IsRootValue: true,
 	})
 

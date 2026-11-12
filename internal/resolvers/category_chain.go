@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/Bugs5382/go-authz/ordered"
-	authz "github.com/Steward-GRC/steward-authz"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"

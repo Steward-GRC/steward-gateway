@@ -15,7 +15,6 @@ require (
 	github.com/Bugs5382/go-rabbitmq v1.3.0
 	github.com/Bugs5382/go-redis v1.2.0
 	github.com/Bugs5382/go-workload-identity v1.0.0
-	github.com/Steward-GRC/steward-authz v0.0.0-20261005231355-d19c8e206a95
 	github.com/alicebob/miniredis/v2 v2.39.0
 	github.com/coder/websocket v1.8.15
 	github.com/gorilla/websocket v1.5.3

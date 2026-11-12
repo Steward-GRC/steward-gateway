@@ -6,13 +6,13 @@ package resolvers
 import (
 	"context"
 
-	authz "github.com/Steward-GRC/steward-authz"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 )
 
 // subjIsSiteAdmin reports whether the subject holds the site-admin role.
-func subjIsSiteAdmin(subj authz.Subject) bool { return subj.SiteAdmin() }
+func subjIsSiteAdmin(subj authz.Subject) bool { return authz.IsSiteAdmin(subj) }
 
 // subjOverrideFor returns the subject's per-policy override for the policy
 // number: GrantAllow, GrantDeny or GrantBlank.
@@ -29,13 +29,13 @@ func subjOverrideFor(subj authz.Subject, number string) authz.Grant {
 // root) sees that the policy exists with its content obfuscated, everyone else
 // is denied.
 func obfuscateOrDeny(subj authz.Subject) authz.Effect {
-	if subj.SiteAdmin() || subj.Root {
+	if authz.IsSiteAdmin(subj) || subj.Root {
 		return authz.EffectObfuscate
 	}
 	return authz.EffectDeny
 }
 
-// sensitivityGate applies steward-authz's sensitive-document rule: only the
+// sensitivityGate applies the permission catalog (internal/authz)'s sensitive-document rule: only the
 // individual read-sensitive grant or the policy's own author (its owner) reads
 // a sensitive policy.
 func sensitivityGate(subj authz.Subject, p *Policy) authz.Effect {

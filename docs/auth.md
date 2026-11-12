@@ -86,3 +86,22 @@ and is not refreshed against Kratos.
 | `MAINTENANCE_CACHE_TTL` | `5s` | no | How long the maintenance state is cached |
 | `NOTIFY_UNSUB_SECRET` | empty | no | Verifies the signed notify links; must match obligations; empty turns the routes off |
 | `NOTIFY_PREFERENCES_URL` | empty | with the secret | Where the browser unsubscribe lands |
+
+## Permission catalog
+
+The gateway decides roles, scoped grants and per-document reads with go-authz's `rbac` package
+(`github.com/Bugs5382/go-authz/rbac`, pinned at a released tag in `go.mod`). The Steward catalog
+(permissions, roles, the baseline role, the sensitive read and the roles that see an excluded
+document obfuscated) is `internal/authz/catalog.json`. This repo is its canonical home. The
+`internal/authz` package embeds it, parses it once at start-up and names its permissions and roles
+as constants; a test fails when a constant and the catalog disagree. Category rules are not in the
+catalog; they come from `ordered`.
+
+Another service keeps an identical embedded copy and refreshes it from a gateway commit:
+
+```sh
+gh api "repos/Steward-GRC/steward-gateway/contents/internal/authz/catalog.json?ref=<sha>" -q .content | base64 -d > internal/authz/catalog.json
+```
+
+then runs its tests (they compare the copy with `rbac.Diff`) and commits. A catalog change is one
+gateway PR, then one refresh PR per service.

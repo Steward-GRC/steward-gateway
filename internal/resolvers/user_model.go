@@ -6,7 +6,7 @@ package resolvers
 import (
 	"slices"
 
-	authz "github.com/Steward-GRC/steward-authz"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 )

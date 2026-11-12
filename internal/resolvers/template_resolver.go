@@ -6,8 +6,8 @@ package resolvers
 import (
 	"context"
 
-	authz "github.com/Steward-GRC/steward-authz"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

@@ -11815,7 +11815,7 @@ type Policy {
 }
 
 # PolicyViewerCan is the per-viewer authorization projection of a Policy,
-# computed server-side by steward-authz. The UI mirrors these for
+# computed server-side from the permission catalog. The UI mirrors these for
 # UX only; the gateway is the real enforcement boundary.
 type PolicyViewerCan {
   read: Boolean!              # the viewer may see this policy at all

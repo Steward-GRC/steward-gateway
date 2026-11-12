@@ -20,7 +20,7 @@ import (
 	"syscall"
 	"time"
 
-	stewardauthz "github.com/Steward-GRC/steward-authz"
+	"github.com/Steward-GRC/steward-gateway/internal/authz"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 )
 
@@ -40,7 +40,7 @@ const (
 // the element prefix) means the parser handles metadata that uses md:/ds:
 // prefixes, a default namespace, or any other prefix.
 // siteAdminRole gates the admin-only auth routes, as it did before the port.
-var siteAdminRole = string(stewardauthz.RoleSiteAdmin)
+var siteAdminRole = string(authz.RoleSiteAdmin)
 
 const (
 	bindingRedirect = "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"

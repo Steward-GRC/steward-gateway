@@ -7,8 +7,8 @@ import (
 	"context"
 
 	log "github.com/Bugs5382/go-log"
-	authz "github.com/Steward-GRC/steward-authz"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 	"github.com/Steward-GRC/steward-gateway/internal/bff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

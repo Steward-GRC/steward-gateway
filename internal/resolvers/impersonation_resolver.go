@@ -8,9 +8,9 @@ import (
 	"slices"
 	"time"
 
-	authz "github.com/Steward-GRC/steward-authz"
 	auditv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/audit/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 	"github.com/Steward-GRC/steward-gateway/internal/bff"
 	"github.com/Steward-GRC/steward-gateway/internal/errcodes"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"

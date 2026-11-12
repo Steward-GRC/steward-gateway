@@ -6,7 +6,7 @@ package resolvers
 import (
 	"context"
 
-	authz "github.com/Steward-GRC/steward-authz"
+	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -63,7 +63,7 @@ func claimsUserID(ctx context.Context) (string, error) {
 	return c.UserID(), nil
 }
 
-// subjectFromCtx builds the steward-authz Subject for the signed-in user.
+// subjectFromCtx builds the the permission catalog (internal/authz) Subject for the signed-in user.
 // BreakGlass is left unset; the read paths fill it per request.
 func subjectFromCtx(ctx context.Context) (authz.Subject, error) {
 	c, err := signedIn(ctx)

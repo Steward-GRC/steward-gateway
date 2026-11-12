@@ -763,7 +763,6 @@ type ComplexityRoot struct {
 		ForceRotateSpCertificate      func(childComplexity int) int
 		GrantGroupManager             func(childComplexity int, userID string, groupID string) int
 		GrantRole                     func(childComplexity int, userID string, role string, category *string) int
-		GrantRoot                     func(childComplexity int, userID string, otp string) int
 		IssueAppendixCollabToken      func(childComplexity int, appendixID string) int
 		IssueCollabToken              func(childComplexity int, input IssueCollabTokenInput) int
 		MarkAllNotificationsRead      func(childComplexity int) int
@@ -816,7 +815,6 @@ type ComplexityRoot struct {
 		RevokeMySession               func(childComplexity int, sessionID string) int
 		RevokeMySessions              func(childComplexity int) int
 		RevokeRole                    func(childComplexity int, userID string, role string, category *string) int
-		RevokeRoot                    func(childComplexity int, userID string, otp string) int
 		RevokeUserSessions            func(childComplexity int, userID string, reason *string) int
 		SaveAppendixDraft             func(childComplexity int, id string, title string, contentJSON string) int
 		SaveDraft                     func(childComplexity int, policyID string, contentJSON string, templateVersionID *string) int
@@ -875,6 +873,7 @@ type ComplexityRoot struct {
 		SummarizeChanges              func(childComplexity int, fromVersionID string, toVersionID string, regenerate *bool) int
 		SwapAssignee                  func(childComplexity int, input SwapAssigneeInput) int
 		TestAIProvider                func(childComplexity int) int
+		TransferRoot                  func(childComplexity int, userID string, otp string) int
 		UpdateAppendix                func(childComplexity int, id string, title string, contentJSON string) int
 		UpdateCaseNotice              func(childComplexity int, caseID string, noticeID string, status NoticeStatus, sentOn *string) int
 		UpdateContactBlock            func(childComplexity int, id string, block ContactBlockInput) int
@@ -1820,8 +1819,7 @@ type MutationResolver interface {
 	RevokeGroupManager(ctx context.Context, userID string, groupID string) (*User, error)
 	SetUserPolicyOverride(ctx context.Context, userID string, policyNumber string, effect *OverrideEffect) (*User, error)
 	RequestStepUpOtp(ctx context.Context) (bool, error)
-	GrantRoot(ctx context.Context, userID string, otp string) (*User, error)
-	RevokeRoot(ctx context.Context, userID string, otp string) (*User, error)
+	TransferRoot(ctx context.Context, userID string, otp string) (*User, error)
 	RequestHardReset(ctx context.Context, module string, reason string) (*HardResetRequest, error)
 	ApproveHardReset(ctx context.Context, requestID string) (*HardResetRequest, error)
 	CancelHardReset(ctx context.Context, requestID string) (*HardResetRequest, error)
@@ -5116,17 +5114,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.GrantRole(childComplexity, args["userId"].(string), args["role"].(string), args["category"].(*string)), true
-	case "Mutation.grantRoot":
-		if e.ComplexityRoot.Mutation.GrantRoot == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_grantRoot_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.GrantRoot(childComplexity, args["userId"].(string), args["otp"].(string)), true
 	case "Mutation.issueAppendixCollabToken":
 		if e.ComplexityRoot.Mutation.IssueAppendixCollabToken == nil {
 			break
@@ -5684,17 +5671,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RevokeRole(childComplexity, args["userId"].(string), args["role"].(string), args["category"].(*string)), true
-	case "Mutation.revokeRoot":
-		if e.ComplexityRoot.Mutation.RevokeRoot == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_revokeRoot_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.RevokeRoot(childComplexity, args["userId"].(string), args["otp"].(string)), true
 	case "Mutation.revokeUserSessions":
 		if e.ComplexityRoot.Mutation.RevokeUserSessions == nil {
 			break
@@ -6318,6 +6294,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.TestAIProvider(childComplexity), true
+	case "Mutation.transferRoot":
+		if e.ComplexityRoot.Mutation.TransferRoot == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_transferRoot_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.TransferRoot(childComplexity, args["userId"].(string), args["otp"].(string)), true
 	case "Mutation.updateAppendix":
 		if e.ComplexityRoot.Mutation.UpdateAppendix == nil {
 			break
@@ -12518,17 +12505,16 @@ extend type Mutation {
   setUserPolicyOverride(userId: ID!, policyNumber: String!, effect: OverrideEffect): User!
   # Emails a one-time confirmation code to the CALLING admin's own address
   # (server-bound from the session, never from input). Arm this before
-  # grantRoot or revokeRoot; the emailed code must then be passed as otp.
+  # transferRoot; the emailed code must then be passed as otp.
   # Always returns true (anti-enumeration).
   requestStepUpOtp: Boolean!
-  # Makes userId a root admin as well; they also get site-admin. Root only,
-  # refused during act-as, and requires the one-time code emailed by
+  # Hands the single root seat to userId and returns them as the new root.
+  # There is exactly one root: the caller stops being root and keeps
+  # site-admin, userId also gets site-admin, and sessions stay open. Root
+  # only, refused during act-as, and requires the one-time code emailed by
   # requestStepUpOtp, verified server-side first — an invalid/absent code
-  # grants nothing.
-  grantRoot(userId: ID!, otp: String!): User!
-  # Takes the root role from userId, who keeps site-admin. The last root
-  # admin can't lose it. Same checks as grantRoot.
-  revokeRoot(userId: ID!, otp: String!): User!
+  # moves nothing.
+  transferRoot(userId: ID!, otp: String!): User!
   # Starts a two-person hard reset of a module: one root admin asks, a
   # different root admin approves within the request's 24h window. Root
   # only, refused during act-as. One open request per module.
@@ -18304,28 +18290,6 @@ func (ec *executionContext) field_Mutation_grantRole_args(ctx context.Context, r
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_grantRoot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNID2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["userId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "otp",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["otp"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_issueAppendixCollabToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19281,28 +19245,6 @@ func (ec *executionContext) field_Mutation_revokeRole_args(ctx context.Context, 
 		return nil, err
 	}
 	args["category"] = arg2
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_revokeRoot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNID2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["userId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "otp",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNString2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["otp"] = arg1
 	return args, nil
 }
 
@@ -20569,6 +20511,28 @@ func (ec *executionContext) field_Mutation_swapAssignee_args(ctx context.Context
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_transferRoot_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["userId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "otp",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["otp"] = arg1
 	return args, nil
 }
 
@@ -36299,17 +36263,17 @@ func (ec *executionContext) fieldContext_Mutation_requestStepUpOtp(_ context.Con
 	return graphql.NewScalarFieldContext("Mutation", field, true, true, errors.New("field of type Boolean does not have child fields"))
 }
 
-func (ec *executionContext) _Mutation_grantRoot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_transferRoot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_grantRoot(ctx, field)
+			return ec.fieldContext_Mutation_transferRoot(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().GrantRoot(ctx, fc.Args["userId"].(string), fc.Args["otp"].(string))
+			return ec.Resolvers.Mutation().TransferRoot(ctx, fc.Args["userId"].(string), fc.Args["otp"].(string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *User) graphql.Marshaler {
@@ -36319,7 +36283,7 @@ func (ec *executionContext) _Mutation_grantRoot(ctx context.Context, field graph
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_grantRoot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_transferRoot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -36336,51 +36300,7 @@ func (ec *executionContext) fieldContext_Mutation_grantRoot(ctx context.Context,
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_grantRoot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_revokeRoot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_revokeRoot(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().RevokeRoot(ctx, fc.Args["userId"].(string), fc.Args["otp"].(string))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *User) graphql.Marshaler {
-			return ec.marshalNUser2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐUser(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Mutation_revokeRoot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_User(ctx, field)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_revokeRoot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_transferRoot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -64118,16 +64038,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "grantRoot":
+		case "transferRoot":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_grantRoot(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "revokeRoot":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_revokeRoot(ctx, field)
+				return ec._Mutation_transferRoot(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

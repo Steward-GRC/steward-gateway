@@ -562,6 +562,7 @@ type ObligationItem struct {
 	Title           string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
 	VersionNo       int32                  `protobuf:"varint,4,opt,name=version_no,json=versionNo,proto3" json:"version_no,omitempty"`
 	PolicyVersionId string                 `protobuf:"bytes,5,opt,name=policy_version_id,json=policyVersionId,proto3" json:"policy_version_id,omitempty"`
+	DueAt           *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=due_at,json=dueAt,proto3" json:"due_at,omitempty"` // publish time of policy_version_id plus the configured days; unset when none applies
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -629,6 +630,13 @@ func (x *ObligationItem) GetPolicyVersionId() string {
 		return x.PolicyVersionId
 	}
 	return ""
+}
+
+func (x *ObligationItem) GetDueAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DueAt
+	}
+	return nil
 }
 
 type GetMyObligationsRequest struct {
@@ -1121,14 +1129,15 @@ const file_steward_obligations_v1_ack_proto_rawDesc = "" +
 	"\x11policy_version_id\x18\x02 \x01(\tR\x0fpolicyVersionId\"q\n" +
 	"\x14GetAckStatusResponse\x12\"\n" +
 	"\facknowledged\x18\x01 \x01(\bR\facknowledged\x125\n" +
-	"\backed_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\aackedAt\"\xa6\x01\n" +
+	"\backed_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\aackedAt\"\xd9\x01\n" +
 	"\x0eObligationItem\x12\x1b\n" +
 	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\x12\x16\n" +
 	"\x06number\x18\x02 \x01(\tR\x06number\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1d\n" +
 	"\n" +
 	"version_no\x18\x04 \x01(\x05R\tversionNo\x12*\n" +
-	"\x11policy_version_id\x18\x05 \x01(\tR\x0fpolicyVersionId\"2\n" +
+	"\x11policy_version_id\x18\x05 \x01(\tR\x0fpolicyVersionId\x121\n" +
+	"\x06due_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x05dueAt\"2\n" +
 	"\x17GetMyObligationsRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"d\n" +
 	"\x18GetMyObligationsResponse\x12H\n" +
@@ -1218,30 +1227,31 @@ var file_steward_obligations_v1_ack_proto_depIdxs = []int32{
 	1,  // 3: steward.obligations.v1.TransferAcknowledgmentsResponse.items:type_name -> steward.obligations.v1.AckTransferItem
 	21, // 4: steward.obligations.v1.RecordAckResponse.acknowledgment:type_name -> steward.obligations.v1.Acknowledgment
 	20, // 5: steward.obligations.v1.GetAckStatusResponse.acked_at:type_name -> google.protobuf.Timestamp
-	10, // 6: steward.obligations.v1.GetMyObligationsResponse.obligations:type_name -> steward.obligations.v1.ObligationItem
-	20, // 7: steward.obligations.v1.AcknowledgmentItem.acked_at:type_name -> google.protobuf.Timestamp
-	17, // 8: steward.obligations.v1.ListMyAcknowledgmentsResponse.acknowledgments:type_name -> steward.obligations.v1.AcknowledgmentItem
-	4,  // 9: steward.obligations.v1.AckService.RecordAck:input_type -> steward.obligations.v1.RecordAckRequest
-	6,  // 10: steward.obligations.v1.AckService.RecordView:input_type -> steward.obligations.v1.RecordViewRequest
-	8,  // 11: steward.obligations.v1.AckService.GetAckStatus:input_type -> steward.obligations.v1.GetAckStatusRequest
-	2,  // 12: steward.obligations.v1.AckService.TransferAcknowledgments:input_type -> steward.obligations.v1.TransferAcknowledgmentsRequest
-	11, // 13: steward.obligations.v1.ObligationService.GetMyObligations:input_type -> steward.obligations.v1.GetMyObligationsRequest
-	18, // 14: steward.obligations.v1.ObligationService.ListMyAcknowledgments:input_type -> steward.obligations.v1.ListMyAcknowledgmentsRequest
-	13, // 15: steward.obligations.v1.ObligationService.GetObligatedAudienceCount:input_type -> steward.obligations.v1.GetObligatedAudienceCountRequest
-	15, // 16: steward.obligations.v1.ObligationService.MyAckSummary:input_type -> steward.obligations.v1.MyAckSummaryRequest
-	5,  // 17: steward.obligations.v1.AckService.RecordAck:output_type -> steward.obligations.v1.RecordAckResponse
-	7,  // 18: steward.obligations.v1.AckService.RecordView:output_type -> steward.obligations.v1.RecordViewResponse
-	9,  // 19: steward.obligations.v1.AckService.GetAckStatus:output_type -> steward.obligations.v1.GetAckStatusResponse
-	3,  // 20: steward.obligations.v1.AckService.TransferAcknowledgments:output_type -> steward.obligations.v1.TransferAcknowledgmentsResponse
-	12, // 21: steward.obligations.v1.ObligationService.GetMyObligations:output_type -> steward.obligations.v1.GetMyObligationsResponse
-	19, // 22: steward.obligations.v1.ObligationService.ListMyAcknowledgments:output_type -> steward.obligations.v1.ListMyAcknowledgmentsResponse
-	14, // 23: steward.obligations.v1.ObligationService.GetObligatedAudienceCount:output_type -> steward.obligations.v1.GetObligatedAudienceCountResponse
-	16, // 24: steward.obligations.v1.ObligationService.MyAckSummary:output_type -> steward.obligations.v1.MyAckSummaryResponse
-	17, // [17:25] is the sub-list for method output_type
-	9,  // [9:17] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	20, // 6: steward.obligations.v1.ObligationItem.due_at:type_name -> google.protobuf.Timestamp
+	10, // 7: steward.obligations.v1.GetMyObligationsResponse.obligations:type_name -> steward.obligations.v1.ObligationItem
+	20, // 8: steward.obligations.v1.AcknowledgmentItem.acked_at:type_name -> google.protobuf.Timestamp
+	17, // 9: steward.obligations.v1.ListMyAcknowledgmentsResponse.acknowledgments:type_name -> steward.obligations.v1.AcknowledgmentItem
+	4,  // 10: steward.obligations.v1.AckService.RecordAck:input_type -> steward.obligations.v1.RecordAckRequest
+	6,  // 11: steward.obligations.v1.AckService.RecordView:input_type -> steward.obligations.v1.RecordViewRequest
+	8,  // 12: steward.obligations.v1.AckService.GetAckStatus:input_type -> steward.obligations.v1.GetAckStatusRequest
+	2,  // 13: steward.obligations.v1.AckService.TransferAcknowledgments:input_type -> steward.obligations.v1.TransferAcknowledgmentsRequest
+	11, // 14: steward.obligations.v1.ObligationService.GetMyObligations:input_type -> steward.obligations.v1.GetMyObligationsRequest
+	18, // 15: steward.obligations.v1.ObligationService.ListMyAcknowledgments:input_type -> steward.obligations.v1.ListMyAcknowledgmentsRequest
+	13, // 16: steward.obligations.v1.ObligationService.GetObligatedAudienceCount:input_type -> steward.obligations.v1.GetObligatedAudienceCountRequest
+	15, // 17: steward.obligations.v1.ObligationService.MyAckSummary:input_type -> steward.obligations.v1.MyAckSummaryRequest
+	5,  // 18: steward.obligations.v1.AckService.RecordAck:output_type -> steward.obligations.v1.RecordAckResponse
+	7,  // 19: steward.obligations.v1.AckService.RecordView:output_type -> steward.obligations.v1.RecordViewResponse
+	9,  // 20: steward.obligations.v1.AckService.GetAckStatus:output_type -> steward.obligations.v1.GetAckStatusResponse
+	3,  // 21: steward.obligations.v1.AckService.TransferAcknowledgments:output_type -> steward.obligations.v1.TransferAcknowledgmentsResponse
+	12, // 22: steward.obligations.v1.ObligationService.GetMyObligations:output_type -> steward.obligations.v1.GetMyObligationsResponse
+	19, // 23: steward.obligations.v1.ObligationService.ListMyAcknowledgments:output_type -> steward.obligations.v1.ListMyAcknowledgmentsResponse
+	14, // 24: steward.obligations.v1.ObligationService.GetObligatedAudienceCount:output_type -> steward.obligations.v1.GetObligatedAudienceCountResponse
+	16, // 25: steward.obligations.v1.ObligationService.MyAckSummary:output_type -> steward.obligations.v1.MyAckSummaryResponse
+	18, // [18:26] is the sub-list for method output_type
+	10, // [10:18] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_steward_obligations_v1_ack_proto_init() }

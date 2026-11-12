@@ -98,7 +98,7 @@ func (r *queryResolver) ExportAcks(ctx context.Context, policyVersionID string, 
 
 // AckRoster is the resolver for the ackRoster field.
 func (r *queryResolver) AckRoster(ctx context.Context, policyVersionID string, groupID *string) (*AckRoster, error) {
-	return AckRosterResolver(ctx, r.ReportingClient, r.IdentityClient, policyVersionID, groupID)
+	return AckRosterResolver(ctx, r.logger(), r.ReportingClient, r.IdentityClient, policyVersionID, groupID)
 }
 
 // AckActivity is the resolver for the ackActivity field.

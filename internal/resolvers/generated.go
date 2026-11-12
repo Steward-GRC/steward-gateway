@@ -148,6 +148,7 @@ type ComplexityRoot struct {
 	AckRosterEntry struct {
 		AckedAt  func(childComplexity int) int
 		Email    func(childComplexity int) int
+		Groups   func(childComplexity int) int
 		UserID   func(childComplexity int) int
 		UserName func(childComplexity int) int
 	}
@@ -2348,6 +2349,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AckRosterEntry.Email(childComplexity), true
+	case "AckRosterEntry.groups":
+		if e.ComplexityRoot.AckRosterEntry.Groups == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AckRosterEntry.Groups(childComplexity), true
 	case "AckRosterEntry.userId":
 		if e.ComplexityRoot.AckRosterEntry.UserID == nil {
 			break
@@ -12405,7 +12412,9 @@ type CompletionReport {
   overdue: [OverdueEntry!]!
 }
 
-type AckRosterEntry { userId: ID! email: String! userName: String ackedAt: String }
+# groups: the person's platform group names, sorted case-insensitively. Empty
+# when the person has none or identity could not answer.
+type AckRosterEntry { userId: ID! email: String! userName: String ackedAt: String groups: [String!]! }
 type AckRoster { acked: [AckRosterEntry!]! pending: [AckRosterEntry!]! }
 type AckActivityDay { date: String! acks: Int! views: Int! }
 
@@ -13804,6 +13813,8 @@ func (ec *executionContext) childFields_AckRosterEntry(ctx context.Context, fiel
 		return ec.fieldContext_AckRosterEntry_userName(ctx, field)
 	case "ackedAt":
 		return ec.fieldContext_AckRosterEntry_ackedAt(ctx, field)
+	case "groups":
+		return ec.fieldContext_AckRosterEntry_groups(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type AckRosterEntry", field.Name)
 }
@@ -23065,6 +23076,29 @@ func (ec *executionContext) _AckRosterEntry_ackedAt(ctx context.Context, field g
 	)
 }
 func (ec *executionContext) fieldContext_AckRosterEntry_ackedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AckRosterEntry", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _AckRosterEntry_groups(ctx context.Context, field graphql.CollectedField, obj *AckRosterEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AckRosterEntry_groups(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Groups, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AckRosterEntry_groups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("AckRosterEntry", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -56667,6 +56701,11 @@ func (ec *executionContext) _AckRosterEntry(ctx context.Context, sel ast.Selecti
 		case "ackedAt":
 			out.Values[i] = ec._AckRosterEntry_ackedAt(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "groups":
+			out.Values[i] = ec._AckRosterEntry_groups(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		default:

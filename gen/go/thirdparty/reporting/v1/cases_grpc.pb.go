@@ -41,7 +41,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // CaseService is the officer's side. Every call needs a forwarded actor who is
-// in a configured officer group; anyone else, site admins and root included,
+// who holds the privacy-officer role in identity; anyone else, site admins and root included,
 // is refused. Every call, reads included, is audited.
 type CaseServiceClient interface {
 	// ListCases is the case queue (C5), with counts per status.
@@ -207,7 +207,7 @@ func (c *caseServiceClient) CloseCase(ctx context.Context, in *CloseCaseRequest,
 // for forward compatibility.
 //
 // CaseService is the officer's side. Every call needs a forwarded actor who is
-// in a configured officer group; anyone else, site admins and root included,
+// who holds the privacy-officer role in identity; anyone else, site admins and root included,
 // is refused. Every call, reads included, is audited.
 type CaseServiceServer interface {
 	// ListCases is the case queue (C5), with counts per status.

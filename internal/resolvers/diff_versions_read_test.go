@@ -23,10 +23,14 @@ import (
 type diffingPolicyClient struct {
 	*recordingPolicyClient
 	diffCalls int
+	noDiffs   bool
 }
 
 func (d *diffingPolicyClient) DiffVersions(_ context.Context, _ *corev1.DiffVersionsRequest, _ ...grpc.CallOption) (*corev1.DiffVersionsResponse, error) {
 	d.diffCalls++
+	if d.noDiffs {
+		return &corev1.DiffVersionsResponse{Diffs: []*corev1.SectionDiff{{SectionKey: "scope", SectionTitle: "Scope", ChangeType: "unchanged"}}}, nil
+	}
 	return &corev1.DiffVersionsResponse{Diffs: []*corev1.SectionDiff{{
 		SectionKey:   "scope",
 		SectionTitle: "Scope",

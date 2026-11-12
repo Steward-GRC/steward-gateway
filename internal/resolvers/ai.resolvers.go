@@ -31,6 +31,16 @@ func (r *mutationResolver) SubmitEnrichmentSuggestions(ctx context.Context, inpu
 	return SubmitEnrichmentSuggestionsResolver(ctx, r.AIClient, r.CategoryClient, r.enrichmentResolver(), input)
 }
 
+// SummarizeChanges is the resolver for the summarizeChanges field.
+func (r *mutationResolver) SummarizeChanges(ctx context.Context, fromVersionID string, toVersionID string, regenerate *bool) (*SubmitDraftGenerationResult, error) {
+	return SummarizeChangesResolver(ctx, r.AIClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.WorkflowClient, fromVersionID, toVersionID, regenerate)
+}
+
+// RegenerateVersionSummary is the resolver for the regenerateVersionSummary field.
+func (r *mutationResolver) RegenerateVersionSummary(ctx context.Context, versionID string) (*SubmitDraftGenerationResult, error) {
+	return RegenerateVersionSummaryResolver(ctx, r.AIClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, r.WorkflowClient, versionID)
+}
+
 // SetAIEnabled is the resolver for the setAIEnabled field.
 func (r *mutationResolver) SetAIEnabled(ctx context.Context, enabled bool) (bool, error) {
 	return SetAIEnabledResolver(ctx, r.AIClient, enabled)

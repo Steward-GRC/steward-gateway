@@ -963,6 +963,22 @@ type PolicyRevisionSectionInput struct {
 	Order   int    `json:"order"`
 }
 
+type PolicySearchHit struct {
+	Policy  *Policy              `json:"policy"`
+	Rank    float64              `json:"rank"`
+	Snippet *PolicySearchSnippet `json:"snippet,omitempty"`
+}
+
+type PolicySearchPage struct {
+	Hits          []*PolicySearchHit `json:"hits"`
+	NextPageToken string             `json:"nextPageToken"`
+}
+
+type PolicySearchSnippet struct {
+	Text    string      `json:"text"`
+	Matches []*TextSpan `json:"matches"`
+}
+
 type PolicySummaryResult struct {
 	SummaryText string `json:"summaryText"`
 	GeneratedAt string `json:"generatedAt"`
@@ -1448,6 +1464,11 @@ type TemplateVersion struct {
 	VersionNo  int        `json:"versionNo"`
 	Status     string     `json:"status"`
 	Sections   []*Section `json:"sections"`
+}
+
+type TextSpan struct {
+	Start  int `json:"start"`
+	Length int `json:"length"`
 }
 
 type ThreadMessage struct {

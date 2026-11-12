@@ -10629,6 +10629,21 @@ input SubmitDraftGenerationSectionInput {
   order: Int!
 }
 
+"""
+How a generated or revised draft should read. Omitting the framing keeps the
+default formal, clear tone of organizational policy documents.
+"""
+enum DraftFraming {
+  "Plain language at about a 5th-grade reading level."
+  PLAIN
+  "A professional, standard business register."
+  PROFESSIONAL
+  "A formal, legal register."
+  FORMAL
+  "The author's own wording, in customFraming."
+  CUSTOM
+}
+
 input SubmitDraftGenerationInput {
   categoryId: ID       # optional scope hint; when set, the caller must author in that category
   title: String         # working title of the policy being drafted
@@ -10637,6 +10652,8 @@ input SubmitDraftGenerationInput {
   referenceHints: [String!]                         # optional hints, e.g. titles of prior policies to model on
   referenceDocuments: [ReferenceDocumentInput!]      # optional uploaded reference documents (structured, instead of folding into brief)
   enrichmentOptOut: EnrichmentOptOutInput            # per-category opt-out of the folded-in enrichment suggestions (default: all suggested)
+  framing: DraftFraming                              # how the draft should read; omitted keeps the default tone
+  customFraming: String                              # the author's wording for CUSTOM: required then, at most 500 characters, ignored otherwise
 }
 
 # EnrichmentOptOutInput is the per-category opt-out chosen at generation kickoff
@@ -10733,6 +10750,8 @@ input SubmitPolicyRevisionInput {
   instruction: String!                              # the requested change, in the author's words
   sections: [PolicyRevisionSectionInput!]!           # the CURRENT policy sections WITH content, in order
   enrichmentOptOut: EnrichmentOptOutInput            # per-category opt-out of the folded-in enrichment suggestions
+  framing: DraftFraming                              # how the revised text should read; omitted keeps the default tone
+  customFraming: String                              # the author's wording for CUSTOM: required then, at most 500 characters, ignored otherwise
 }
 
 extend type Mutation {
@@ -57629,7 +57648,7 @@ func (ec *executionContext) unmarshalInputSubmitDraftGenerationInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"categoryId", "title", "brief", "sections", "referenceHints", "referenceDocuments", "enrichmentOptOut"}
+	fieldsInOrder := [...]string{"categoryId", "title", "brief", "sections", "referenceHints", "referenceDocuments", "enrichmentOptOut", "framing", "customFraming"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -57685,6 +57704,20 @@ func (ec *executionContext) unmarshalInputSubmitDraftGenerationInput(ctx context
 				return it, err
 			}
 			it.EnrichmentOptOut = data
+		case "framing":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framing"))
+			data, err := ec.unmarshalODraftFraming2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDraftFraming(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Framing = data
+		case "customFraming":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("customFraming"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CustomFraming = data
 		}
 	}
 	return it, nil
@@ -57984,7 +58017,7 @@ func (ec *executionContext) unmarshalInputSubmitPolicyRevisionInput(ctx context.
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"policyId", "versionId", "instruction", "sections", "enrichmentOptOut"}
+	fieldsInOrder := [...]string{"policyId", "versionId", "instruction", "sections", "enrichmentOptOut", "framing", "customFraming"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -58026,6 +58059,20 @@ func (ec *executionContext) unmarshalInputSubmitPolicyRevisionInput(ctx context.
 				return it, err
 			}
 			it.EnrichmentOptOut = data
+		case "framing":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("framing"))
+			data, err := ec.unmarshalODraftFraming2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDraftFraming(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Framing = data
+		case "customFraming":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("customFraming"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CustomFraming = data
 		}
 	}
 	return it, nil
@@ -77203,6 +77250,22 @@ func (ec *executionContext) unmarshalODocumentType2ᚖgithubᚗcomᚋStewardᚑG
 }
 
 func (ec *executionContext) marshalODocumentType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDocumentType(ctx context.Context, sel ast.SelectionSet, v *DocumentType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalODraftFraming2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDraftFraming(ctx context.Context, v any) (*DraftFraming, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(DraftFraming)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalODraftFraming2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐDraftFraming(ctx context.Context, sel ast.SelectionSet, v *DraftFraming) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

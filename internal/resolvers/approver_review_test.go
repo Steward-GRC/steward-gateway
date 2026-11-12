@@ -199,7 +199,7 @@ func TestApproverReviewRule_LeavesEditorsUnchanged(t *testing.T) {
 func TestApproverWithPendingSeat_GetsNoMagicLink(t *testing.T) {
 	pc, gc := reviewEnv(nil)
 	d := contentDelivery()
-	link, err := resolvers.CreateMagicLinkResolver(approverCtx(t), d, pc, gc, nil, "draft-1", false)
+	link, err := resolvers.CreateMagicLinkResolver(approverCtx(t), d, pc, gc, nil, "draft-1")
 	if link != nil || status.Code(err) != codes.NotFound {
 		t.Fatalf("createMagicLink(draft-1) = %+v, %v; want NotFound", link, err)
 	}

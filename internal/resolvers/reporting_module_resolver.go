@@ -16,8 +16,8 @@ import (
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 )
 
-// The Compliance module's off switch and its four-eyes hard reset (parity row
-// 71). Reporting owns the switch and the reset; identity owns the approval
+// The Compliance module's off switch and its four-eyes hard reset. Reporting
+// owns the switch and the reset; identity owns the approval
 // (see the hard reset resolvers in identity_resolver.go). The gateway gates
 // every call by role first and relays reporting's refusals (MODULE_OFF 8113,
 // HARD_RESET_* 8114 to 8118) unchanged, so the browser sees reporting's own

@@ -400,14 +400,14 @@ from identity on every request, so the next request after a transfer already see
 
 Reporting keeps an off switch for the Compliance module. `complianceSettings { moduleEnabled }`
 reads it (compliance managers and root). `setComplianceModule(enabled)` turns the module off or on
-(compliance managers and root). Off, every report and case call is refused with `MODULE_OFF` (8113,
+(compliance managers and root; refused during act-as). Off, every report and case call is refused with `MODULE_OFF` (8113,
 domain `reporting`) and all data is kept.
 
 A hard reset is four-eyes. The root admin asks with `requestHardReset(module: "compliance",
 reason)`; a different active site admin approves with `approveHardReset(requestId)`; the requester
 may withdraw with `cancelHardReset`; `hardResetRequests(module)` lists them for the root admin or a
 site admin. The gateway gates each call by role (root to request, site admin to approve, cancel and
-list) and refuses all of them during act-as; identity still enforces who may do what. After the
+list) and refuses the request, approve, cancel and execute mutations during act-as; identity still enforces who may do what. After the
 approval the root admin calls `executeHardReset(requestId, confirmation)` with the exact phrase
 `RESET COMPLIANCE DATA`. Reporting refuses it, before deleting anything, with `HARD_RESET_CONFIRMATION`
 (8114), `HARD_RESET_MODULE_ON` (8115, switch the module off first), `HARD_RESET_LEGAL_HOLD` (8116, one

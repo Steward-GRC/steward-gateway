@@ -492,6 +492,17 @@ extend type Mutation {
   createWorkflowDef(name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
   updateWorkflowDef(id: ID!, name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
   archiveWorkflowDef(id: ID!): Boolean!
+  """
+  Deletes a workflow nothing uses, and returns true. Needs workflow.manage. Refused, with
+  extensions { code, codeNum, domain, kind: "business" }:
+  - WORKFLOW_DEF_IN_USE_BY_CATEGORY (gateway, 1247): categories use it as their default;
+    extensions carry id and category_count (a decimal string). Nothing is deleted and the
+    workflow service is not called.
+  - WORKFLOW_DEF_IN_USE (workflow, 6013): a run ever used it; extensions carry id, run_count
+    and override_count (decimal strings). Archive it instead.
+  - WORKFLOW_DEF_NOT_FOUND (workflow, 6014): no such workflow; extensions carry id.
+  """
+  deleteWorkflowDef(id: ID!): Boolean!
 }
 
 

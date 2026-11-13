@@ -55,6 +55,7 @@ const (
 	CodeCollabFlushFailed              = 1244
 	CodeReportChecksThrottled          = 1245
 	CodeReportThrottleUnavailable      = 1246
+	CodeWorkflowDefInUseByCategory     = 1247
 	CodeUnauthenticated                = 1250
 )
 
@@ -137,6 +138,9 @@ func Entries() []apperr.Entry {
 		{Code: CodeReportThrottleUnavailable, Symbol: "REPORT_THROTTLE_UNAVAILABLE", Category: apperr.CategoryUnavailable,
 			Title: "anonymous report", Cause: "the throttle store (Valkey) could not be asked, so the check or reply was refused rather than let through unthrottled",
 			UserSafe: true, Message: "Checking a report is unavailable right now. Please try again later."},
+		{Code: CodeWorkflowDefInUseByCategory, Symbol: "WORKFLOW_DEF_IN_USE_BY_CATEGORY", Category: apperr.CategoryFailedPrecondition,
+			Title: "workflow", Cause: "a delete of a workflow definition was refused because one or more categories use it as their default workflow; workflow was not called",
+			UserSafe: true, Message: "This workflow cannot be deleted while categories use it as their default (categories using it: {category_count}). Change those categories first."},
 		{Code: CodeUnauthenticated, Symbol: "UNAUTHENTICATED", Category: apperr.CategoryUnauthenticated,
 			Title: "session", Cause: "the request has no signed-in session",
 			UserSafe: true, Message: "Sign in to continue."},

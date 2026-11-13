@@ -46,6 +46,11 @@ func (r *mutationResolver) ArchiveWorkflowDef(ctx context.Context, id string) (b
 	return ArchiveWorkflowDefResolver(ctx, r.WorkflowClient, id)
 }
 
+// DeleteWorkflowDef is the resolver for the deleteWorkflowDef field.
+func (r *mutationResolver) DeleteWorkflowDef(ctx context.Context, id string) (bool, error) {
+	return DeleteWorkflowDefResolver(ctx, r.logger(), r.WorkflowClient, r.CategoryClient, id)
+}
+
 // WorkflowStatus is the resolver for the workflowStatus field.
 func (r *queryResolver) WorkflowStatus(ctx context.Context, policyVersionID string) (*WorkflowStatus, error) {
 	return WorkflowStatusResolver(ctx, r.logger(), r.WorkflowClient, r.IdentityClient, r.PolicyClient, r.CategoryClient, r.IdentityAdminClient, policyVersionID)

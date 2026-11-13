@@ -1218,6 +1218,7 @@ type ComplexityRoot struct {
 		VerifyAuditChain           func(childComplexity int, fromRecordID string, toRecordID string) int
 		VersionChangesSinceReview  func(childComplexity int, policyVersionID string) int
 		ViewerIsApprover           func(childComplexity int) int
+		WorkflowApproverCandidates func(childComplexity int, workflowID string) int
 		WorkflowDef                func(childComplexity int, id string) int
 		WorkflowDefs               func(childComplexity int) int
 		WorkflowStatus             func(childComplexity int, policyVersionID string) int
@@ -1692,6 +1693,13 @@ type ComplexityRoot struct {
 		SessionID   func(childComplexity int) int
 	}
 
+	WorkflowApproverCandidates struct {
+		Attached    func(childComplexity int) int
+		CategoryIds func(childComplexity int) int
+		Users       func(childComplexity int) int
+		WorkflowID  func(childComplexity int) int
+	}
+
 	WorkflowDef struct {
 		Description func(childComplexity int) int
 		ID          func(childComplexity int) int
@@ -2043,6 +2051,7 @@ type QueryResolver interface {
 	StageEligibleAssignees(ctx context.Context, policyVersionID string, stageIndex int) (*StageEligibleAssignees, error)
 	WorkflowDefs(ctx context.Context) ([]*WorkflowDef, error)
 	WorkflowDef(ctx context.Context, id string) (*WorkflowDef, error)
+	WorkflowApproverCandidates(ctx context.Context, workflowID string) (*WorkflowApproverCandidates, error)
 }
 type SubscriptionResolver interface {
 	AiJobResult(ctx context.Context, jobID string) (<-chan *AIJobResult, error)
@@ -8405,6 +8414,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.ViewerIsApprover(childComplexity), true
+	case "Query.workflowApproverCandidates":
+		if e.ComplexityRoot.Query.WorkflowApproverCandidates == nil {
+			break
+		}
+
+		args, err := ec.field_Query_workflowApproverCandidates_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.WorkflowApproverCandidates(childComplexity, args["workflowId"].(string)), true
 	case "Query.workflowDef":
 		if e.ComplexityRoot.Query.WorkflowDef == nil {
 			break
@@ -10288,6 +10308,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WebauthnRegistration.SessionID(childComplexity), true
+
+	case "WorkflowApproverCandidates.attached":
+		if e.ComplexityRoot.WorkflowApproverCandidates.Attached == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowApproverCandidates.Attached(childComplexity), true
+	case "WorkflowApproverCandidates.categoryIds":
+		if e.ComplexityRoot.WorkflowApproverCandidates.CategoryIds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowApproverCandidates.CategoryIds(childComplexity), true
+	case "WorkflowApproverCandidates.users":
+		if e.ComplexityRoot.WorkflowApproverCandidates.Users == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowApproverCandidates.Users(childComplexity), true
+	case "WorkflowApproverCandidates.workflowId":
+		if e.ComplexityRoot.WorkflowApproverCandidates.WorkflowID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowApproverCandidates.WorkflowID(childComplexity), true
 
 	case "WorkflowDef.description":
 		if e.ComplexityRoot.WorkflowDef.Description == nil {
@@ -14395,9 +14440,23 @@ input WorkflowStageInput {
   vetoApproverIds: [ID!]
   vetoGroupIds: [ID!]
 }
+# Who the workflow editor may offer as an approver. A workflow draws its approvers from the
+# categories that use it as their default workflow, so this is the union of those categories'
+# Approve pools (their owners plus everyone the access rows allow to approve). Root is in it only
+# when the rows allow it: Approve follows the rows even for root. attached is false when no
+# category uses the workflow; users and categoryIds are then empty, so the editor can ask for the
+# workflow to be attached to a category first instead of listing everyone.
+type WorkflowApproverCandidates {
+  workflowId: ID!
+  attached: Boolean!
+  categoryIds: [ID!]!
+  users: [User!]!
+}
 extend type Query {
   workflowDefs: [WorkflowDef!]!
   workflowDef(id: ID!): WorkflowDef
+  # Template admins and above, like the workflow editor itself.
+  workflowApproverCandidates(workflowId: ID!): WorkflowApproverCandidates!
 }
 extend type Mutation {
   createWorkflowDef(name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
@@ -17098,6 +17157,20 @@ func (ec *executionContext) childFields_WebauthnRegistration(ctx context.Context
 		return ec.fieldContext_WebauthnRegistration_sessionId(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type WebauthnRegistration", field.Name)
+}
+
+func (ec *executionContext) childFields_WorkflowApproverCandidates(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "workflowId":
+		return ec.fieldContext_WorkflowApproverCandidates_workflowId(ctx, field)
+	case "attached":
+		return ec.fieldContext_WorkflowApproverCandidates_attached(ctx, field)
+	case "categoryIds":
+		return ec.fieldContext_WorkflowApproverCandidates_categoryIds(ctx, field)
+	case "users":
+		return ec.fieldContext_WorkflowApproverCandidates_users(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type WorkflowApproverCandidates", field.Name)
 }
 
 func (ec *executionContext) childFields_WorkflowDef(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -22645,6 +22718,20 @@ func (ec *executionContext) field_Query_versionChangesSinceReview_args(ctx conte
 		return nil, err
 	}
 	args["policyVersionId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_workflowApproverCandidates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workflowId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["workflowId"] = arg0
 	return args, nil
 }
 
@@ -47967,6 +48054,50 @@ func (ec *executionContext) fieldContext_Query_workflowDef(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_workflowApproverCandidates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_workflowApproverCandidates(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().WorkflowApproverCandidates(ctx, fc.Args["workflowId"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *WorkflowApproverCandidates) graphql.Marshaler {
+			return ec.marshalNWorkflowApproverCandidates2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkflowApproverCandidates(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_workflowApproverCandidates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_WorkflowApproverCandidates(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_workflowApproverCandidates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -55189,6 +55320,107 @@ func (ec *executionContext) _WebauthnRegistration_sessionId(ctx context.Context,
 }
 func (ec *executionContext) fieldContext_WebauthnRegistration_sessionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("WebauthnRegistration", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _WorkflowApproverCandidates_workflowId(ctx context.Context, field graphql.CollectedField, obj *WorkflowApproverCandidates) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowApproverCandidates_workflowId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.WorkflowID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowApproverCandidates_workflowId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowApproverCandidates", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _WorkflowApproverCandidates_attached(ctx context.Context, field graphql.CollectedField, obj *WorkflowApproverCandidates) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowApproverCandidates_attached(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Attached, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowApproverCandidates_attached(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowApproverCandidates", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _WorkflowApproverCandidates_categoryIds(ctx context.Context, field graphql.CollectedField, obj *WorkflowApproverCandidates) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowApproverCandidates_categoryIds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CategoryIds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNID2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowApproverCandidates_categoryIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowApproverCandidates", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _WorkflowApproverCandidates_users(ctx context.Context, field graphql.CollectedField, obj *WorkflowApproverCandidates) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowApproverCandidates_users(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Users, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*User) graphql.Marshaler {
+			return ec.marshalNUser2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐUserᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowApproverCandidates_users(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkflowApproverCandidates",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_User(ctx, field)
+		},
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _WorkflowDef_id(ctx context.Context, field graphql.CollectedField, obj *WorkflowDef) (ret graphql.Marshaler) {
@@ -69389,6 +69621,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "workflowApproverCandidates":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_workflowApproverCandidates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -72750,6 +73004,59 @@ func (ec *executionContext) _WebauthnRegistration(ctx context.Context, sel ast.S
 			}
 		case "sessionId":
 			out.Values[i] = ec._WebauthnRegistration_sessionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var workflowApproverCandidatesImplementors = []string{"WorkflowApproverCandidates"}
+
+func (ec *executionContext) _WorkflowApproverCandidates(ctx context.Context, sel ast.SelectionSet, obj *WorkflowApproverCandidates) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, workflowApproverCandidatesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WorkflowApproverCandidates")
+		case "workflowId":
+			out.Values[i] = ec._WorkflowApproverCandidates_workflowId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "attached":
+			out.Values[i] = ec._WorkflowApproverCandidates_attached(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "categoryIds":
+			out.Values[i] = ec._WorkflowApproverCandidates_categoryIds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "users":
+			out.Values[i] = ec._WorkflowApproverCandidates_users(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -77710,6 +78017,20 @@ func (ec *executionContext) marshalNWebauthnRegistration2ᚖgithubᚗcomᚋStewa
 		return graphql.Null
 	}
 	return ec._WebauthnRegistration(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWorkflowApproverCandidates2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkflowApproverCandidates(ctx context.Context, sel ast.SelectionSet, v WorkflowApproverCandidates) graphql.Marshaler {
+	return ec._WorkflowApproverCandidates(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWorkflowApproverCandidates2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkflowApproverCandidates(ctx context.Context, sel ast.SelectionSet, v *WorkflowApproverCandidates) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WorkflowApproverCandidates(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNWorkflowDef2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkflowDef(ctx context.Context, sel ast.SelectionSet, v WorkflowDef) graphql.Marshaler {

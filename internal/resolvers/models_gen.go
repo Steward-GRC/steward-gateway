@@ -1681,6 +1681,13 @@ type WebauthnRegistration struct {
 	SessionID   string `json:"sessionId"`
 }
 
+type WorkflowApproverCandidates struct {
+	WorkflowID  string   `json:"workflowId"`
+	Attached    bool     `json:"attached"`
+	CategoryIds []string `json:"categoryIds"`
+	Users       []*User  `json:"users"`
+}
+
 type WorkflowDef struct {
 	ID          string              `json:"id"`
 	Name        string              `json:"name"`

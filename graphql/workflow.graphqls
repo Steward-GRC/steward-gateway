@@ -447,9 +447,23 @@ input WorkflowStageInput {
   vetoApproverIds: [ID!]
   vetoGroupIds: [ID!]
 }
+# Who the workflow editor may offer as an approver. A workflow draws its approvers from the
+# categories that use it as their default workflow, so this is the union of those categories'
+# Approve pools (their owners plus everyone the access rows allow to approve). Root is in it only
+# when the rows allow it: Approve follows the rows even for root. attached is false when no
+# category uses the workflow; users and categoryIds are then empty, so the editor can ask for the
+# workflow to be attached to a category first instead of listing everyone.
+type WorkflowApproverCandidates {
+  workflowId: ID!
+  attached: Boolean!
+  categoryIds: [ID!]!
+  users: [User!]!
+}
 extend type Query {
   workflowDefs: [WorkflowDef!]!
   workflowDef(id: ID!): WorkflowDef
+  # Template admins and above, like the workflow editor itself.
+  workflowApproverCandidates(workflowId: ID!): WorkflowApproverCandidates!
 }
 extend type Mutation {
   createWorkflowDef(name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!

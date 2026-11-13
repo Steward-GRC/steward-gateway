@@ -1026,6 +1026,7 @@ type ComplexityRoot struct {
 		CreatedAt                 func(childComplexity int) int
 		CurrentDraftVersionID     func(childComplexity int) int
 		CurrentPublishedVersionID func(childComplexity int) int
+		CurrentSemanticVersion    func(childComplexity int) int
 		CurrentVersionNo          func(childComplexity int) int
 		CurrentVersionStatus      func(childComplexity int) int
 		DocumentType              func(childComplexity int) int
@@ -7045,6 +7046,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Policy.CurrentPublishedVersionID(childComplexity), true
+	case "Policy.currentSemanticVersion":
+		if e.ComplexityRoot.Policy.CurrentSemanticVersion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Policy.CurrentSemanticVersion(childComplexity), true
 	case "Policy.currentVersionNo":
 		if e.ComplexityRoot.Policy.CurrentVersionNo == nil {
 			break
@@ -12079,6 +12086,10 @@ type Policy {
   # nothing is published).
   currentVersionNo: Int
   currentVersionStatus: String
+  # The semantic version ("2.1.0") of the current version, for library rows, the approvals
+  # inbox and My Work. Null when core has none (a draft that is not numbered yet, or a policy
+  # published before semantic versions).
+  currentSemanticVersion: String
   # Template tri-state. templateNone=true → explicit NONE (freeform), overrides
   # the category chain; templateId set → that specific template; both unset
   # (none=false, id=null) → inherit from the owning category chain.
@@ -16409,6 +16420,8 @@ func (ec *executionContext) childFields_Policy(ctx context.Context, field graphq
 		return ec.fieldContext_Policy_currentVersionNo(ctx, field)
 	case "currentVersionStatus":
 		return ec.fieldContext_Policy_currentVersionStatus(ctx, field)
+	case "currentSemanticVersion":
+		return ec.fieldContext_Policy_currentSemanticVersion(ctx, field)
 	case "templateId":
 		return ec.fieldContext_Policy_templateId(ctx, field)
 	case "templateNone":
@@ -42673,6 +42686,29 @@ func (ec *executionContext) fieldContext_Policy_currentVersionStatus(_ context.C
 	return graphql.NewScalarFieldContext("Policy", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _Policy_currentSemanticVersion(ctx context.Context, field graphql.CollectedField, obj *Policy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Policy_currentSemanticVersion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentSemanticVersion, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Policy_currentSemanticVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Policy", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _Policy_templateId(ctx context.Context, field graphql.CollectedField, obj *Policy) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -67661,6 +67697,11 @@ func (ec *executionContext) _Policy(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "currentVersionStatus":
 			out.Values[i] = ec._Policy_currentVersionStatus(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "currentSemanticVersion":
+			out.Values[i] = ec._Policy_currentSemanticVersion(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}

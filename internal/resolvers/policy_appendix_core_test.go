@@ -47,6 +47,8 @@ type appendixCore struct {
 	// lastDiff is the latest diff request core was sent; diffs counts them.
 	lastDiff *corev1.DiffPolicyAppendixRequest
 	diffs    int
+	// deletes is every delete request core was sent.
+	deletes []*corev1.DeletePolicyAppendixRequest
 }
 
 func (c *appendixCore) note(a *fakeAppendix, r *appendixRow, user string) {

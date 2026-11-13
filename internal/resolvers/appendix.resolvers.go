@@ -36,6 +36,11 @@ func (r *mutationResolver) RestoreAppendix(ctx context.Context, id string) (*Pol
 	return r.RestoreAppendixResolver(ctx, id)
 }
 
+// DeleteAppendixForever is the resolver for the deleteAppendixForever field.
+func (r *mutationResolver) DeleteAppendixForever(ctx context.Context, id string) (bool, error) {
+	return r.DeleteAppendixForeverResolver(ctx, id)
+}
+
 // ReorderPolicyAppendices is the resolver for the reorderPolicyAppendices field.
 func (r *mutationResolver) ReorderPolicyAppendices(ctx context.Context, policyID string, orderedIds []string) ([]*PolicyAppendix, error) {
 	return r.ReorderPolicyAppendicesResolver(ctx, policyID, orderedIds)

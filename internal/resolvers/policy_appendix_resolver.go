@@ -29,6 +29,9 @@ import (
 // published row of the appendices that have one, and nothing more. The mock
 // server (appendices.ts) is the reference for each rule.
 
+var errAppendixNotRetired = status.Error(codes.FailedPrecondition, "Retire the appendix first; only a retired appendix can be deleted for good.")
+var errAppendixNotFound = status.Error(codes.NotFound, "appendix not found")
+
 var errAppendixForbidden = status.Error(codes.PermissionDenied, "You don't have permission to do that.")
 
 // appendixAccess is what the gateway decided about one caller on one policy.
@@ -366,6 +369,46 @@ func (r *Resolver) RestoreAppendixResolver(ctx context.Context, id string) (*Pol
 	}
 	r.logger().Info("appendix restored", log.F("appendix_id", id))
 	return shapePolicyAppendix(ctx, newAppendixPeople(r.IdentityClient), resp.GetAppendix(), access), nil
+}
+
+// DeleteAppendixForeverResolver removes a retired appendix, its versions and
+// its history for good (#142). Site admin only, decided before core is called:
+// an author, who may retire and restore, is refused and core never hears of
+// it. The actor is the signed-in admin, never input. Core refuses a live
+// appendix with FailedPrecondition and an unknown id with NotFound; they become
+// the retire-first refusal and a plain not-found. Anything else passes through.
+func (r *Resolver) DeleteAppendixForeverResolver(ctx context.Context, id string) (bool, error) {
+	logger := r.logger()
+	actor, err := requireSiteAdmin(ctx)
+	if err != nil {
+		logger.Debug("deleteAppendixForever refused: the caller is not a site admin",
+			log.F("appendix_id", id), log.F("code", status.Code(err).String()))
+		return false, err
+	}
+	client, err := r.appendixClient()
+	if err != nil {
+		logger.Error(err, "deleteAppendixForever: no core client", log.F("appendix_id", id))
+		return false, err
+	}
+	logger.Debug("deleteAppendixForever: calling core", log.F("appendix_id", id), log.F("actor_user_id", actor))
+	start := time.Now()
+	if _, err := client.DeletePolicyAppendix(ctx, &corev1.DeletePolicyAppendixRequest{Id: id, ActorUserId: actor}); err != nil {
+		code := status.Code(err)
+		elapsed := log.F("duration_ms", time.Since(start).Milliseconds())
+		switch code {
+		case codes.FailedPrecondition:
+			logger.Debug("deleteAppendixForever refused: the appendix is not retired", log.F("appendix_id", id), elapsed)
+			return false, errAppendixNotRetired
+		case codes.NotFound:
+			logger.Debug("deleteAppendixForever refused: unknown appendix", log.F("appendix_id", id), elapsed)
+			return false, errAppendixNotFound
+		}
+		logger.Error(err, "deleteAppendixForever: core failed", log.F("appendix_id", id), log.F("code", code.String()), elapsed)
+		return false, err
+	}
+	logger.Info("appendix deleted for good", log.F("appendix_id", id), log.F("actor_user_id", actor),
+		log.F("duration_ms", time.Since(start).Milliseconds()))
+	return true, nil
 }
 
 // ReorderPolicyAppendicesResolver sets the order of a policy's live appendices

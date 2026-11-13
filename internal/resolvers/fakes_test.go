@@ -143,6 +143,9 @@ type fakeWorkflowClient struct {
 	lastUpdateDef  *workflowv1.UpdateWorkflowDefRequest
 	archiveDefErr  error
 	lastArchiveDef *workflowv1.ArchiveWorkflowDefRequest
+	deleteDefErr   error
+	lastDeleteDef  *workflowv1.DeleteWorkflowDefRequest
+	deleteDefCalls int
 }
 
 func (f *fakeWorkflowClient) Submit(_ context.Context, in *workflowv1.SubmitRequest, _ ...grpc.CallOption) (*workflowv1.SubmitResponse, error) {
@@ -286,6 +289,15 @@ func (f *fakeWorkflowClient) ArchiveWorkflowDef(_ context.Context, in *workflowv
 		return nil, f.archiveDefErr
 	}
 	return &workflowv1.ArchiveWorkflowDefResponse{}, nil
+}
+
+func (f *fakeWorkflowClient) DeleteWorkflowDef(_ context.Context, in *workflowv1.DeleteWorkflowDefRequest, _ ...grpc.CallOption) (*workflowv1.DeleteWorkflowDefResponse, error) {
+	f.lastDeleteDef = in
+	f.deleteDefCalls++
+	if f.deleteDefErr != nil {
+		return nil, f.deleteDefErr
+	}
+	return &workflowv1.DeleteWorkflowDefResponse{}, nil
 }
 
 func (f *fakeWorkflowClient) GetStageEligiblePool(_ context.Context, in *workflowv1.GetStageEligiblePoolRequest, _ ...grpc.CallOption) (*workflowv1.GetStageEligiblePoolResponse, error) {

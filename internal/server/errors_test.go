@@ -280,6 +280,45 @@ func TestSanitizingErrorPresenter_invalidWorkCalendar(t *testing.T) {
 	}
 }
 
+// The gateway's own refusal of deleting a workflow some categories default to carries its code,
+// the id and the count, as a business error.
+func TestSanitizingErrorPresenter_workflowDefInUseByCategory(t *testing.T) {
+	got := present(context.Background(), fmt.Errorf("delete workflow: %w",
+		errcodes.New(errcodes.CodeWorkflowDefInUseByCategory, "id", "def-1", "category_count", "3")))
+	if got.Message != "This workflow cannot be deleted while categories use it as their default (categories using it: 3). Change those categories first." {
+		t.Fatalf("message = %q", got.Message)
+	}
+	if got.Extensions["code"] != "WORKFLOW_DEF_IN_USE_BY_CATEGORY" || got.Extensions["codeNum"] != errcodes.CodeWorkflowDefInUseByCategory ||
+		got.Extensions["domain"] != "gateway" || got.Extensions["kind"] != "business" ||
+		got.Extensions["category_count"] != "3" || got.Extensions["id"] != "def-1" {
+		t.Fatalf("extensions = %v", got.Extensions)
+	}
+}
+
+// Workflow's refusals of a delete reach the browser with their own code, number, domain and the
+// run and override counts.
+func TestSanitizingErrorPresenter_workflowDefDeleteRefusals(t *testing.T) {
+	inUse := present(context.Background(), fmt.Errorf("workflow delete def: %w",
+		relayedStatus(t, codes.FailedPrecondition, 6013, "WORKFLOW_DEF_IN_USE", "workflow",
+			"This workflow has been used by runs. Archive it instead.",
+			map[string]string{"id": "def-1", "run_count": "4", "override_count": "2"})))
+	if inUse.Message != "This workflow has been used by runs. Archive it instead." {
+		t.Fatalf("message = %q", inUse.Message)
+	}
+	if inUse.Extensions["code"] != "WORKFLOW_DEF_IN_USE" || inUse.Extensions["codeNum"] != 6013 ||
+		inUse.Extensions["domain"] != "workflow" || inUse.Extensions["kind"] != "business" ||
+		inUse.Extensions["run_count"] != "4" || inUse.Extensions["override_count"] != "2" || inUse.Extensions["id"] != "def-1" {
+		t.Fatalf("in-use extensions = %v", inUse.Extensions)
+	}
+	missing := present(context.Background(), fmt.Errorf("workflow delete def: %w",
+		relayedStatus(t, codes.NotFound, 6014, "WORKFLOW_DEF_NOT_FOUND", "workflow",
+			"That workflow does not exist.", map[string]string{"id": "def-9"})))
+	if missing.Extensions["code"] != "WORKFLOW_DEF_NOT_FOUND" || missing.Extensions["codeNum"] != 6014 ||
+		missing.Extensions["domain"] != "workflow" || missing.Extensions["kind"] != "business" || missing.Extensions["id"] != "def-9" {
+		t.Fatalf("not-found extensions = %v", missing.Extensions)
+	}
+}
+
 // A declared internal fault keeps its originating number but gets the generic
 // message and kind reach.
 func TestSanitizingErrorPresenter_serverFaultWithInfoRelaysCodeNum(t *testing.T) {

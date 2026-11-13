@@ -40,4 +40,5 @@ caller; every other code is sent as a generic message with the code as a referen
 | 1244 | `COLLAB_FLUSH_FAILED` | publish | collab's flush failed for any other reason; nothing was published | no |
 | 1245 | `REPORT_CHECKS_THROTTLED` | anonymous report | too many checks or replies for this case code, or for all case codes together, in the throttle window; reporting was not called | yes |
 | 1246 | `REPORT_THROTTLE_UNAVAILABLE` | anonymous report | the throttle store (Valkey) could not be asked, so the check or reply was refused rather than let through unthrottled | yes |
+| 1247 | `WORKFLOW_DEF_IN_USE_BY_CATEGORY` | workflow | a delete of a workflow definition was refused because one or more categories use it as their default workflow; workflow was not called | yes |
 | 1250 | `UNAUTHENTICATED` | session | the request has no signed-in session | yes |

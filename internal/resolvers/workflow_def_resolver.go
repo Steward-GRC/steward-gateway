@@ -6,9 +6,14 @@ package resolvers
 import (
 	"context"
 	"sort"
+	"strconv"
 
+	log "github.com/Bugs5382/go-log"
+
+	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
+	"github.com/Steward-GRC/steward-gateway/internal/errcodes"
 )
 
 // workflowDefFromProto maps a workflowv1.WorkflowDef proto onto the gqlgen WorkflowDef model.
@@ -255,5 +260,47 @@ func ArchiveWorkflowDefResolver(
 	if err != nil {
 		return false, err
 	}
+	return true, nil
+}
+
+// DeleteWorkflowDefResolver deletes a WorkflowDef that nothing uses. The gateway checks its own
+// side first: a category whose default workflow is the id refuses the delete with
+// WORKFLOW_DEF_IN_USE_BY_CATEGORY and the count, and workflow is not called. Workflow then
+// refuses a definition any run ever pinned (6013, with run and override counts) or an unknown id
+// (6014); both pass through unchanged for the error presenter.
+func DeleteWorkflowDefResolver(
+	ctx context.Context,
+	lg log.Logger,
+	client workflowv1.WorkflowServiceClient,
+	categories corev1.CategoryServiceClient,
+	id string,
+) (bool, error) {
+	l := lg.Ctx(ctx)
+	l.Debug("workflow def delete: start", log.F("workflow_id", id))
+	if err := authorizeOp(ctx, authz.WorkflowManage); err != nil {
+		l.Debug("workflow def delete: refused, missing permission", log.F("workflow_id", id))
+		return false, err
+	}
+	uid, err := claimsUserID(ctx)
+	if err != nil {
+		return false, err
+	}
+	attached, err := categoriesUsingWorkflow(ctx, categories, id)
+	if err != nil {
+		l.Error(err, "workflow def delete: could not list categories", log.F("workflow_id", id))
+		return false, err
+	}
+	if len(attached) > 0 {
+		l.Info("workflow def delete: refused, categories use it as their default",
+			log.F("workflow_id", id), log.F("category_count", len(attached)))
+		return false, errcodes.New(errcodes.CodeWorkflowDefInUseByCategory,
+			"id", id, "category_count", strconv.Itoa(len(attached)))
+	}
+	l.Debug("workflow def delete: no category default, calling workflow", log.F("workflow_id", id))
+	if _, err := client.DeleteWorkflowDef(ctx, &workflowv1.DeleteWorkflowDefRequest{Id: id, ActorUserId: uid}); err != nil {
+		l.Info("workflow def delete: workflow refused or failed", log.F("workflow_id", id), log.F("error", err.Error()))
+		return false, err
+	}
+	l.Info("workflow def delete: deleted", log.F("workflow_id", id))
 	return true, nil
 }

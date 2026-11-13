@@ -12,6 +12,7 @@ import (
 	"github.com/Bugs5382/go-authz/ordered"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
+	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 
 	"google.golang.org/grpc/codes"
@@ -145,8 +146,7 @@ func ViewerIsApproverResolver(ctx context.Context, logger log.Logger, gc corev1.
 	return false, nil
 }
 
-// CategoryApproversResolver returns the approver pool for a category: its owners (inherited)
-// and everyone whose Approve evaluates allowed, owners first.
+// CategoryApproversResolver returns the RACI-derived approve-eligible user pool for a category.
 func CategoryApproversResolver(ctx context.Context, r *Resolver, categoryID string) ([]*User, error) {
 	if err := authorizeOp(ctx, authz.GroupManage); err != nil {
 		return nil, err
@@ -157,35 +157,139 @@ func CategoryApproversResolver(ctx context.Context, r *Resolver, categoryID stri
 		return nil, err
 	}
 
+	directory, err := loadApproverDirectory(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	return directory.pool(access), nil
+}
+
+// approverDirectory is every account with the person the ordered engine decides for, read once so
+// several categories' pools can be asked without listing the accounts again.
+type approverDirectory struct {
+	people []ordered.Person
+	byID   map[string]*identityv1.User
+}
+
+// loadApproverDirectory lists the accounts and builds a person for each. An account that cannot be
+// read is skipped with a warning, so one bad record does not empty the pool.
+func loadApproverDirectory(ctx context.Context, r *Resolver) (*approverDirectory, error) {
 	allResp, err := r.IdentityClient.ListAllUsers(ctx, &identityv1.ListAllUsersRequest{})
 	if err != nil {
-		return nil, fmt.Errorf("list all users for categoryApprovers: %w", err)
+		return nil, fmt.Errorf("list all users for the approver pool: %w", err)
 	}
 
-	seen := make(map[string]struct{})
-	byID := make(map[string]*identityv1.User)
-	var people []ordered.Person
-
+	d := &approverDirectory{byID: map[string]*identityv1.User{}}
 	for _, u := range allResp.GetUsers() {
 		uid := u.GetId()
-		if _, dup := seen[uid]; dup {
+		if _, dup := d.byID[uid]; dup {
 			continue
 		}
-		seen[uid] = struct{}{}
 
 		person, err := personForUser(ctx, r.IdentityClient, uid)
 		if err != nil {
 			r.logger().Warn("approver pool skipped a user", log.F("user_id", uid), log.F("error", err.Error()))
 			continue
 		}
-		byID[uid] = u
-		people = append(people, person)
+		d.byID[uid] = u
+		d.people = append(d.people, person)
+	}
+	return d, nil
+}
+
+// pool is the accounts the category's rules and owners allow to approve, owners first. Root is in
+// it only when the rows allow it: Approve is not part of the root exemption.
+func (d *approverDirectory) pool(access *categoryAccess) []*User {
+	entries := access.pool(d.people, actApprove)
+	out := make([]*User, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, userToGraphQL(d.byID[e.Person]))
+	}
+	return out
+}
+
+// WorkflowApproverCandidatesResolver answers who the workflow editor may offer as an approver: the
+// union of the approve pools of the categories that use the workflow as their default workflow. A
+// workflow no category uses has no chart to say who may approve, so it answers attached=false with
+// no users rather than a global list. Gated like the workflow editor itself.
+func WorkflowApproverCandidatesResolver(ctx context.Context, r *Resolver, workflowID string) (*WorkflowApproverCandidates, error) {
+	logger := r.logger()
+	logger.Debug("workflow approver candidates: start", log.F("workflow_id", workflowID))
+	if err := authorizeOp(ctx, authz.WorkflowManage); err != nil {
+		return nil, err
+	}
+	if r.WorkflowClient == nil {
+		return nil, status.Error(codes.Unavailable, "workflow service unavailable")
+	}
+	if r.CategoryClient == nil {
+		return nil, status.Error(codes.Unavailable, "category service unavailable")
+	}
+	// An unknown workflow is an error, not an empty answer.
+	if _, err := r.WorkflowClient.GetWorkflowDef(ctx, &workflowv1.GetWorkflowDefRequest{Id: workflowID}); err != nil {
+		return nil, err
 	}
 
-	pool := access.pool(people, actApprove)
-	out := make([]*User, 0, len(pool))
-	for _, e := range pool {
-		out = append(out, userToGraphQL(byID[e.Person]))
+	attached, err := categoriesUsingWorkflow(ctx, r.CategoryClient, workflowID)
+	if err != nil {
+		return nil, err
+	}
+	out := &WorkflowApproverCandidates{
+		WorkflowID:  workflowID,
+		Attached:    len(attached) > 0,
+		CategoryIds: attached,
+		Users:       []*User{},
+	}
+	if len(attached) == 0 {
+		logger.Debug("workflow approver candidates: not attached to any category", log.F("workflow_id", workflowID))
+		return out, nil
+	}
+
+	directory, err := loadApproverDirectory(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]struct{}{}
+	for _, categoryID := range attached {
+		access, err := loadCategoryAccess(ctx, r.CategoryClient, categoryID)
+		if err != nil {
+			return nil, err
+		}
+		for _, u := range directory.pool(access) {
+			if _, dup := seen[u.UserID]; dup {
+				continue
+			}
+			seen[u.UserID] = struct{}{}
+			out.Users = append(out.Users, u)
+		}
+	}
+	logger.Debug("workflow approver candidates: done",
+		log.F("workflow_id", workflowID), log.F("categories", len(attached)), log.F("candidates", len(out.Users)))
+	return out, nil
+}
+
+// categoriesUsingWorkflow lists the ids of the categories whose default workflow is workflowID,
+// walking the whole category forest. Categories are at most three levels deep, so the walk is
+// shallow.
+func categoriesUsingWorkflow(ctx context.Context, gc corev1.CategoryServiceClient, workflowID string) ([]string, error) {
+	out := []string{}
+	var walk func(parentID string) error
+	walk = func(parentID string) error {
+		resp, err := gc.ListCategoryChildren(ctx, &corev1.ListCategoryChildrenRequest{ParentId: parentID})
+		if err != nil {
+			return fmt.Errorf("list categories under %q: %w", parentID, err)
+		}
+		for _, c := range resp.GetCategories() {
+			if c.GetDefaultWorkflowId() == workflowID {
+				out = append(out, c.GetId())
+			}
+			if err := walk(c.GetId()); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := walk(""); err != nil {
+		return nil, err
 	}
 	return out, nil
 }

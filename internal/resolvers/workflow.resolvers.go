@@ -95,3 +95,8 @@ func (r *queryResolver) WorkflowDefs(ctx context.Context) ([]*WorkflowDef, error
 func (r *queryResolver) WorkflowDef(ctx context.Context, id string) (*WorkflowDef, error) {
 	return WorkflowDefResolver(ctx, r.WorkflowClient, id)
 }
+
+// WorkflowApproverCandidates is the resolver for the workflowApproverCandidates field.
+func (r *queryResolver) WorkflowApproverCandidates(ctx context.Context, workflowID string) (*WorkflowApproverCandidates, error) {
+	return WorkflowApproverCandidatesResolver(ctx, r.Resolver, workflowID)
+}

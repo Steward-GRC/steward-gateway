@@ -50,6 +50,7 @@ func workflowStageDefFromProto(s *workflowv1.WorkflowStage) *WorkflowStageDef {
 		Quorum:              s.GetQuorum(),
 		VetoApproverIds:     orEmpty(s.GetVetoApproverIds()),
 		VetoGroupIds:        orEmpty(s.GetVetoGroupIds()),
+		VetoUserIds:         orEmpty(s.GetVetoUserIds()),
 	}
 	if v := s.GetSlaDays(); v != 0 {
 		iv := int(v)
@@ -85,6 +86,7 @@ func workflowStageInputToProto(in *WorkflowStageInput) *workflowv1.WorkflowStage
 		Quorum:              in.Quorum,
 		VetoApproverIds:     in.VetoApproverIds,
 		VetoGroupIds:        in.VetoGroupIds,
+		VetoUserIds:         in.VetoUserIds,
 	}
 	if in.SLADays != nil {
 		s.SlaDays = toInt32(*in.SLADays)

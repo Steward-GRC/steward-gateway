@@ -513,3 +513,68 @@ func TestWorkflowStageDefFromProto_NoVetoMarksAreEmptyLists(t *testing.T) {
 		t.Fatalf("non-null lists required by the schema: %+v", out.Stages[0])
 	}
 }
+
+// --- veto people: named per stage (vetoUserIds) ---
+
+func TestWorkflowDefResolvers_VetoUserIdsRoundTrip(t *testing.T) {
+	c := &fakeWorkflowClient{}
+	out, err := resolvers.UpdateWorkflowDefResolver(
+		ctxWithRoles(t, "u1", []string{"template-admin"}), c, "def-1", "Finance", nil,
+		[]*resolvers.WorkflowStageInput{{
+			Name: "Finance sign-off", Approvers: []string{"u3", "u4"}, Quorum: "one",
+			VetoUserIds: []string{"u3"},
+		}},
+	)
+	if err != nil {
+		t.Fatalf("UpdateWorkflowDefResolver: %v", err)
+	}
+	sent := c.lastUpdateDef.GetStages()[0]
+	if got := sent.GetVetoUserIds(); len(got) != 1 || got[0] != "u3" {
+		t.Fatalf("forwarded veto_user_ids: %v", got)
+	}
+	if got := out.Stages[0].VetoUserIds; len(got) != 1 || got[0] != "u3" {
+		t.Fatalf("stage vetoUserIds: %v", got)
+	}
+}
+
+func TestWorkflowDefResolvers_CreateForwardsVetoUserIds(t *testing.T) {
+	c := &fakeWorkflowClient{}
+	_, err := resolvers.CreateWorkflowDefResolver(
+		ctxWithRoles(t, "u1", []string{"template-admin"}), c, "Finance", nil,
+		[]*resolvers.WorkflowStageInput{{
+			Name: "Finance sign-off", Approvers: []string{"u3"}, Quorum: "one",
+			VetoUserIds: []string{"u3"},
+		}},
+	)
+	if err != nil {
+		t.Fatalf("CreateWorkflowDefResolver: %v", err)
+	}
+	if got := c.lastCreateDef.GetStages()[0].GetVetoUserIds(); len(got) != 1 || got[0] != "u3" {
+		t.Fatalf("forwarded veto_user_ids: %v", got)
+	}
+}
+
+func TestWorkflowStageDefFromProto_NoVetoUserIdsIsEmptyList(t *testing.T) {
+	c := &fakeWorkflowClient{getDefResp: &workflowv1.GetWorkflowDefResponse{
+		Def: &workflowv1.WorkflowDef{Id: "d1", Stages: []*workflowv1.WorkflowStage{{Id: "s1", Name: "A"}}},
+	}}
+	out, err := resolvers.WorkflowDefResolver(context.Background(), c, "d1")
+	if err != nil {
+		t.Fatalf("WorkflowDefResolver: %v", err)
+	}
+	if out.Stages[0].VetoUserIds == nil || len(out.Stages[0].VetoUserIds) != 0 {
+		t.Fatalf("vetoUserIds must be a non-null empty list: %+v", out.Stages[0].VetoUserIds)
+	}
+}
+
+func TestWorkflowDefResolvers_VetoValidationRefusalPassesThrough(t *testing.T) {
+	want := status.Error(codes.InvalidArgument, `stage "Finance sign-off": a veto person must be one of the stage's approvers (u9)`)
+	c := &fakeWorkflowClient{updateDefErr: want}
+	_, err := resolvers.UpdateWorkflowDefResolver(
+		ctxWithRoles(t, "u1", []string{"template-admin"}), c, "def-1", "Finance", nil,
+		[]*resolvers.WorkflowStageInput{{Name: "Finance sign-off", Approvers: []string{"u3"}, Quorum: "one", VetoUserIds: []string{"u9"}}},
+	)
+	if status.Code(err) != codes.InvalidArgument || status.Convert(err).Message() != status.Convert(want).Message() {
+		t.Fatalf("want the workflow refusal unchanged, got %v", err)
+	}
+}

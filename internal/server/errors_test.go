@@ -585,3 +585,17 @@ func TestWorkflowRefusalsRelayWorkflowCodes(t *testing.T) {
 		})
 	}
 }
+
+// The workflow service refuses a stage whose veto person is not one of its
+// approvers with a plain InvalidArgument. The presenter shows its message and
+// marks it a business error, as for any caller mistake.
+func TestSanitizingErrorPresenter_vetoPersonNotAnApprover(t *testing.T) {
+	msg := `stage "Finance sign-off": a veto person must be one of the stage's approvers (u9)`
+	got := present(context.Background(), fmt.Errorf("workflow update def: %w", status.Error(codes.InvalidArgument, msg)))
+	if got.Message != msg {
+		t.Fatalf("message = %q, want the workflow message", got.Message)
+	}
+	if got.Extensions["code"] != "InvalidArgument" || got.Extensions["kind"] != "business" {
+		t.Fatalf("extensions = %v", got.Extensions)
+	}
+}

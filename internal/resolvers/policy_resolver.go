@@ -85,6 +85,7 @@ func policyFromProto(p *corev1.Policy) *Policy {
 		TemplateUpdateAvailable:   p.TemplateUpdateAvailable,
 		AckAudienceOverride:       p.AckAudienceOverride,
 		RetiredAt:                 nilIfEmpty(p.RetiredAt),
+		CurrentSemanticVersion:    semanticVersionString(p.CurrentSemanticVersion),
 	}
 	if p.AckTriggersSet {
 		t := ackTriggerFromProto(p.AckTriggers)

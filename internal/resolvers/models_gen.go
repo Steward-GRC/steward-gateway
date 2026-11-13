@@ -1011,6 +1011,7 @@ type Policy struct {
 	CurrentDraftVersionID     *string          `json:"currentDraftVersionId,omitempty"`
 	CurrentVersionNo          *int             `json:"currentVersionNo,omitempty"`
 	CurrentVersionStatus      *string          `json:"currentVersionStatus,omitempty"`
+	CurrentSemanticVersion    *string          `json:"currentSemanticVersion,omitempty"`
 	TemplateID                *string          `json:"templateId,omitempty"`
 	TemplateNone              bool             `json:"templateNone"`
 	TemplateUpdateAvailable   bool             `json:"templateUpdateAvailable"`

@@ -348,6 +348,10 @@ type Policy {
   # nothing is published).
   currentVersionNo: Int
   currentVersionStatus: String
+  # The semantic version ("2.1.0") of the current version, for library rows, the approvals
+  # inbox and My Work. Null when core has none (a draft that is not numbered yet, or a policy
+  # published before semantic versions).
+  currentSemanticVersion: String
   # Template tri-state. templateNone=true → explicit NONE (freeform), overrides
   # the category chain; templateId set → that specific template; both unset
   # (none=false, id=null) → inherit from the owning category chain.

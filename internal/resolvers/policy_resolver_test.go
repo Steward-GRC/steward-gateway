@@ -1380,6 +1380,11 @@ func TestPolicyFromProto_MapsUpdatedAtAndCurrentVersion(t *testing.T) {
 			UpdatedAt:                 timestamppb.New(updatedAt),
 			CurrentVersionNo:          3,
 			CurrentVersionStatus:      corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_PUBLISHED,
+			CurrentSemanticVersion:    &corev1.SemanticVersion{Major: 2, Minor: 1, Fix: 0, Text: "2.1.0"},
+		},
+		"pol-nums": {
+			Id: "pol-nums", HomeCategoryId: "g-it", Number: "POL-IT-3", Title: "Numbers only",
+			CurrentSemanticVersion: &corev1.SemanticVersion{Major: 1, Minor: 4, Fix: 2},
 		},
 		"pol-none": {Id: "pol-none", HomeCategoryId: "g-it", Number: "POL-IT-2", Title: "Bare"},
 	}}
@@ -1403,9 +1408,23 @@ func TestPolicyFromProto_MapsUpdatedAtAndCurrentVersion(t *testing.T) {
 		t.Fatalf("unexpected CurrentVersionStatus: %v", cur.CurrentVersionStatus)
 	}
 
+	if cur.CurrentSemanticVersion == nil || *cur.CurrentSemanticVersion != "2.1.0" {
+		t.Fatalf("unexpected CurrentSemanticVersion: %v", cur.CurrentSemanticVersion)
+	}
+	nums, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-nums")
+	if err != nil {
+		t.Fatalf("GetPolicy(nums): %v", err)
+	}
+	if nums.CurrentSemanticVersion == nil || *nums.CurrentSemanticVersion != "1.4.2" {
+		t.Fatalf("expected the three numbers as fallback, got %v", nums.CurrentSemanticVersion)
+	}
+
 	none, err := resolvers.GetPolicy(ctx, pc, groups, nil, nil, nil, "pol-none")
 	if err != nil {
 		t.Fatalf("GetPolicy(none): %v", err)
+	}
+	if none.CurrentSemanticVersion != nil {
+		t.Fatalf("expected nil CurrentSemanticVersion when core sent none, got %v", *none.CurrentSemanticVersion)
 	}
 	if none.UpdatedAt != nil {
 		t.Fatalf("expected nil UpdatedAt with no proto timestamp, got %v", *none.UpdatedAt)

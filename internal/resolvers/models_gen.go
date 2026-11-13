@@ -1091,6 +1091,7 @@ type PolicyVersion struct {
 	ChangeTypeReason          *string     `json:"changeTypeReason,omitempty"`
 	ChangeTypeSetByUserID     *string     `json:"changeTypeSetByUserId,omitempty"`
 	ChangeTypeAgreedByUserIds []string    `json:"changeTypeAgreedByUserIds"`
+	Reacknowledge             bool        `json:"reacknowledge"`
 }
 
 type PolicyVersionLinks struct {

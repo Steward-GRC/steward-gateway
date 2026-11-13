@@ -173,3 +173,12 @@ func TestDenyIfImpersonating_ChangeMyPasswordBlocked(t *testing.T) {
 	require.Error(t, denyIfImpersonating(impersonatingCtx(), "changeMyPassword"),
 		"changing the signed-in person's password must be refused while acting as them")
 }
+
+// The Compliance module switch and the four-eyes hard reset are refused while
+// acting as another user: the approvals mean two real people.
+func TestDenyIfImpersonating_ComplianceModuleAndHardResetBlocked(t *testing.T) {
+	ctx := impersonatingCtx()
+	for _, name := range []string{"setComplianceModule", "requestHardReset", "approveHardReset", "cancelHardReset", "executeHardReset"} {
+		require.Error(t, denyIfImpersonating(ctx, name), "%q must be blocked while impersonating", name)
+	}
+}

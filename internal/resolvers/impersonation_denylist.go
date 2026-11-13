@@ -63,6 +63,14 @@ var impersonationDenylist = map[string]struct{}{
 	"releaseAuditLegalHold": {},
 
 	"startImpersonation": {},
+
+	// The Compliance module switch and its four-eyes hard reset: identity and
+	// reporting both refuse act-as, and the gateway refuses it first.
+	"setComplianceModule": {},
+	"requestHardReset":    {},
+	"approveHardReset":    {},
+	"cancelHardReset":     {},
+	"executeHardReset":    {},
 }
 
 // denyIfImpersonating returns a clear error when the request is currently impersonating

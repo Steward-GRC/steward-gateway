@@ -183,7 +183,25 @@ type ReportCase {
   closedAt: String           # RFC3339
 }
 
+# The Compliance settings, as reporting keeps them. Only the module switch is
+# here so far; the rest of the settings join this type when they are exposed.
+type ComplianceSettings {
+  # False while the Compliance module is off: every report and case call is
+  # refused with MODULE_OFF (8113, domain reporting) and the data is kept.
+  moduleEnabled: Boolean!
+}
+
+# What a hard reset removed. It names the two admins and counts the cases; it
+# never carries case content.
+type HardResetResult {
+  casesDeleted: Int!
+  requestedBy: ID!
+  approvedBy: ID!
+}
+
 extend type Query {
+  # SettingsService.GetSettings, read only here. Compliance managers and root.
+  complianceSettings: ComplianceSettings!
   # The signed-in user's own named reports.
   myReports: [MyReport!]!
   myReport(caseId: ID!): ReporterView!
@@ -216,4 +234,18 @@ extend type Mutation {
   # sentOn (YYYY-MM-DD) is required with SENT.
   updateCaseNotice(caseId: ID!, noticeId: ID!, status: NoticeStatus!, sentOn: String): CaseNotice!
   closeCase(caseId: ID!, outcome: CaseOutcome!, correctiveActions: [CorrectiveActionInput!], closingMessage: String): ReportCase!
+
+  # ModuleService.SetComplianceModule: switch the Compliance module off or on.
+  # Compliance managers and root; refused during act-as. Off keeps every case.
+  # Returns the settings as they stand after the change.
+  setComplianceModule(enabled: Boolean!): ComplianceSettings!
+  # ModuleService.ExecuteHardReset: deletes every case and everything that belongs
+  # to one. Root only; refused during act-as. requestId is an identity hard reset
+  # request (module "compliance") that a different site admin approved, and
+  # confirmation must be exactly "RESET COMPLIANCE DATA". Reporting refuses it,
+  # before deleting anything, with HARD_RESET_CONFIRMATION (8114), HARD_RESET_MODULE_ON
+  # (8115, the module must be off first), HARD_RESET_LEGAL_HOLD (8116, any held case
+  # blocks the whole reset), HARD_RESET_NOT_APPROVED (8117) or HARD_RESET_ROOT_REQUIRED
+  # (8118). The module stays off afterwards.
+  executeHardReset(requestId: ID!, confirmation: String!): HardResetResult!
 }

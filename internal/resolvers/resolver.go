@@ -80,9 +80,11 @@ type Resolver struct {
 	// ai
 	AIClient aiv1.AiServiceClient
 
-	// reporting (cases and intake)
-	CaseClient   reportingv1.CaseServiceClient
-	IntakeClient reportingv1.IntakeServiceClient
+	// reporting (cases and intake), and its module switch and settings
+	CaseClient               reportingv1.CaseServiceClient
+	IntakeClient             reportingv1.IntakeServiceClient
+	ModuleClient             reportingv1.ModuleServiceClient
+	ComplianceSettingsClient reportingv1.SettingsServiceClient
 
 	// SessionStore holds the browser sessions; act-as lives on the admin's.
 	SessionStore bff.SessionStore
@@ -152,5 +154,6 @@ func (r *Resolver) FromClients(c *backend.Clients) *Resolver {
 	r.CollabClient, r.CollabRoomClient = c.CollabToken, c.CollabRoom
 	r.AIClient = c.AI
 	r.CaseClient, r.IntakeClient = c.Cases, c.Intake
+	r.ModuleClient, r.ComplianceSettingsClient = c.Module, c.ComplianceSettings
 	return r
 }

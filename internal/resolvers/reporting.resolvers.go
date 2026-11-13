@@ -81,6 +81,21 @@ func (r *mutationResolver) CloseCase(ctx context.Context, caseID string, outcome
 	return r.CloseCaseResolver(ctx, caseID, outcome, correctiveActions, closingMessage)
 }
 
+// SetComplianceModule is the resolver for the setComplianceModule field.
+func (r *mutationResolver) SetComplianceModule(ctx context.Context, enabled bool) (*ComplianceSettings, error) {
+	return r.SetComplianceModuleResolver(ctx, enabled)
+}
+
+// ExecuteHardReset is the resolver for the executeHardReset field.
+func (r *mutationResolver) ExecuteHardReset(ctx context.Context, requestID string, confirmation string) (*HardResetResult, error) {
+	return r.ExecuteHardResetResolver(ctx, requestID, confirmation)
+}
+
+// ComplianceSettings is the resolver for the complianceSettings field.
+func (r *queryResolver) ComplianceSettings(ctx context.Context) (*ComplianceSettings, error) {
+	return r.ComplianceSettingsResolver(ctx)
+}
+
 // MyReports is the resolver for the myReports field.
 func (r *queryResolver) MyReports(ctx context.Context) ([]*MyReport, error) {
 	return r.MyReportsResolver(ctx)

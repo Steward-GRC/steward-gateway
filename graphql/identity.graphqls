@@ -80,7 +80,8 @@ type UserLabel {
   email: String
 }
 
-# A hard reset request/approval pair. requestedBy and approvedBy are user
+# A hard reset request/approval pair (four-eyes: the root admin asks, a
+# different active site admin approves). requestedBy and approvedBy are user
 # ids; approvedBy and approvedAt are null until approveHardReset.
 type HardResetRequest {
   id: ID!
@@ -99,7 +100,8 @@ type HardResetRequest {
 }
 
 extend type Query {
-  # hardResetRequests -> IdentityAdminService.ListHardResetRequests, newest first. Root only.
+  # hardResetRequests -> IdentityAdminService.ListHardResetRequests, newest first. The root
+  # admin or a site admin (the gateway gates on the site-admin role; root holds it).
   hardResetRequests(module: String): [HardResetRequest!]!
   # me -> IdentityReadService.ResolveClaims/GetUser for the caller (identity the signed-in user).
   # users -> IdentityReadService.ListUsersByEmail: search -> email_substring, pageSize -> limit, pageToken/nextPageToken -> the opaque cursor.
@@ -232,16 +234,20 @@ extend type Mutation {
   # requestStepUpOtp, verified server-side first — an invalid/absent code
   # moves nothing.
   transferRoot(userId: ID!, otp: String!): User!
-  # Starts a two-person hard reset of a module: one root admin asks, a
-  # different root admin approves within the request's 24h window. Root
-  # only, refused during act-as. One open request per module.
+  # Starts a four-eyes hard reset of a module: the root admin asks, a different
+  # active site admin approves within the request's 24h window. Root only,
+  # refused during act-as. One open request per module. For the Compliance
+  # module the module name is "compliance"; the reset itself runs through
+  # executeHardReset once the request is approved. The reason is stored by
+  # identity and never logged by the gateway.
   requestHardReset(module: String!, reason: String!): HardResetRequest!
-  # Approves a pending request. The requester can't approve their own. The
-  # approval can be used once, within its 1h window. Root only, refused
-  # during act-as.
+  # Approves a pending request. Needs the site-admin role; the requester can't
+  # approve their own request, so with one root another site admin must. The
+  # approval can be used once, within its 1h window. Refused during act-as.
   approveHardReset(requestId: ID!): HardResetRequest!
-  # Withdraws a pending or approved request. Only its requester may cancel
-  # it.
+  # Withdraws a pending or approved request. Needs the site-admin role (a former
+  # root keeps it after transferRoot); only the requester may cancel it, which
+  # identity enforces. Refused during act-as.
   cancelHardReset(requestId: ID!): HardResetRequest!
   # Completes the CALLING user's first-run onboarding (caller-scoped self-service,
   # bound from the session — never from input; available to any authenticated

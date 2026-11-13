@@ -84,6 +84,9 @@ type Clients struct {
 
 	Cases  reportingv1.CaseServiceClient
 	Intake reportingv1.IntakeServiceClient
+	// Module and ComplianceSettings are reporting's module switch and settings.
+	Module             reportingv1.ModuleServiceClient
+	ComplianceSettings reportingv1.SettingsServiceClient
 }
 
 // Conns holds the open connections, by service name. The diagnostics read and
@@ -148,5 +151,8 @@ func NewClients(conns Conns) (*Clients, error) {
 
 		Cases:  reportingv1.NewCaseServiceClient(conns[Reporting]),
 		Intake: reportingv1.NewIntakeServiceClient(conns[Reporting]),
+
+		Module:             reportingv1.NewModuleServiceClient(conns[Reporting]),
+		ComplianceSettings: reportingv1.NewSettingsServiceClient(conns[Reporting]),
 	}, nil
 }

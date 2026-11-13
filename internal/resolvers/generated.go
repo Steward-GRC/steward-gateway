@@ -429,6 +429,10 @@ type ComplexityRoot struct {
 		ViewedNotAckedCount func(childComplexity int) int
 	}
 
+	ComplianceSettings struct {
+		ModuleEnabled func(childComplexity int) int
+	}
+
 	ComponentVersion struct {
 		Commit  func(childComplexity int) int
 		Name    func(childComplexity int) int
@@ -591,6 +595,12 @@ type ComplexityRoot struct {
 		RequestedAt       func(childComplexity int) int
 		RequestedBy       func(childComplexity int) int
 		State             func(childComplexity int) int
+	}
+
+	HardResetResult struct {
+		ApprovedBy   func(childComplexity int) int
+		CasesDeleted func(childComplexity int) int
+		RequestedBy  func(childComplexity int) int
 	}
 
 	HealthStatus struct {
@@ -767,6 +777,7 @@ type ComplexityRoot struct {
 		EnableUser                    func(childComplexity int, userID string) int
 		EnrollTotpBegin               func(childComplexity int) int
 		EnrollTotpConfirm             func(childComplexity int, code string) int
+		ExecuteHardReset              func(childComplexity int, requestID string, confirmation string) int
 		ForceRotateSpCertificate      func(childComplexity int) int
 		GrantGroupManager             func(childComplexity int, userID string, groupID string) int
 		GrantRole                     func(childComplexity int, userID string, role string, category *string) int
@@ -840,6 +851,7 @@ type ComplexityRoot struct {
 		SetCategoryGovernance         func(childComplexity int, id string, owners []string, idpGroupIds []string, exclusionGroupIds []string, ackTriggers AckTrigger, reviewCadence ReviewCadence, reviewDate *string, ackEveryone *bool) int
 		SetCategoryRuleset            func(childComplexity int, categoryID string, rules []*RaciRuleInput) int
 		SetCategoryTemplateLock       func(childComplexity int, id string, locked bool) int
+		SetComplianceModule           func(childComplexity int, enabled bool) int
 		SetContactBlockArchived       func(childComplexity int, id string, archived bool) int
 		SetDefinitionArchived         func(childComplexity int, id string, archived bool) int
 		SetDigestWindow               func(childComplexity int, dailyHour int, weeklyDow int) int
@@ -1136,6 +1148,7 @@ type ComplexityRoot struct {
 		CategoryRuleset            func(childComplexity int, categoryID string) int
 		CategoryTree               func(childComplexity int, rootID *string) int
 		CompletionReport           func(childComplexity int, policyVersionID string, groupID *string) int
+		ComplianceSettings         func(childComplexity int) int
 		ContactBlocks              func(childComplexity int, includeArchived *bool) int
 		DecidedApprovals           func(childComplexity int) int
 		Definitions                func(childComplexity int, categoryID *string, includeArchived *bool) int
@@ -1909,6 +1922,8 @@ type MutationResolver interface {
 	AddCaseNotice(ctx context.Context, caseID string, recipient NoticeRecipient, label *string, method *string) (*CaseNotice, error)
 	UpdateCaseNotice(ctx context.Context, caseID string, noticeID string, status NoticeStatus, sentOn *string) (*CaseNotice, error)
 	CloseCase(ctx context.Context, caseID string, outcome CaseOutcome, correctiveActions []*CorrectiveActionInput, closingMessage *string) (*ReportCase, error)
+	SetComplianceModule(ctx context.Context, enabled bool) (*ComplianceSettings, error)
+	ExecuteHardReset(ctx context.Context, requestID string, confirmation string) (*HardResetResult, error)
 	AddReviewThread(ctx context.Context, policyVersionID string, quote string, occurrence int, body string, suggestedText *string, toUserID *string) (*ReviewThread, error)
 	ReplyReviewThread(ctx context.Context, threadID string, body string) (*ReviewThread, error)
 	SetReviewThreadResolved(ctx context.Context, threadID string, resolved bool) (*ReviewThread, error)
@@ -2037,6 +2052,7 @@ type QueryResolver interface {
 	AckActivity(ctx context.Context, policyVersionID string, groupID *string, days int) ([]*AckActivityDay, error)
 	PolicyHistory(ctx context.Context, policyID string, pageSize *int, pageToken *string) (*AuditQueryPage, error)
 	PreviewMovePolicies(ctx context.Context, policyIds []string, homeCategoryID string) (*MovePoliciesPreview, error)
+	ComplianceSettings(ctx context.Context) (*ComplianceSettings, error)
 	MyReports(ctx context.Context) ([]*MyReport, error)
 	MyReport(ctx context.Context, caseID string) (*ReporterView, error)
 	ReportCases(ctx context.Context, statuses []CaseStatus, assigneeUserID *string) (*CaseQueue, error)
@@ -3530,6 +3546,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.CompletionReport.ViewedNotAckedCount(childComplexity), true
 
+	case "ComplianceSettings.moduleEnabled":
+		if e.ComplexityRoot.ComplianceSettings.ModuleEnabled == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ComplianceSettings.ModuleEnabled(childComplexity), true
+
 	case "ComponentVersion.commit":
 		if e.ComplexityRoot.ComponentVersion.Commit == nil {
 			break
@@ -4156,6 +4179,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.HardResetRequest.State(childComplexity), true
+
+	case "HardResetResult.approvedBy":
+		if e.ComplexityRoot.HardResetResult.ApprovedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetResult.ApprovedBy(childComplexity), true
+	case "HardResetResult.casesDeleted":
+		if e.ComplexityRoot.HardResetResult.CasesDeleted == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetResult.CasesDeleted(childComplexity), true
+	case "HardResetResult.requestedBy":
+		if e.ComplexityRoot.HardResetResult.RequestedBy == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HardResetResult.RequestedBy(childComplexity), true
 
 	case "HealthStatus.status":
 		if e.ComplexityRoot.HealthStatus.Status == nil {
@@ -5154,6 +5196,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.EnrollTotpConfirm(childComplexity, args["code"].(string)), true
+	case "Mutation.executeHardReset":
+		if e.ComplexityRoot.Mutation.ExecuteHardReset == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_executeHardReset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ExecuteHardReset(childComplexity, args["requestId"].(string), args["confirmation"].(string)), true
 	case "Mutation.forceRotateSpCertificate":
 		if e.ComplexityRoot.Mutation.ForceRotateSpCertificate == nil {
 			break
@@ -5932,6 +5985,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetCategoryTemplateLock(childComplexity, args["id"].(string), args["locked"].(bool)), true
+	case "Mutation.setComplianceModule":
+		if e.ComplexityRoot.Mutation.SetComplianceModule == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setComplianceModule_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetComplianceModule(childComplexity, args["enabled"].(bool)), true
 	case "Mutation.setContactBlockArchived":
 		if e.ComplexityRoot.Mutation.SetContactBlockArchived == nil {
 			break
@@ -7604,6 +7668,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.CompletionReport(childComplexity, args["policyVersionId"].(string), args["groupId"].(*string)), true
+	case "Query.complianceSettings":
+		if e.ComplexityRoot.Query.ComplianceSettings == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.ComplianceSettings(childComplexity), true
 	case "Query.contactBlocks":
 		if e.ComplexityRoot.Query.ContactBlocks == nil {
 			break
@@ -12646,7 +12716,8 @@ type UserLabel {
   email: String
 }
 
-# A hard reset request/approval pair. requestedBy and approvedBy are user
+# A hard reset request/approval pair (four-eyes: the root admin asks, a
+# different active site admin approves). requestedBy and approvedBy are user
 # ids; approvedBy and approvedAt are null until approveHardReset.
 type HardResetRequest {
   id: ID!
@@ -12665,7 +12736,8 @@ type HardResetRequest {
 }
 
 extend type Query {
-  # hardResetRequests -> IdentityAdminService.ListHardResetRequests, newest first. Root only.
+  # hardResetRequests -> IdentityAdminService.ListHardResetRequests, newest first. The root
+  # admin or a site admin (the gateway gates on the site-admin role; root holds it).
   hardResetRequests(module: String): [HardResetRequest!]!
   # me -> IdentityReadService.ResolveClaims/GetUser for the caller (identity the signed-in user).
   # users -> IdentityReadService.ListUsersByEmail: search -> email_substring, pageSize -> limit, pageToken/nextPageToken -> the opaque cursor.
@@ -12798,16 +12870,20 @@ extend type Mutation {
   # requestStepUpOtp, verified server-side first — an invalid/absent code
   # moves nothing.
   transferRoot(userId: ID!, otp: String!): User!
-  # Starts a two-person hard reset of a module: one root admin asks, a
-  # different root admin approves within the request's 24h window. Root
-  # only, refused during act-as. One open request per module.
+  # Starts a four-eyes hard reset of a module: the root admin asks, a different
+  # active site admin approves within the request's 24h window. Root only,
+  # refused during act-as. One open request per module. For the Compliance
+  # module the module name is "compliance"; the reset itself runs through
+  # executeHardReset once the request is approved. The reason is stored by
+  # identity and never logged by the gateway.
   requestHardReset(module: String!, reason: String!): HardResetRequest!
-  # Approves a pending request. The requester can't approve their own. The
-  # approval can be used once, within its 1h window. Root only, refused
-  # during act-as.
+  # Approves a pending request. Needs the site-admin role; the requester can't
+  # approve their own request, so with one root another site admin must. The
+  # approval can be used once, within its 1h window. Refused during act-as.
   approveHardReset(requestId: ID!): HardResetRequest!
-  # Withdraws a pending or approved request. Only its requester may cancel
-  # it.
+  # Withdraws a pending or approved request. Needs the site-admin role (a former
+  # root keeps it after transferRoot); only the requester may cancel it, which
+  # identity enforces. Refused during act-as.
   cancelHardReset(requestId: ID!): HardResetRequest!
   # Completes the CALLING user's first-run onboarding (caller-scoped self-service,
   # bound from the session — never from input; available to any authenticated
@@ -13653,7 +13729,25 @@ type ReportCase {
   closedAt: String           # RFC3339
 }
 
+# The Compliance settings, as reporting keeps them. Only the module switch is
+# here so far; the rest of the settings join this type when they are exposed.
+type ComplianceSettings {
+  # False while the Compliance module is off: every report and case call is
+  # refused with MODULE_OFF (8113, domain reporting) and the data is kept.
+  moduleEnabled: Boolean!
+}
+
+# What a hard reset removed. It names the two admins and counts the cases; it
+# never carries case content.
+type HardResetResult {
+  casesDeleted: Int!
+  requestedBy: ID!
+  approvedBy: ID!
+}
+
 extend type Query {
+  # SettingsService.GetSettings, read only here. Compliance managers and root.
+  complianceSettings: ComplianceSettings!
   # The signed-in user's own named reports.
   myReports: [MyReport!]!
   myReport(caseId: ID!): ReporterView!
@@ -13686,6 +13780,20 @@ extend type Mutation {
   # sentOn (YYYY-MM-DD) is required with SENT.
   updateCaseNotice(caseId: ID!, noticeId: ID!, status: NoticeStatus!, sentOn: String): CaseNotice!
   closeCase(caseId: ID!, outcome: CaseOutcome!, correctiveActions: [CorrectiveActionInput!], closingMessage: String): ReportCase!
+
+  # ModuleService.SetComplianceModule: switch the Compliance module off or on.
+  # Compliance managers and root; refused during act-as. Off keeps every case.
+  # Returns the settings as they stand after the change.
+  setComplianceModule(enabled: Boolean!): ComplianceSettings!
+  # ModuleService.ExecuteHardReset: deletes every case and everything that belongs
+  # to one. Root only; refused during act-as. requestId is an identity hard reset
+  # request (module "compliance") that a different site admin approved, and
+  # confirmation must be exactly "RESET COMPLIANCE DATA". Reporting refuses it,
+  # before deleting anything, with HARD_RESET_CONFIRMATION (8114), HARD_RESET_MODULE_ON
+  # (8115, the module must be off first), HARD_RESET_LEGAL_HOLD (8116, any held case
+  # blocks the whole reset), HARD_RESET_NOT_APPROVED (8117) or HARD_RESET_ROOT_REQUIRED
+  # (8118). The module stays off afterwards.
+  executeHardReset(requestId: ID!, confirmation: String!): HardResetResult!
 }
 `, BuiltIn: false},
 	{Name: "../../graphql/review.graphqls", Input: `# --- Review threads ---
@@ -15329,6 +15437,14 @@ func (ec *executionContext) childFields_CompletionReport(ctx context.Context, fi
 	return nil, fmt.Errorf("no field named %q was found under type CompletionReport", field.Name)
 }
 
+func (ec *executionContext) childFields_ComplianceSettings(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "moduleEnabled":
+		return ec.fieldContext_ComplianceSettings_moduleEnabled(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type ComplianceSettings", field.Name)
+}
+
 func (ec *executionContext) childFields_ComponentVersion(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "name":
@@ -15655,6 +15771,18 @@ func (ec *executionContext) childFields_HardResetRequest(ctx context.Context, fi
 		return ec.fieldContext_HardResetRequest_consumedBy(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type HardResetRequest", field.Name)
+}
+
+func (ec *executionContext) childFields_HardResetResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "casesDeleted":
+		return ec.fieldContext_HardResetResult_casesDeleted(ctx, field)
+	case "requestedBy":
+		return ec.fieldContext_HardResetResult_requestedBy(ctx, field)
+	case "approvedBy":
+		return ec.fieldContext_HardResetResult_approvedBy(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type HardResetResult", field.Name)
 }
 
 func (ec *executionContext) childFields_HealthStatus(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -18615,6 +18743,28 @@ func (ec *executionContext) field_Mutation_enrollTotpConfirm_args(ctx context.Co
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_executeHardReset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "requestId",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["requestId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "confirmation",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["confirmation"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_grantGroupManager_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -20028,6 +20178,20 @@ func (ec *executionContext) field_Mutation_setCategoryTemplateLock_args(ctx cont
 		return nil, err
 	}
 	args["locked"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setComplianceModule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "enabled",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["enabled"] = arg0
 	return args, nil
 }
 
@@ -28430,6 +28594,29 @@ func (ec *executionContext) fieldContext_CompletionReport_overdue(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _ComplianceSettings_moduleEnabled(ctx context.Context, field graphql.CollectedField, obj *ComplianceSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_ComplianceSettings_moduleEnabled(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ModuleEnabled, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_ComplianceSettings_moduleEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("ComplianceSettings", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
 func (ec *executionContext) _ComponentVersion_name(ctx context.Context, field graphql.CollectedField, obj *ComponentVersion) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30823,6 +31010,75 @@ func (ec *executionContext) _HardResetRequest_consumedBy(ctx context.Context, fi
 }
 func (ec *executionContext) fieldContext_HardResetRequest_consumedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("HardResetRequest", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetResult_casesDeleted(ctx context.Context, field graphql.CollectedField, obj *HardResetResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetResult_casesDeleted(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CasesDeleted, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetResult_casesDeleted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetResult", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetResult_requestedBy(ctx context.Context, field graphql.CollectedField, obj *HardResetResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetResult_requestedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RequestedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetResult_requestedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetResult", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _HardResetResult_approvedBy(ctx context.Context, field graphql.CollectedField, obj *HardResetResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_HardResetResult_approvedBy(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ApprovedBy, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_HardResetResult_approvedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("HardResetResult", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
 func (ec *executionContext) _HealthStatus_status(ctx context.Context, field graphql.CollectedField, obj *HealthStatus) (ret graphql.Marshaler) {
@@ -38994,6 +39250,94 @@ func (ec *executionContext) fieldContext_Mutation_closeCase(ctx context.Context,
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_closeCase_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setComplianceModule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setComplianceModule(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetComplianceModule(ctx, fc.Args["enabled"].(bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ComplianceSettings) graphql.Marshaler {
+			return ec.marshalNComplianceSettings2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComplianceSettings(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setComplianceModule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ComplianceSettings(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setComplianceModule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_executeHardReset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_executeHardReset(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ExecuteHardReset(ctx, fc.Args["requestId"].(string), fc.Args["confirmation"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *HardResetResult) graphql.Marshaler {
+			return ec.marshalNHardResetResult2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_executeHardReset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_HardResetResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_executeHardReset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -47270,6 +47614,38 @@ func (ec *executionContext) fieldContext_Query_previewMovePolicies(ctx context.C
 	if fc.Args, err = ec.field_Query_previewMovePolicies_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_complianceSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_complianceSettings(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().ComplianceSettings(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ComplianceSettings) graphql.Marshaler {
+			return ec.marshalNComplianceSettings2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComplianceSettings(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_complianceSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ComplianceSettings(ctx, field)
+		},
 	}
 	return fc, nil
 }
@@ -62362,6 +62738,44 @@ func (ec *executionContext) _CompletionReport(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var complianceSettingsImplementors = []string{"ComplianceSettings"}
+
+func (ec *executionContext) _ComplianceSettings(ctx context.Context, sel ast.SelectionSet, obj *ComplianceSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, complianceSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ComplianceSettings")
+		case "moduleEnabled":
+			out.Values[i] = ec._ComplianceSettings_moduleEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var componentVersionImplementors = []string{"ComponentVersion"}
 
 func (ec *executionContext) _ComponentVersion(ctx context.Context, sel ast.SelectionSet, obj *ComponentVersion) graphql.Marshaler {
@@ -63537,6 +63951,54 @@ func (ec *executionContext) _HardResetRequest(ctx context.Context, sel ast.Selec
 		case "consumedBy":
 			out.Values[i] = ec._HardResetRequest_consumedBy(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var hardResetResultImplementors = []string{"HardResetResult"}
+
+func (ec *executionContext) _HardResetResult(ctx context.Context, sel ast.SelectionSet, obj *HardResetResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, hardResetResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HardResetResult")
+		case "casesDeleted":
+			out.Values[i] = ec._HardResetResult_casesDeleted(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestedBy":
+			out.Values[i] = ec._HardResetResult_requestedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "approvedBy":
+			out.Values[i] = ec._HardResetResult_approvedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		default:
@@ -65573,6 +66035,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "closeCase":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_closeCase(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setComplianceModule":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setComplianceModule(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "executeHardReset":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_executeHardReset(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -69410,6 +69886,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_previewMovePolicies(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "complianceSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_complianceSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -75268,6 +75766,20 @@ func (ec *executionContext) marshalNCompletionReport2ᚖgithubᚗcomᚋSteward�
 	return ec._CompletionReport(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNComplianceSettings2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComplianceSettings(ctx context.Context, sel ast.SelectionSet, v ComplianceSettings) graphql.Marshaler {
+	return ec._ComplianceSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNComplianceSettings2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComplianceSettings(ctx context.Context, sel ast.SelectionSet, v *ComplianceSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ComplianceSettings(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNComponentStatus2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐComponentStatus(ctx context.Context, v any) (ComponentStatus, error) {
 	var res ComponentStatus
 	err := res.UnmarshalGQL(v)
@@ -75781,6 +76293,20 @@ func (ec *executionContext) marshalNHardResetRequest2ᚖgithubᚗcomᚋSteward�
 		return graphql.Null
 	}
 	return ec._HardResetRequest(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNHardResetResult2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetResult(ctx context.Context, sel ast.SelectionSet, v HardResetResult) graphql.Marshaler {
+	return ec._HardResetResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHardResetResult2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHardResetResult(ctx context.Context, sel ast.SelectionSet, v *HardResetResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._HardResetResult(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNHealthStatus2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHealthStatus(ctx context.Context, sel ast.SelectionSet, v HealthStatus) graphql.Marshaler {

@@ -482,6 +482,10 @@ type CompletionReport struct {
 	Overdue             []*OverdueEntry `json:"overdue"`
 }
 
+type ComplianceSettings struct {
+	ModuleEnabled bool `json:"moduleEnabled"`
+}
+
 type ComponentVersion struct {
 	Name string `json:"name"`
 	// unavailable or unknown when it can't be read.
@@ -717,6 +721,12 @@ type HardResetRequest struct {
 	CancelledAt       *string `json:"cancelledAt,omitempty"`
 	ConsumedAt        *string `json:"consumedAt,omitempty"`
 	ConsumedBy        *string `json:"consumedBy,omitempty"`
+}
+
+type HardResetResult struct {
+	CasesDeleted int    `json:"casesDeleted"`
+	RequestedBy  string `json:"requestedBy"`
+	ApprovedBy   string `json:"approvedBy"`
 }
 
 type HealthStatus struct {

@@ -91,17 +91,17 @@ func (r *mutationResolver) TransferRoot(ctx context.Context, userID string, otp 
 
 // RequestHardReset is the resolver for the requestHardReset field.
 func (r *mutationResolver) RequestHardReset(ctx context.Context, module string, reason string) (*HardResetRequest, error) {
-	return RequestHardResetResolver(ctx, r.IdentityAdminClient, module, reason)
+	return RequestHardResetResolver(ctx, r.logger(), r.IdentityAdminClient, module, reason)
 }
 
 // ApproveHardReset is the resolver for the approveHardReset field.
 func (r *mutationResolver) ApproveHardReset(ctx context.Context, requestID string) (*HardResetRequest, error) {
-	return ApproveHardResetResolver(ctx, r.IdentityAdminClient, requestID)
+	return ApproveHardResetResolver(ctx, r.logger(), r.IdentityAdminClient, requestID)
 }
 
 // CancelHardReset is the resolver for the cancelHardReset field.
 func (r *mutationResolver) CancelHardReset(ctx context.Context, requestID string) (*HardResetRequest, error) {
-	return CancelHardResetResolver(ctx, r.IdentityAdminClient, requestID)
+	return CancelHardResetResolver(ctx, r.logger(), r.IdentityAdminClient, requestID)
 }
 
 // CompleteOnboarding is the resolver for the completeOnboarding field.
@@ -228,7 +228,7 @@ func (r *mutationResolver) StopImpersonation(ctx context.Context) (bool, error) 
 
 // HardResetRequests is the resolver for the hardResetRequests field.
 func (r *queryResolver) HardResetRequests(ctx context.Context, module *string) ([]*HardResetRequest, error) {
-	return HardResetRequestsResolver(ctx, r.IdentityAdminClient, module)
+	return HardResetRequestsResolver(ctx, r.logger(), r.IdentityAdminClient, module)
 }
 
 // Me is the resolver for the me field.

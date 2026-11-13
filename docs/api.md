@@ -396,6 +396,26 @@ root-only, the act-as refusal and the code; the gateway passes its answer throug
 The root override in the access rules follows the identity `is_root` flag, and claims are rebuilt
 from identity on every request, so the next request after a transfer already sees the new seat.
 
+## Compliance module switch and hard reset
+
+Reporting keeps an off switch for the Compliance module. `complianceSettings { moduleEnabled }`
+reads it (compliance managers and root). `setComplianceModule(enabled)` turns the module off or on
+(compliance managers and root). Off, every report and case call is refused with `MODULE_OFF` (8113,
+domain `reporting`) and all data is kept.
+
+A hard reset is four-eyes. The root admin asks with `requestHardReset(module: "compliance",
+reason)`; a different active site admin approves with `approveHardReset(requestId)`; the requester
+may withdraw with `cancelHardReset`; `hardResetRequests(module)` lists them for the root admin or a
+site admin. The gateway gates each call by role (root to request, site admin to approve, cancel and
+list) and refuses all of them during act-as; identity still enforces who may do what. After the
+approval the root admin calls `executeHardReset(requestId, confirmation)` with the exact phrase
+`RESET COMPLIANCE DATA`. Reporting refuses it, before deleting anything, with `HARD_RESET_CONFIRMATION`
+(8114), `HARD_RESET_MODULE_ON` (8115, switch the module off first), `HARD_RESET_LEGAL_HOLD` (8116, one
+held case blocks the whole reset), `HARD_RESET_NOT_APPROVED` (8117) or `HARD_RESET_ROOT_REQUIRED` (8118).
+The gateway relays these with reporting's code, number, domain and message as business errors; they
+are not in the gateway's own band. The result names the two admins and the case count. The gateway
+never logs the reason, the confirmation phrase or any case content.
+
 ## Calling other services
 
 The gateway calls every Steward service over gRPC, never importing their Go modules: each proto is
@@ -430,5 +450,7 @@ the three anonymous reporting calls carry no user. The methods it calls:
 - core PolicyService: CreatePolicy, GetPolicy, GetPolicyByNumber, ListPolicies, GetPolicyVersion, ListPolicyVersions, SaveDraft, PublishDraft, DiscardDraft, DeletePolicy, RetirePolicy, RecordBreakGlassRead, SetPolicyOwner, ListPoliciesByOwner, ReassignUserPolicies, MovePolicy, PreviewMovePolicies, MovePolicies, DiffVersions, GetEffectiveTemplate, SetPolicyTemplate, SetPolicySensitivity, RenamePolicy, SetAck, ReindexPolicy, ReindexPolicyVersion
 - delivery DeliveryService: GetRenderedContent, GetDiff, RequestPDFExport, GetPDFDownloadLink, CreateMagicLink, RevokeMagicLink, ListMagicLinks, RemoveMagicLink
 - reporting IntakeService: SubmitAnonymousReport, CheckReport, ReplyToReport, SubmitNamedReport, ListMyReports, GetMyReport, ReplyToMyReport
+- reporting SettingsService: GetSettings
+- reporting ModuleService: SetComplianceModule, ExecuteHardReset
 - reporting CaseService: ListCases, GetCase, GetAttachment, PostMessage, AddNote, AssignCase, SetCaseStatus, SetDiscoveryDate, RecordRiskAssessment, AddNotice, UpdateNotice, CloseCase
 - every service: `grpc.health.v1.Health/Check` (readiness and diagnostics)

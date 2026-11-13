@@ -6,8 +6,10 @@ package resolvers
 import (
 	"context"
 	"slices"
+	"time"
 
 	"github.com/Bugs5382/go-authz/ordered"
+	log "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
@@ -51,75 +53,98 @@ func TransferRootResolver(ctx context.Context, admin identityv1.IdentityAdminSer
 	return userToGraphQL(resp.GetUser()), nil
 }
 
-// RequestHardResetResolver starts a two-person hard reset of module. Root
-// only and refused during act-as, both enforced by identity.
-func RequestHardResetResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, module, reason string) (*HardResetRequest, error) {
+// hardResetGate guards one identity hard reset call: the gateway role
+// gate first (gate returns the caller or the refusal), then the nil-client
+// check. Identity still decides who may do what (root asks, a different active
+// site admin approves, only the requester cancels).
+func hardResetGate(ctx context.Context, lg log.Logger, action string, admin identityv1.IdentityAdminServiceClient, gate func(context.Context) (principal.Claims, error)) (principal.Claims, error) {
+	c, err := gate(ctx)
+	if err != nil {
+		lg.Ctx(ctx).Warn("hard reset action refused by the gateway", log.F("action", action), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
 	if admin == nil {
+		lg.Ctx(ctx).Error(status.Error(codes.Unavailable, "identity admin unavailable"), "hard reset: identity admin unavailable", log.F("action", action))
 		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
 	}
-	if _, ok := principal.FromContext(ctx); !ok {
-		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
+	return c, nil
+}
+
+// RequestHardResetResolver starts a four-eyes hard reset of module. Root only,
+// gated here and again by identity, which also refuses act-as. The reason is
+// passed on and never logged.
+func RequestHardResetResolver(ctx context.Context, lg log.Logger, admin identityv1.IdentityAdminServiceClient, module, reason string) (*HardResetRequest, error) {
+	c, err := hardResetGate(ctx, lg, "request", admin, requireRoot)
+	if err != nil {
+		return nil, err
 	}
+	start := time.Now()
 	resp, err := admin.RequestHardReset(ctx, &identityv1.RequestHardResetRequest{Module: module, Reason: reason})
 	if err != nil {
+		lg.Ctx(ctx).Warn("hard reset request refused by identity", log.F("module", module), log.F("code", status.Code(err).String()))
 		return nil, err
 	}
+	lg.Ctx(ctx).Info("hard reset requested", log.F("module", module), log.F("requestId", resp.GetRequest().GetId()), log.F("userId", c.UserID()), log.F("ms", time.Since(start).Milliseconds()))
 	return hardResetRequestToGraphQL(resp.GetRequest()), nil
 }
 
-// ApproveHardResetResolver approves a pending request by a different root
-// admin than its requester, both enforced by identity.
-func ApproveHardResetResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, requestID string) (*HardResetRequest, error) {
-	if admin == nil {
-		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
+// ApproveHardResetResolver approves a pending request. It needs the
+// site-admin role; identity requires an active site admin other than the
+// requester (the root admin can't approve its own request).
+func ApproveHardResetResolver(ctx context.Context, lg log.Logger, admin identityv1.IdentityAdminServiceClient, requestID string) (*HardResetRequest, error) {
+	c, err := hardResetGate(ctx, lg, "approve", admin, requireSiteAdminOrRoot)
+	if err != nil {
+		return nil, err
 	}
-	if _, ok := principal.FromContext(ctx); !ok {
-		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
-	}
+	start := time.Now()
 	resp, err := admin.ApproveHardReset(ctx, &identityv1.ApproveHardResetRequest{RequestId: requestID})
 	if err != nil {
+		lg.Ctx(ctx).Warn("hard reset approval refused by identity", log.F("requestId", requestID), log.F("code", status.Code(err).String()))
 		return nil, err
 	}
+	lg.Ctx(ctx).Info("hard reset approved", log.F("requestId", requestID), log.F("userId", c.UserID()), log.F("ms", time.Since(start).Milliseconds()))
 	return hardResetRequestToGraphQL(resp.GetRequest()), nil
 }
 
-// CancelHardResetResolver withdraws a pending or approved request; only its
-// requester may, enforced by identity.
-func CancelHardResetResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, requestID string) (*HardResetRequest, error) {
-	if admin == nil {
-		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
-	}
-	if _, ok := principal.FromContext(ctx); !ok {
-		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
-	}
-	resp, err := admin.CancelHardReset(ctx, &identityv1.CancelHardResetRequest{RequestId: requestID})
+// CancelHardResetResolver withdraws a pending or approved request. It needs
+// the site-admin role (a former root keeps it after a transfer); only the
+// requester may cancel, which identity enforces.
+func CancelHardResetResolver(ctx context.Context, lg log.Logger, admin identityv1.IdentityAdminServiceClient, requestID string) (*HardResetRequest, error) {
+	c, err := hardResetGate(ctx, lg, "cancel", admin, requireSiteAdminOrRoot)
 	if err != nil {
 		return nil, err
 	}
+	start := time.Now()
+	resp, err := admin.CancelHardReset(ctx, &identityv1.CancelHardResetRequest{RequestId: requestID})
+	if err != nil {
+		lg.Ctx(ctx).Warn("hard reset cancel refused by identity", log.F("requestId", requestID), log.F("code", status.Code(err).String()))
+		return nil, err
+	}
+	lg.Ctx(ctx).Info("hard reset cancelled", log.F("requestId", requestID), log.F("userId", c.UserID()), log.F("ms", time.Since(start).Milliseconds()))
 	return hardResetRequestToGraphQL(resp.GetRequest()), nil
 }
 
-// HardResetRequestsResolver lists the hard reset requests, newest first,
-// root only (enforced by identity).
-func HardResetRequestsResolver(ctx context.Context, admin identityv1.IdentityAdminServiceClient, module *string) ([]*HardResetRequest, error) {
-	if admin == nil {
-		return nil, status.Error(codes.Unavailable, "identity admin unavailable")
-	}
-	if _, ok := principal.FromContext(ctx); !ok {
-		return nil, status.Error(codes.Unauthenticated, "no authenticated user")
+// HardResetRequestsResolver lists the hard reset requests, newest first, for
+// the root admin or a site admin.
+func HardResetRequestsResolver(ctx context.Context, lg log.Logger, admin identityv1.IdentityAdminServiceClient, module *string) ([]*HardResetRequest, error) {
+	if _, err := hardResetGate(ctx, lg, "list", admin, requireSiteAdminOrRoot); err != nil {
+		return nil, err
 	}
 	mod := ""
 	if module != nil {
 		mod = *module
 	}
+	start := time.Now()
 	resp, err := admin.ListHardResetRequests(ctx, &identityv1.ListHardResetRequestsRequest{Module: mod})
 	if err != nil {
+		lg.Ctx(ctx).Warn("hard reset list refused by identity", log.F("module", mod), log.F("code", status.Code(err).String()))
 		return nil, err
 	}
 	out := make([]*HardResetRequest, 0, len(resp.GetRequests()))
 	for _, req := range resp.GetRequests() {
 		out = append(out, hardResetRequestToGraphQL(req))
 	}
+	lg.Ctx(ctx).Debug("hard reset requests listed", log.F("module", mod), log.F("count", len(out)), log.F("ms", time.Since(start).Milliseconds()))
 	return out, nil
 }
 

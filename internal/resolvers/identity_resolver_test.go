@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	grpcactor "github.com/Bugs5382/go-grpc-actor"
+	golog "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	identityv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/identity/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
@@ -112,6 +113,7 @@ type fakeAdminClient struct {
 	requestHardResetResp    *identityv1.RequestHardResetResponse
 	requestHardResetErr     error
 	lastRequestHardResetReq *identityv1.RequestHardResetRequest
+	hardResetCalls          int
 
 	approveHardResetResp *identityv1.ApproveHardResetResponse
 	approveHardResetErr  error
@@ -154,6 +156,7 @@ func (f *fakeAdminClient) TransferRoot(_ context.Context, in *identityv1.Transfe
 }
 
 func (f *fakeAdminClient) RequestHardReset(_ context.Context, in *identityv1.RequestHardResetRequest, _ ...grpc.CallOption) (*identityv1.RequestHardResetResponse, error) {
+	f.hardResetCalls++
 	f.lastRequestHardResetReq = in
 	if f.requestHardResetErr != nil {
 		return nil, f.requestHardResetErr
@@ -162,6 +165,7 @@ func (f *fakeAdminClient) RequestHardReset(_ context.Context, in *identityv1.Req
 }
 
 func (f *fakeAdminClient) ApproveHardReset(_ context.Context, _ *identityv1.ApproveHardResetRequest, _ ...grpc.CallOption) (*identityv1.ApproveHardResetResponse, error) {
+	f.hardResetCalls++
 	if f.approveHardResetErr != nil {
 		return nil, f.approveHardResetErr
 	}
@@ -169,6 +173,7 @@ func (f *fakeAdminClient) ApproveHardReset(_ context.Context, _ *identityv1.Appr
 }
 
 func (f *fakeAdminClient) CancelHardReset(_ context.Context, _ *identityv1.CancelHardResetRequest, _ ...grpc.CallOption) (*identityv1.CancelHardResetResponse, error) {
+	f.hardResetCalls++
 	if f.cancelHardResetErr != nil {
 		return nil, f.cancelHardResetErr
 	}
@@ -176,6 +181,7 @@ func (f *fakeAdminClient) CancelHardReset(_ context.Context, _ *identityv1.Cance
 }
 
 func (f *fakeAdminClient) ListHardResetRequests(_ context.Context, _ *identityv1.ListHardResetRequestsRequest, _ ...grpc.CallOption) (*identityv1.ListHardResetRequestsResponse, error) {
+	f.hardResetCalls++
 	if f.listHardResetErr != nil {
 		return nil, f.listHardResetErr
 	}
@@ -866,7 +872,7 @@ func TestRequestHardResetResolverHappyPath(t *testing.T) {
 			},
 		},
 	}
-	out, err := resolvers.RequestHardResetResolver(ctxWithUser(t, "u-root"), admin, "compliance", "quarterly reset")
+	out, err := resolvers.RequestHardResetResolver(ctxRoot(t, "u-root"), golog.Nop(), admin, "compliance", "quarterly reset")
 	if err != nil {
 		t.Fatalf("RequestHardResetResolver: %v", err)
 	}
@@ -880,7 +886,7 @@ func TestRequestHardResetResolverHappyPath(t *testing.T) {
 
 func TestRequestHardResetResolverPassesThroughIdentityRefusal(t *testing.T) {
 	admin := &fakeAdminClient{requestHardResetErr: status.Error(codes.PermissionDenied, "root required")}
-	_, err := resolvers.RequestHardResetResolver(ctxWithUser(t, "u-caller"), admin, "compliance", "reason")
+	_, err := resolvers.RequestHardResetResolver(ctxRoot(t, "u-caller"), golog.Nop(), admin, "compliance", "reason")
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("want PermissionDenied, got %v", status.Code(err))
 	}

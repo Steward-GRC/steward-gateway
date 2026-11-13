@@ -599,3 +599,34 @@ func TestSanitizingErrorPresenter_vetoPersonNotAnApprover(t *testing.T) {
 		t.Fatalf("extensions = %v", got.Extensions)
 	}
 }
+
+// Reporting's module switch and hard reset refusals reach the browser with
+// their symbol, number, domain and message, as business errors, without being
+// registered in the gateway's own band.
+func TestSanitizingErrorPresenter_complianceModuleAndHardResetRefusals(t *testing.T) {
+	for _, tc := range []struct {
+		c       codes.Code
+		num     int
+		symbol  string
+		message string
+	}{
+		{codes.FailedPrecondition, 8113, "MODULE_OFF", "Compliance reporting is switched off."},
+		{codes.InvalidArgument, 8114, "HARD_RESET_CONFIRMATION", "The confirmation phrase doesn't match. Type it exactly as shown."},
+		{codes.FailedPrecondition, 8115, "HARD_RESET_MODULE_ON", "Switch the module off first."},
+		{codes.FailedPrecondition, 8116, "HARD_RESET_LEGAL_HOLD", "A case is under a legal hold."},
+		{codes.FailedPrecondition, 8117, "HARD_RESET_NOT_APPROVED", "This hard reset has no valid approval from a second admin."},
+		{codes.PermissionDenied, 8118, "HARD_RESET_ROOT_REQUIRED", "Only the root admin can run a hard reset."},
+	} {
+		t.Run(tc.symbol, func(t *testing.T) {
+			in := fmt.Errorf("reporting module: %w", relayedStatus(t, tc.c, tc.num, tc.symbol, "reporting", tc.message, nil))
+			got := present(context.Background(), in)
+			if got.Message != tc.message {
+				t.Fatalf("message = %q, want %q", got.Message, tc.message)
+			}
+			if got.Extensions["code"] != tc.symbol || got.Extensions["codeNum"] != tc.num ||
+				got.Extensions["domain"] != "reporting" || got.Extensions["kind"] != "business" {
+				t.Fatalf("extensions = %v", got.Extensions)
+			}
+		})
+	}
+}

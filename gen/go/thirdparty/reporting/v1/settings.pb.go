@@ -102,8 +102,12 @@ type ComplianceSettings struct {
 	// them; the user id is empty for the seed.
 	UpdatedAt       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	UpdatedByUserId string                 `protobuf:"bytes,6,opt,name=updated_by_user_id,json=updatedByUserId,proto3" json:"updated_by_user_id,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Read only: whether the Compliance module is on. Off, every IntakeService
+	// and CaseService call is refused with MODULE_OFF and the data is kept.
+	// UpdateSettings ignores it; ModuleService.SetComplianceModule changes it.
+	ModuleEnabled bool `protobuf:"varint,7,opt,name=module_enabled,json=moduleEnabled,proto3" json:"module_enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ComplianceSettings) Reset() {
@@ -177,6 +181,13 @@ func (x *ComplianceSettings) GetUpdatedByUserId() string {
 		return x.UpdatedByUserId
 	}
 	return ""
+}
+
+func (x *ComplianceSettings) GetModuleEnabled() bool {
+	if x != nil {
+		return x.ModuleEnabled
+	}
+	return false
 }
 
 type GetSettingsRequest struct {
@@ -355,7 +366,7 @@ const file_steward_reporting_v1_settings_proto_rawDesc = "" +
 	"#steward/reporting/v1/settings.proto\x12\x14steward.reporting.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"8\n" +
 	"\x0eIntakeCategory\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05label\x18\x02 \x01(\tR\x05label\"\xd1\x02\n" +
+	"\x05label\x18\x02 \x01(\tR\x05label\"\xf8\x02\n" +
 	"\x12ComplianceSettings\x12)\n" +
 	"\x0eofficer_groups\x18\x01 \x03(\tB\x02\x18\x01R\rofficerGroups\x12.\n" +
 	"\x13public_link_enabled\x18\x02 \x01(\bR\x11publicLinkEnabled\x12%\n" +
@@ -363,7 +374,8 @@ const file_steward_reporting_v1_settings_proto_rawDesc = "" +
 	"\x11intake_categories\x18\x04 \x03(\v2$.steward.reporting.v1.IntakeCategoryR\x10intakeCategories\x129\n" +
 	"\n" +
 	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12+\n" +
-	"\x12updated_by_user_id\x18\x06 \x01(\tR\x0fupdatedByUserId\"\x14\n" +
+	"\x12updated_by_user_id\x18\x06 \x01(\tR\x0fupdatedByUserId\x12%\n" +
+	"\x0emodule_enabled\x18\a \x01(\bR\rmoduleEnabled\"\x14\n" +
 	"\x12GetSettingsRequest\"[\n" +
 	"\x13GetSettingsResponse\x12D\n" +
 	"\bsettings\x18\x01 \x01(\v2(.steward.reporting.v1.ComplianceSettingsR\bsettings\"]\n" +

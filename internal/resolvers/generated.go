@@ -1529,6 +1529,7 @@ type ComplexityRoot struct {
 		DecidedAt          func(childComplexity int) int
 		GroupID            func(childComplexity int) int
 		Name               func(childComplexity int) int
+		RoleLabel          func(childComplexity int) int
 		State              func(childComplexity int) int
 		UserID             func(childComplexity int) int
 		Veto               func(childComplexity int) int
@@ -9768,6 +9769,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.StageAssignee.Name(childComplexity), true
+	case "StageAssignee.roleLabel":
+		if e.ComplexityRoot.StageAssignee.RoleLabel == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StageAssignee.RoleLabel(childComplexity), true
 	case "StageAssignee.state":
 		if e.ComplexityRoot.StageAssignee.State == nil {
 			break
@@ -14440,6 +14447,11 @@ type StageAssignee {
   changesRequestedAt: String
   # The seat holds a veto on its stage.
   veto: Boolean!
+  # Why the person holds the seat, as the stepper shows it ("Approver" when the
+  # workflow definition names them, "Category owner" when the policy's category
+  # owner joined to meet the stage's quorum). Null when the workflow did not
+  # record the source (a seat made before it was kept); the client falls back.
+  roleLabel: String
 }
 
 # One approve-as-group unit's live tally on a stage. groupName is
@@ -17268,6 +17280,8 @@ func (ec *executionContext) childFields_StageAssignee(ctx context.Context, field
 		return ec.fieldContext_StageAssignee_changesRequestedAt(ctx, field)
 	case "veto":
 		return ec.fieldContext_StageAssignee_veto(ctx, field)
+	case "roleLabel":
+		return ec.fieldContext_StageAssignee_roleLabel(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type StageAssignee", field.Name)
 }
@@ -53739,6 +53753,29 @@ func (ec *executionContext) fieldContext_StageAssignee_veto(_ context.Context, f
 	return graphql.NewScalarFieldContext("StageAssignee", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _StageAssignee_roleLabel(ctx context.Context, field graphql.CollectedField, obj *StageAssignee) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StageAssignee_roleLabel(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RoleLabel, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_StageAssignee_roleLabel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StageAssignee", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _StageEligibleAssignees_stageIndex(ctx context.Context, field graphql.CollectedField, obj *StageEligibleAssignees) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -73364,6 +73401,11 @@ func (ec *executionContext) _StageAssignee(ctx context.Context, sel ast.Selectio
 		case "veto":
 			out.Values[i] = ec._StageAssignee_veto(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roleLabel":
+			out.Values[i] = ec._StageAssignee_roleLabel(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:

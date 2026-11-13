@@ -767,6 +767,42 @@ func TestWorkflowStatusResolver_ShowsWhichSeatsHoldAVeto(t *testing.T) {
 	}
 }
 
+// Each seat carries a role label from why the person holds it, and none when
+// the workflow did not record the source, so the client falls back.
+func TestWorkflowStatusResolver_SeatRoleLabelFollowsTheSource(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	wf := statusRun()
+	row := wf.statusResp.StageAssignees[0].Assignees
+	row[0].Source = workflowv1.SeatSource_SEAT_SOURCE_APPROVER
+	row[1].Source = workflowv1.SeatSource_SEAT_SOURCE_CATEGORY_OWNER
+
+	out, err := workflowStatus(readerCtx(t), wf, pc, groups, noGrant(), "pol-1-v1")
+	if err != nil {
+		t.Fatalf("WorkflowStatusResolver: %v", err)
+	}
+	got := out.StageAssignees[0]
+	if got[0].RoleLabel == nil || *got[0].RoleLabel != "Approver" {
+		t.Fatalf("approver roleLabel = %v, want Approver", got[0].RoleLabel)
+	}
+	if got[1].RoleLabel == nil || *got[1].RoleLabel != "Category owner" {
+		t.Fatalf("category owner roleLabel = %v, want Category owner", got[1].RoleLabel)
+	}
+}
+
+func TestWorkflowStatusResolver_SeatWithNoRecordedSourceHasNoRoleLabel(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	wf := statusRun()
+	wf.statusResp.StageAssignees[0].Assignees[0].Source = workflowv1.SeatSource_SEAT_SOURCE_UNSPECIFIED
+
+	out, err := workflowStatus(readerCtx(t), wf, pc, groups, noGrant(), "pol-1-v1")
+	if err != nil {
+		t.Fatalf("WorkflowStatusResolver: %v", err)
+	}
+	if got := out.StageAssignees[0][0].RoleLabel; got != nil {
+		t.Fatalf("roleLabel = %q, want null for an unspecified source", *got)
+	}
+}
+
 // TestSubmitWorkflow_NonAuthorDenied verifies a caller who cannot edit the
 // policy is refused with PermissionDenied before the workflow service is asked
 // to start a run (mock: "refuses someone who can't edit the policy").

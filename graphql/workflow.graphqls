@@ -57,6 +57,11 @@ type StageAssignee {
   changesRequestedAt: String
   # The seat holds a veto on its stage.
   veto: Boolean!
+  # Why the person holds the seat, as the stepper shows it ("Approver" when the
+  # workflow definition names them, "Category owner" when the policy's category
+  # owner joined to meet the stage's quorum). Null when the workflow did not
+  # record the source (a seat made before it was kept); the client falls back.
+  roleLabel: String
 }
 
 # One approve-as-group unit's live tally on a stage. groupName is

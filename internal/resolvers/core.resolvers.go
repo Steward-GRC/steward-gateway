@@ -340,7 +340,7 @@ func (r *queryResolver) Templates(ctx context.Context, ownerCategoryID *string) 
 
 // LatestTemplateVersion is the resolver for the latestTemplateVersion field.
 func (r *queryResolver) LatestTemplateVersion(ctx context.Context, templateID string) (*TemplateVersion, error) {
-	return LatestTemplateVersion(ctx, r.TemplateClient, r.CategoryClient, templateID)
+	return LatestTemplateVersion(ctx, r.logger().Ctx(ctx), r.TemplateClient, r.CategoryClient, templateID)
 }
 
 // TemplateVersions is the resolver for the templateVersions field.

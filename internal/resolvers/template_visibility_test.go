@@ -6,6 +6,7 @@ package resolvers_test
 import (
 	"testing"
 
+	log "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/principal"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
@@ -136,7 +137,7 @@ func TestTemplateRead_GatedOnAuthorCategory(t *testing.T) {
 	if _, err := resolvers.ListTemplateVersions(ctx, tc, gc, "TPL-B"); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("templateVersions for a non-author-category template must be denied; got %v", err)
 	}
-	if _, err := resolvers.LatestTemplateVersion(ctx, tc, gc, "TPL-B"); status.Code(err) != codes.PermissionDenied {
+	if _, err := resolvers.LatestTemplateVersion(ctx, log.Nop(), tc, gc, "TPL-B"); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("latestTemplateVersion for a non-author-category template must be denied; got %v", err)
 	}
 }

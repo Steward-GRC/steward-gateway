@@ -6,6 +6,7 @@ package resolvers
 import (
 	"context"
 
+	log "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
 	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 	"google.golang.org/grpc/codes"
@@ -213,16 +214,26 @@ func templateVersionFromProto(v *corev1.TemplateVersion) *TemplateVersion {
 	}
 }
 
-// LatestTemplateVersion fetches the latest version of a template — returns nil (mapped from gRPC
-// NotFound by upstream handling) when no version exists.
-func LatestTemplateVersion(ctx context.Context, client corev1.TemplateServiceClient, categoryClient corev1.CategoryServiceClient, templateID string) (*TemplateVersion, error) {
+// LatestTemplateVersion fetches the latest published version of a template. The schema field is
+// nullable: once the caller is cleared to read the template, a core NotFound (no published version
+// yet, for example a template with only a draft) is returned as nil with no error. Any other core
+// error stays an error, and an unreadable or unknown template keeps the gate's PermissionDenied.
+func LatestTemplateVersion(ctx context.Context, logger log.Logger, client corev1.TemplateServiceClient, categoryClient corev1.CategoryServiceClient, templateID string) (*TemplateVersion, error) {
+	log.Trace(logger, "latest template version: entry", log.F("template_id", templateID))
 	if err := authorizeTemplateRead(ctx, client, categoryClient, templateID); err != nil {
+		logger.Debug("latest template version: read gate refused", log.F("template_id", templateID), log.F("code", status.Code(err).String()))
 		return nil, err
 	}
 	resp, err := client.GetLatestTemplateVersion(ctx, &corev1.GetLatestTemplateVersionRequest{TemplateId: templateID})
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			logger.Debug("latest template version: no published version, returning null", log.F("template_id", templateID))
+			return nil, nil
+		}
+		logger.Error(err, "latest template version: core lookup failed", log.F("template_id", templateID), log.F("code", status.Code(err).String()))
 		return nil, err
 	}
+	log.Trace(logger, "latest template version: exit", log.F("template_id", templateID))
 	return templateVersionFromProto(resp.Version), nil
 }
 

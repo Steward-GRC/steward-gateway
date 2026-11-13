@@ -259,6 +259,27 @@ func TestSanitizingErrorPresenter_relaysOriginatingBusinessCode(t *testing.T) {
 	}
 }
 
+// Core's refusal of a bad site work calendar reaches the browser with its
+// code, number, domain and message, as a business error.
+func TestSanitizingErrorPresenter_invalidWorkCalendar(t *testing.T) {
+	reg, err := apperr.NewRegistry([]apperr.Entry{{
+		Code: 4009, Symbol: "INVALID_WORK_CALENDAR", Category: apperr.CategoryInvalid,
+		Title: "work calendar", Cause: "bad calendar", UserSafe: true, Message: "The work calendar is not valid: {reason}.",
+	}}, apperr.WithService(4))
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := apperrgrpc.Error(context.Background(), reg, apperr.WithMeta(apperr.Coded(4009, nil), apperr.Meta("reason", "unknown time zone")), 4000, "core")
+	got := present(context.Background(), fmt.Errorf("core set global settings: %w", st))
+	if got.Message != "The work calendar is not valid: unknown time zone." {
+		t.Fatalf("message = %q, want core's message", got.Message)
+	}
+	if got.Extensions["code"] != "INVALID_WORK_CALENDAR" || got.Extensions["codeNum"] != 4009 ||
+		got.Extensions["domain"] != "core" || got.Extensions["kind"] != "business" {
+		t.Fatalf("extensions = %v", got.Extensions)
+	}
+}
+
 // A declared internal fault keeps its originating number but gets the generic
 // message and kind reach.
 func TestSanitizingErrorPresenter_serverFaultWithInfoRelaysCodeNum(t *testing.T) {

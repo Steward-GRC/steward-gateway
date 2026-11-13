@@ -31,13 +31,30 @@ type fakeSettingsClient struct {
 	statusResp *corev1.EmailServiceConfigStatusResponse
 	statusErr  error
 	statusCall bool
+
+	getGlobalResp       *corev1.GetGlobalSettingsResponse
+	setGlobalResp       *corev1.SetGlobalSettingsResponse
+	setGlobalErr        error
+	lastSetGlobalReq    *corev1.SetGlobalSettingsRequest
+	setGlobalCallsCount int
 }
 
 func (f *fakeSettingsClient) GetGlobalSettings(_ context.Context, _ *corev1.GetGlobalSettingsRequest, _ ...grpc.CallOption) (*corev1.GetGlobalSettingsResponse, error) {
+	if f.getGlobalResp != nil {
+		return f.getGlobalResp, nil
+	}
 	return &corev1.GetGlobalSettingsResponse{}, nil
 }
 
-func (f *fakeSettingsClient) SetGlobalSettings(_ context.Context, _ *corev1.SetGlobalSettingsRequest, _ ...grpc.CallOption) (*corev1.SetGlobalSettingsResponse, error) {
+func (f *fakeSettingsClient) SetGlobalSettings(_ context.Context, in *corev1.SetGlobalSettingsRequest, _ ...grpc.CallOption) (*corev1.SetGlobalSettingsResponse, error) {
+	f.lastSetGlobalReq = in
+	f.setGlobalCallsCount++
+	if f.setGlobalErr != nil {
+		return nil, f.setGlobalErr
+	}
+	if f.setGlobalResp != nil {
+		return f.setGlobalResp, nil
+	}
 	return &corev1.SetGlobalSettingsResponse{}, nil
 }
 

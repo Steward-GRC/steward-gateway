@@ -29,7 +29,58 @@ func globalSettingsFromProto(in *corev1.GlobalSettings) *GlobalSettings {
 			}
 		}
 	}
-	return &GlobalSettings{Announcement: ann, Maintenance: maint}
+	var wc *corev1.WorkCalendar
+	if in != nil {
+		wc = in.GetWorkCalendar()
+	}
+	return &GlobalSettings{Announcement: ann, Maintenance: maint, WorkCalendar: workCalendarFromProto(wc)}
+}
+
+// defaultWorkCalendar is what a site that never set one has: Monday to
+// Friday in UTC with no holidays. Core answers the same; this only covers a
+// reply that carries no calendar, so the non-null field never goes null.
+func defaultWorkCalendar() *WorkCalendar {
+	return &WorkCalendar{Weekdays: []int{1, 2, 3, 4, 5}, Timezone: "UTC", Holidays: []*Holiday{}}
+}
+
+// workCalendarFromProto maps core's calendar onto the model. A missing one
+// becomes the default; the holiday list is never nil so it marshals as [].
+func workCalendarFromProto(in *corev1.WorkCalendar) *WorkCalendar {
+	if in == nil {
+		return defaultWorkCalendar()
+	}
+	out := &WorkCalendar{
+		Weekdays: make([]int, 0, len(in.GetWeekdays())),
+		Timezone: in.GetTimezone(),
+		Holidays: make([]*Holiday, 0, len(in.GetHolidays())),
+	}
+	for _, d := range in.GetWeekdays() {
+		out.Weekdays = append(out.Weekdays, int(d))
+	}
+	for _, h := range in.GetHolidays() {
+		out.Holidays = append(out.Holidays, &Holiday{Date: h.GetDate(), Label: h.GetLabel()})
+	}
+	return out
+}
+
+// workCalendarToProto maps the input calendar onto core's. The caller only
+// calls it for a present input; an absent one stays unset on the request.
+func workCalendarToProto(in *WorkCalendarInput) *corev1.WorkCalendar {
+	out := &corev1.WorkCalendar{
+		Weekdays: make([]int32, 0, len(in.Weekdays)),
+		Timezone: in.Timezone,
+		Holidays: make([]*corev1.Holiday, 0, len(in.Holidays)),
+	}
+	for _, d := range in.Weekdays {
+		out.Weekdays = append(out.Weekdays, int32(d)) //nolint:gosec // ISO weekdays are validated by core; an out-of-range value is refused there
+	}
+	for _, h := range in.Holidays {
+		if h == nil {
+			continue
+		}
+		out.Holidays = append(out.Holidays, &corev1.Holiday{Date: h.Date, Label: h.Label})
+	}
+	return out
 }
 
 // globalSettingsToProto maps the GraphQL input onto the proto GlobalSettings.
@@ -50,6 +101,12 @@ func globalSettingsToProto(in GlobalSettingsInput) *corev1.GlobalSettings {
 			Enabled: in.Maintenance.Enabled,
 			Message: in.Maintenance.Message,
 		}
+	}
+	// An absent workCalendar stays unset: core reads that as "unchanged".
+	// The banners above are always sent, because core replaces both on
+	// every set.
+	if in.WorkCalendar != nil {
+		out.WorkCalendar = workCalendarToProto(in.WorkCalendar)
 	}
 	return out
 }

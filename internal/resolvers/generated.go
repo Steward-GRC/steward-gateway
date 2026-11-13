@@ -556,6 +556,7 @@ type ComplexityRoot struct {
 	GlobalSettings struct {
 		Announcement func(childComplexity int) int
 		Maintenance  func(childComplexity int) int
+		WorkCalendar func(childComplexity int) int
 	}
 
 	GroupMapping struct {
@@ -594,6 +595,11 @@ type ComplexityRoot struct {
 
 	HealthStatus struct {
 		Status func(childComplexity int) int
+	}
+
+	Holiday struct {
+		Date  func(childComplexity int) int
+		Label func(childComplexity int) int
 	}
 
 	ImpersonationSession struct {
@@ -1691,6 +1697,12 @@ type ComplexityRoot struct {
 	WebauthnRegistration struct {
 		OptionsJSON func(childComplexity int) int
 		SessionID   func(childComplexity int) int
+	}
+
+	WorkCalendar struct {
+		Holidays func(childComplexity int) int
+		Timezone func(childComplexity int) int
+		Weekdays func(childComplexity int) int
 	}
 
 	WorkflowApproverCandidates struct {
@@ -4004,6 +4016,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.GlobalSettings.Maintenance(childComplexity), true
+	case "GlobalSettings.workCalendar":
+		if e.ComplexityRoot.GlobalSettings.WorkCalendar == nil {
+			break
+		}
+
+		return e.ComplexityRoot.GlobalSettings.WorkCalendar(childComplexity), true
 
 	case "GroupMapping.connectionId":
 		if e.ComplexityRoot.GroupMapping.ConnectionID == nil {
@@ -4147,6 +4165,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.HealthStatus.Status(childComplexity), true
+
+	case "Holiday.date":
+		if e.ComplexityRoot.Holiday.Date == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Holiday.Date(childComplexity), true
+	case "Holiday.label":
+		if e.ComplexityRoot.Holiday.Label == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Holiday.Label(childComplexity), true
 
 	case "ImpersonationSession.actorName":
 		if e.ComplexityRoot.ImpersonationSession.ActorName == nil {
@@ -10309,6 +10340,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.WebauthnRegistration.SessionID(childComplexity), true
 
+	case "WorkCalendar.holidays":
+		if e.ComplexityRoot.WorkCalendar.Holidays == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkCalendar.Holidays(childComplexity), true
+	case "WorkCalendar.timezone":
+		if e.ComplexityRoot.WorkCalendar.Timezone == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkCalendar.Timezone(childComplexity), true
+	case "WorkCalendar.weekdays":
+		if e.ComplexityRoot.WorkCalendar.Weekdays == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkCalendar.Weekdays(childComplexity), true
+
 	case "WorkflowApproverCandidates.attached":
 		if e.ComplexityRoot.WorkflowApproverCandidates.Attached == nil {
 			break
@@ -10523,6 +10573,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputEnrichmentOptOutInput,
 		ec.unmarshalInputGlobalSettingsInput,
 		ec.unmarshalInputGroupUnitInput,
+		ec.unmarshalInputHolidayInput,
 		ec.unmarshalInputIssueCollabTokenInput,
 		ec.unmarshalInputKeyValueInput,
 		ec.unmarshalInputMaintenanceInput,
@@ -10545,6 +10596,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSubmitPolicyReviewSectionInput,
 		ec.unmarshalInputSubmitPolicyRevisionInput,
 		ec.unmarshalInputSwapAssigneeInput,
+		ec.unmarshalInputWorkCalendarInput,
 		ec.unmarshalInputWorkflowStageInput,
 	)
 	first := true
@@ -11996,6 +12048,45 @@ type Maintenance {
 type GlobalSettings {
   announcement: Announcement!
   maintenance: Maintenance!
+  "The site work calendar. Always present: Monday to Friday, UTC, no holidays until a site admin sets one."
+  workCalendar: WorkCalendar!
+}
+
+"""
+The one site-wide calendar that says which days count as working days. A workflow
+stage's slaDays is counted on it.
+"""
+type WorkCalendar {
+  "ISO weekday numbers that are working days: 1 Monday to 7 Sunday."
+  weekdays: [Int!]!
+  "An IANA time zone name, for example Europe/London."
+  timezone: String!
+  "Dates that are not working days even when the weekday is."
+  holidays: [Holiday!]!
+}
+
+type Holiday {
+  "A real calendar date, YYYY-MM-DD."
+  date: String!
+  "A name for the day, 0 to 80 characters; it may be empty."
+  label: String!
+}
+
+"""
+The calendar to store. Core refuses an invalid one with InvalidArgument and the
+code INVALID_WORK_CALENDAR: at least one weekday and no repeats, a known IANA
+zone, real unique YYYY-MM-DD holiday dates (at most 366), labels of at most 80
+characters.
+"""
+input WorkCalendarInput {
+  weekdays: [Int!]!
+  timezone: String!
+  holidays: [HolidayInput!]!
+}
+
+input HolidayInput {
+  date: String!
+  label: String!
 }
 
 input AnnouncementInput {
@@ -12012,6 +12103,8 @@ input MaintenanceInput {
 input GlobalSettingsInput {
   announcement: AnnouncementInput!
   maintenance: MaintenanceInput!
+  "Omit to leave the stored calendar unchanged."
+  workCalendar: WorkCalendarInput
 }
 
 # Readable by any signed-in user.
@@ -15505,6 +15598,8 @@ func (ec *executionContext) childFields_GlobalSettings(ctx context.Context, fiel
 		return ec.fieldContext_GlobalSettings_announcement(ctx, field)
 	case "maintenance":
 		return ec.fieldContext_GlobalSettings_maintenance(ctx, field)
+	case "workCalendar":
+		return ec.fieldContext_GlobalSettings_workCalendar(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type GlobalSettings", field.Name)
 }
@@ -15583,6 +15678,16 @@ func (ec *executionContext) childFields_HealthStatus(ctx context.Context, field 
 		return ec.fieldContext_HealthStatus_status(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type HealthStatus", field.Name)
+}
+
+func (ec *executionContext) childFields_Holiday(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "date":
+		return ec.fieldContext_Holiday_date(ctx, field)
+	case "label":
+		return ec.fieldContext_Holiday_label(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Holiday", field.Name)
 }
 
 func (ec *executionContext) childFields_ImpersonationSession(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -17157,6 +17262,18 @@ func (ec *executionContext) childFields_WebauthnRegistration(ctx context.Context
 		return ec.fieldContext_WebauthnRegistration_sessionId(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type WebauthnRegistration", field.Name)
+}
+
+func (ec *executionContext) childFields_WorkCalendar(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "weekdays":
+		return ec.fieldContext_WorkCalendar_weekdays(ctx, field)
+	case "timezone":
+		return ec.fieldContext_WorkCalendar_timezone(ctx, field)
+	case "holidays":
+		return ec.fieldContext_WorkCalendar_holidays(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type WorkCalendar", field.Name)
 }
 
 func (ec *executionContext) childFields_WorkflowApproverCandidates(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -30197,6 +30314,38 @@ func (ec *executionContext) fieldContext_GlobalSettings_maintenance(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _GlobalSettings_workCalendar(ctx context.Context, field graphql.CollectedField, obj *GlobalSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_GlobalSettings_workCalendar(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.WorkCalendar, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *WorkCalendar) graphql.Marshaler {
+			return ec.marshalNWorkCalendar2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkCalendar(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_GlobalSettings_workCalendar(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "GlobalSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_WorkCalendar(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _GroupMapping_id(ctx context.Context, field graphql.CollectedField, obj *GroupMapping) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30724,6 +30873,52 @@ func (ec *executionContext) _HealthStatus_status(ctx context.Context, field grap
 }
 func (ec *executionContext) fieldContext_HealthStatus_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("HealthStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Holiday_date(ctx context.Context, field graphql.CollectedField, obj *Holiday) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Holiday_date(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Date, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Holiday_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Holiday", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Holiday_label(ctx context.Context, field graphql.CollectedField, obj *Holiday) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Holiday_label(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Holiday_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Holiday", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _ImpersonationSession_targetUserId(ctx context.Context, field graphql.CollectedField, obj *ImpersonationSession) (ret graphql.Marshaler) {
@@ -55322,6 +55517,84 @@ func (ec *executionContext) fieldContext_WebauthnRegistration_sessionId(_ contex
 	return graphql.NewScalarFieldContext("WebauthnRegistration", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
+func (ec *executionContext) _WorkCalendar_weekdays(ctx context.Context, field graphql.CollectedField, obj *WorkCalendar) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkCalendar_weekdays(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Weekdays, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []int) graphql.Marshaler {
+			return ec.marshalNInt2ᚕintᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkCalendar_weekdays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkCalendar", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _WorkCalendar_timezone(ctx context.Context, field graphql.CollectedField, obj *WorkCalendar) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkCalendar_timezone(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Timezone, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkCalendar_timezone(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkCalendar", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _WorkCalendar_holidays(ctx context.Context, field graphql.CollectedField, obj *WorkCalendar) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkCalendar_holidays(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Holidays, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*Holiday) graphql.Marshaler {
+			return ec.marshalNHoliday2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHolidayᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkCalendar_holidays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkCalendar",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Holiday(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _WorkflowApproverCandidates_workflowId(ctx context.Context, field graphql.CollectedField, obj *WorkflowApproverCandidates) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57838,7 +58111,7 @@ func (ec *executionContext) unmarshalInputGlobalSettingsInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"announcement", "maintenance"}
+	fieldsInOrder := [...]string{"announcement", "maintenance", "workCalendar"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -57859,6 +58132,13 @@ func (ec *executionContext) unmarshalInputGlobalSettingsInput(ctx context.Contex
 				return it, err
 			}
 			it.Maintenance = data
+		case "workCalendar":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workCalendar"))
+			data, err := ec.unmarshalOWorkCalendarInput2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkCalendarInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkCalendar = data
 		}
 	}
 	return it, nil
@@ -57903,6 +58183,43 @@ func (ec *executionContext) unmarshalInputGroupUnitInput(ctx context.Context, ob
 				return it, err
 			}
 			it.MemberUserIds = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputHolidayInput(ctx context.Context, obj any) (HolidayInput, error) {
+	var it HolidayInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"date", "label"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "date":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("date"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Date = data
+		case "label":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("label"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Label = data
 		}
 	}
 	return it, nil
@@ -59092,6 +59409,50 @@ func (ec *executionContext) unmarshalInputSwapAssigneeInput(ctx context.Context,
 				return it, err
 			}
 			it.OutOfEligibilityAck = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputWorkCalendarInput(ctx context.Context, obj any) (WorkCalendarInput, error) {
+	var it WorkCalendarInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"weekdays", "timezone", "holidays"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "weekdays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("weekdays"))
+			data, err := ec.unmarshalNInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Weekdays = data
+		case "timezone":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timezone"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Timezone = data
+		case "holidays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("holidays"))
+			data, err := ec.unmarshalNHolidayInput2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHolidayInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Holidays = data
 		}
 	}
 	return it, nil
@@ -63011,6 +63372,11 @@ func (ec *executionContext) _GlobalSettings(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "workCalendar":
+			out.Values[i] = ec._GlobalSettings_workCalendar(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -63288,6 +63654,49 @@ func (ec *executionContext) _HealthStatus(ctx context.Context, sel ast.Selection
 			out.Values[i] = graphql.MarshalString("HealthStatus")
 		case "status":
 			out.Values[i] = ec._HealthStatus_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var holidayImplementors = []string{"Holiday"}
+
+func (ec *executionContext) _Holiday(ctx context.Context, sel ast.SelectionSet, obj *Holiday) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, holidayImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Holiday")
+		case "date":
+			out.Values[i] = ec._Holiday_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._Holiday_label(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -73028,6 +73437,54 @@ func (ec *executionContext) _WebauthnRegistration(ctx context.Context, sel ast.S
 	return out
 }
 
+var workCalendarImplementors = []string{"WorkCalendar"}
+
+func (ec *executionContext) _WorkCalendar(ctx context.Context, sel ast.SelectionSet, obj *WorkCalendar) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, workCalendarImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WorkCalendar")
+		case "weekdays":
+			out.Values[i] = ec._WorkCalendar_weekdays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "timezone":
+			out.Values[i] = ec._WorkCalendar_timezone(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "holidays":
+			out.Values[i] = ec._WorkCalendar_holidays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var workflowApproverCandidatesImplementors = []string{"WorkflowApproverCandidates"}
 
 func (ec *executionContext) _WorkflowApproverCandidates(ctx context.Context, sel ast.SelectionSet, obj *WorkflowApproverCandidates) graphql.Marshaler {
@@ -75430,6 +75887,51 @@ func (ec *executionContext) marshalNHealthStatus2ᚖgithubᚗcomᚋStewardᚑGRC
 	return ec._HealthStatus(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNHoliday2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHolidayᚄ(ctx context.Context, sel ast.SelectionSet, v []*Holiday) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNHoliday2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHoliday(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNHoliday2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHoliday(ctx context.Context, sel ast.SelectionSet, v *Holiday) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Holiday(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNHolidayInput2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHolidayInputᚄ(ctx context.Context, v any) ([]*HolidayInput, error) {
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]*HolidayInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNHolidayInput2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHolidayInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNHolidayInput2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐHolidayInput(ctx context.Context, v any) (*HolidayInput, error) {
+	res, err := ec.unmarshalInputHolidayInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -75543,6 +76045,35 @@ func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.Selecti
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNInt2ᚕintᚄ(ctx context.Context, v any) ([]int, error) {
+	vSlice := graphql.CoerceList(v)
+	var err error
+	res := make([]int, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNInt2int(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNInt2ᚕintᚄ(ctx context.Context, sel ast.SelectionSet, v []int) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNInt2int(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNIssueCollabTokenInput2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐIssueCollabTokenInput(ctx context.Context, v any) (IssueCollabTokenInput, error) {
@@ -78019,6 +78550,16 @@ func (ec *executionContext) marshalNWebauthnRegistration2ᚖgithubᚗcomᚋStewa
 	return ec._WebauthnRegistration(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNWorkCalendar2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkCalendar(ctx context.Context, sel ast.SelectionSet, v *WorkCalendar) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WorkCalendar(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNWorkflowApproverCandidates2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkflowApproverCandidates(ctx context.Context, sel ast.SelectionSet, v WorkflowApproverCandidates) graphql.Marshaler {
 	return ec._WorkflowApproverCandidates(ctx, sel, &v)
 }
@@ -78964,6 +79505,14 @@ func (ec *executionContext) marshalOTemplateVersion2ᚖgithubᚗcomᚋStewardᚑ
 		return graphql.Null
 	}
 	return ec._TemplateVersion(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOWorkCalendarInput2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkCalendarInput(ctx context.Context, v any) (*WorkCalendarInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputWorkCalendarInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOWorkflowDef2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkflowDef(ctx context.Context, sel ast.SelectionSet, v *WorkflowDef) graphql.Marshaler {

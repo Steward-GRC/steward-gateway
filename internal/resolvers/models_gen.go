@@ -668,11 +668,15 @@ type EnrichmentOptOutInput struct {
 type GlobalSettings struct {
 	Announcement *Announcement `json:"announcement"`
 	Maintenance  *Maintenance  `json:"maintenance"`
+	// The site work calendar. Always present: Monday to Friday, UTC, no holidays until a site admin sets one.
+	WorkCalendar *WorkCalendar `json:"workCalendar"`
 }
 
 type GlobalSettingsInput struct {
 	Announcement *AnnouncementInput `json:"announcement"`
 	Maintenance  *MaintenanceInput  `json:"maintenance"`
+	// Omit to leave the stored calendar unchanged.
+	WorkCalendar *WorkCalendarInput `json:"workCalendar,omitempty"`
 }
 
 type GroupMapping struct {
@@ -717,6 +721,18 @@ type HardResetRequest struct {
 
 type HealthStatus struct {
 	Status string `json:"status"`
+}
+
+type Holiday struct {
+	// A real calendar date, YYYY-MM-DD.
+	Date string `json:"date"`
+	// A name for the day, 0 to 80 characters; it may be empty.
+	Label string `json:"label"`
+}
+
+type HolidayInput struct {
+	Date  string `json:"date"`
+	Label string `json:"label"`
 }
 
 type ImpersonationSession struct {
@@ -1679,6 +1695,27 @@ type WebauthnCredentialInfo struct {
 type WebauthnRegistration struct {
 	OptionsJSON string `json:"optionsJson"`
 	SessionID   string `json:"sessionId"`
+}
+
+// The one site-wide calendar that says which days count as working days. A workflow
+// stage's slaDays is counted on it.
+type WorkCalendar struct {
+	// ISO weekday numbers that are working days: 1 Monday to 7 Sunday.
+	Weekdays []int `json:"weekdays"`
+	// An IANA time zone name, for example Europe/London.
+	Timezone string `json:"timezone"`
+	// Dates that are not working days even when the weekday is.
+	Holidays []*Holiday `json:"holidays"`
+}
+
+// The calendar to store. Core refuses an invalid one with InvalidArgument and the
+// code INVALID_WORK_CALENDAR: at least one weekday and no repeats, a known IANA
+// zone, real unique YYYY-MM-DD holiday dates (at most 366), labels of at most 80
+// characters.
+type WorkCalendarInput struct {
+	Weekdays []int           `json:"weekdays"`
+	Timezone string          `json:"timezone"`
+	Holidays []*HolidayInput `json:"holidays"`
 }
 
 type WorkflowApproverCandidates struct {

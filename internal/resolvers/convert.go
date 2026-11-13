@@ -31,6 +31,10 @@ func aiQueryLimitToInt32(n int) int32 {
 	}
 }
 
+// toInt32KeepSign is toInt32 that keeps negatives, so an invalid day count (for example -1 on a stage
+// reminder) reaches workflow, which refuses it with InvalidArgument, instead of being silently read as 0.
+func toInt32KeepSign(n int) int32 { return aiQueryLimitToInt32(n) }
+
 // nilIfEmpty returns nil when s is empty; otherwise a pointer to s.
 func nilIfEmpty(s string) *string {
 	if s == "" {

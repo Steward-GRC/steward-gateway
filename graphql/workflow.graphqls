@@ -416,9 +416,19 @@ type WorkflowStageDef {
   approversByCategory: [CategoryApprovers!]!
   groupUnits: [GroupUnit!]!
   quorum: String!
+  # Whole working days from when the approver is assigned until the stage is due, counted on the
+  # run's pinned site calendar. 0 or absent means no due date.
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
+  # Whole working days between reminders to each approver still pending once the stage is past due
+  # (first at due), until they decide. 0 means off. Needs slaDays above 0 and cannot be combined
+  # with rejectOnSlaBreach. A reminder never approves or rejects anything.
+  remindEveryDays: Int!
+  # Whole working days after due when the stage is still undecided at which the category owners are
+  # told once. 0 means off. Same rules as remindEveryDays. It only notifies; it adds no approver and
+  # never decides.
+  escalateAfterDays: Int!
   # The people whose single reject ends the version as rejected, even inside a quorum and below its
   # threshold. A veto person must be one of the stage's approvers: there are no veto-only seats, and
   # a site admin or root does not count. Any one of them rejecting ends the run. A stage with a
@@ -448,9 +458,15 @@ input WorkflowStageInput {
   approversByCategory: [CategoryApproversInput!]
   groupUnits: [GroupUnitInput!]
   quorum: String!
+  # Whole working days until the stage is due. 0 or absent means no due date.
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
+  # Whole working days between reminders once past due. 0 or absent means off. See
+  # WorkflowStageDef.remindEveryDays. Workflow refuses invalid combinations with InvalidArgument.
+  remindEveryDays: Int
+  # Whole working days after due until the category owners are told once. 0 or absent means off.
+  escalateAfterDays: Int
   # The stage's veto people; each must be one of its approvers. Omitted or empty means no veto.
   vetoUserIds: [ID!]
 }

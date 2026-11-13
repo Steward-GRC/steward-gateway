@@ -505,3 +505,110 @@ func TestWorkflowDefResolvers_VetoValidationRefusalPassesThrough(t *testing.T) {
 		t.Fatalf("want the workflow refusal unchanged, got %v", err)
 	}
 }
+
+// --- stage reminders and escalation (remindEveryDays, escalateAfterDays; whole working days, 0 = off) ---
+
+func TestWorkflowStageDefFromProto_ReminderDaysMapToGraphQL(t *testing.T) {
+	c := &fakeWorkflowClient{getDefResp: &workflowv1.GetWorkflowDefResponse{
+		Def: &workflowv1.WorkflowDef{Id: "d1", Stages: []*workflowv1.WorkflowStage{{
+			Id: "s1", Name: "A", SlaDays: 5, RemindEveryDays: 1, EscalateAfterDays: 2,
+		}}},
+	}}
+	out, err := resolvers.WorkflowDefResolver(context.Background(), c, "d1")
+	if err != nil {
+		t.Fatalf("WorkflowDefResolver: %v", err)
+	}
+	if got := out.Stages[0].RemindEveryDays; got != 1 {
+		t.Fatalf("remindEveryDays: want 1, got %d", got)
+	}
+	if got := out.Stages[0].EscalateAfterDays; got != 2 {
+		t.Fatalf("escalateAfterDays: want 2, got %d", got)
+	}
+}
+
+func TestWorkflowStageDefFromProto_ZeroReminderDaysAreOff(t *testing.T) {
+	c := &fakeWorkflowClient{getDefResp: &workflowv1.GetWorkflowDefResponse{
+		Def: &workflowv1.WorkflowDef{Id: "d1", Stages: []*workflowv1.WorkflowStage{{Id: "s1", Name: "A"}}},
+	}}
+	out, err := resolvers.WorkflowDefResolver(context.Background(), c, "d1")
+	if err != nil {
+		t.Fatalf("WorkflowDefResolver: %v", err)
+	}
+	if out.Stages[0].RemindEveryDays != 0 || out.Stages[0].EscalateAfterDays != 0 {
+		t.Fatalf("unset stage must read 0 (off): %+v", out.Stages[0])
+	}
+}
+
+func TestWorkflowDefResolvers_ReminderDaysForwardedOnCreateAndUpdate(t *testing.T) {
+	rd, ea := 1, 2
+	stages := []*resolvers.WorkflowStageInput{{
+		Name: "Finance sign-off", Approvers: []string{"u3"}, Quorum: "one",
+		SLADays: func() *int { v := 5; return &v }(), RemindEveryDays: &rd, EscalateAfterDays: &ea,
+	}}
+	c := &fakeWorkflowClient{}
+	ctx := ctxWithRoles(t, "u1", []string{"template-admin"})
+	if _, err := resolvers.CreateWorkflowDefResolver(ctx, c, "Finance", nil, stages); err != nil {
+		t.Fatalf("CreateWorkflowDefResolver: %v", err)
+	}
+	got := c.lastCreateDef.GetStages()[0]
+	if got.GetRemindEveryDays() != 1 || got.GetEscalateAfterDays() != 2 {
+		t.Fatalf("create forwarded remind=%d escalate=%d", got.GetRemindEveryDays(), got.GetEscalateAfterDays())
+	}
+	if _, err := resolvers.UpdateWorkflowDefResolver(ctx, c, "def-1", "Finance", nil, stages); err != nil {
+		t.Fatalf("UpdateWorkflowDefResolver: %v", err)
+	}
+	got = c.lastUpdateDef.GetStages()[0]
+	if got.GetRemindEveryDays() != 1 || got.GetEscalateAfterDays() != 2 {
+		t.Fatalf("update forwarded remind=%d escalate=%d", got.GetRemindEveryDays(), got.GetEscalateAfterDays())
+	}
+}
+
+func TestWorkflowDefResolvers_ReminderDaysZeroAndOmittedPassThroughAsOff(t *testing.T) {
+	zero := 0
+	c := &fakeWorkflowClient{}
+	ctx := ctxWithRoles(t, "u1", []string{"template-admin"})
+	_, err := resolvers.CreateWorkflowDefResolver(ctx, c, "Finance", nil, []*resolvers.WorkflowStageInput{
+		{Name: "A", Approvers: []string{"u3"}, Quorum: "one", RemindEveryDays: &zero, EscalateAfterDays: &zero},
+		{Name: "B", Approvers: []string{"u3"}, Quorum: "one"},
+	})
+	if err != nil {
+		t.Fatalf("CreateWorkflowDefResolver: %v", err)
+	}
+	for i, s := range c.lastCreateDef.GetStages() {
+		if s.GetRemindEveryDays() != 0 || s.GetEscalateAfterDays() != 0 {
+			t.Fatalf("stage %d: 0 or omitted must forward as 0, got %d/%d", i, s.GetRemindEveryDays(), s.GetEscalateAfterDays())
+		}
+	}
+}
+
+func TestWorkflowDefResolvers_ReminderValidationRefusalPassesThrough(t *testing.T) {
+	want := status.Error(codes.InvalidArgument, `stage "Finance sign-off": remind_every_days needs sla_days above 0 and cannot be combined with reject_on_sla_breach`)
+	c := &fakeWorkflowClient{updateDefErr: want, createDefErr: want}
+	ctx := ctxWithRoles(t, "u1", []string{"template-admin"})
+	rd := 1
+	stages := []*resolvers.WorkflowStageInput{{Name: "Finance sign-off", Approvers: []string{"u3"}, Quorum: "one", RemindEveryDays: &rd}}
+	_, err := resolvers.UpdateWorkflowDefResolver(ctx, c, "def-1", "Finance", nil, stages)
+	if status.Code(err) != codes.InvalidArgument || status.Convert(err).Message() != status.Convert(want).Message() {
+		t.Fatalf("update: want the workflow refusal unchanged, got %v", err)
+	}
+	_, err = resolvers.CreateWorkflowDefResolver(ctx, c, "Finance", nil, stages)
+	if status.Code(err) != codes.InvalidArgument || status.Convert(err).Message() != status.Convert(want).Message() {
+		t.Fatalf("create: want the workflow refusal unchanged, got %v", err)
+	}
+}
+
+func TestWorkflowDefResolvers_NegativeReminderDaysReachWorkflowToBeRefused(t *testing.T) {
+	neg := -1
+	c := &fakeWorkflowClient{}
+	_, err := resolvers.CreateWorkflowDefResolver(
+		ctxWithRoles(t, "u1", []string{"template-admin"}), c, "Finance", nil,
+		[]*resolvers.WorkflowStageInput{{Name: "A", Approvers: []string{"u3"}, Quorum: "one", RemindEveryDays: &neg, EscalateAfterDays: &neg}},
+	)
+	if err != nil {
+		t.Fatalf("CreateWorkflowDefResolver: %v", err)
+	}
+	got := c.lastCreateDef.GetStages()[0]
+	if got.GetRemindEveryDays() != -1 || got.GetEscalateAfterDays() != -1 {
+		t.Fatalf("negative values must be forwarded for workflow to refuse, got %d/%d", got.GetRemindEveryDays(), got.GetEscalateAfterDays())
+	}
+}

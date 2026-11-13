@@ -1767,6 +1767,8 @@ type WorkflowStageDef struct {
 	SLADays             *int                 `json:"slaDays,omitempty"`
 	RejectOnSLABreach   *bool                `json:"rejectOnSlaBreach,omitempty"`
 	PinnedLast          *bool                `json:"pinnedLast,omitempty"`
+	RemindEveryDays     int                  `json:"remindEveryDays"`
+	EscalateAfterDays   int                  `json:"escalateAfterDays"`
 	VetoUserIds         []string             `json:"vetoUserIds"`
 }
 
@@ -1780,6 +1782,8 @@ type WorkflowStageInput struct {
 	SLADays             *int                      `json:"slaDays,omitempty"`
 	RejectOnSLABreach   *bool                     `json:"rejectOnSlaBreach,omitempty"`
 	PinnedLast          *bool                     `json:"pinnedLast,omitempty"`
+	RemindEveryDays     *int                      `json:"remindEveryDays,omitempty"`
+	EscalateAfterDays   *int                      `json:"escalateAfterDays,omitempty"`
 	VetoUserIds         []string                  `json:"vetoUserIds,omitempty"`
 }
 

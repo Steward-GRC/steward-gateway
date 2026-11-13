@@ -47,6 +47,8 @@ func workflowStageDefFromProto(s *workflowv1.WorkflowStage) *WorkflowStageDef {
 		GroupUnits:          groupUnitsFromProto(s.GetGroupUnits()),
 		Quorum:              s.GetQuorum(),
 		VetoUserIds:         orEmpty(s.GetVetoUserIds()),
+		RemindEveryDays:     int(s.GetRemindEveryDays()),
+		EscalateAfterDays:   int(s.GetEscalateAfterDays()),
 	}
 	if v := s.GetSlaDays(); v != 0 {
 		iv := int(v)
@@ -81,6 +83,12 @@ func workflowStageInputToProto(in *WorkflowStageInput) *workflowv1.WorkflowStage
 		GroupUnits:          groupUnitsInputToProto(in.GroupUnits),
 		Quorum:              in.Quorum,
 		VetoUserIds:         in.VetoUserIds,
+	}
+	if in.RemindEveryDays != nil {
+		s.RemindEveryDays = toInt32KeepSign(*in.RemindEveryDays)
+	}
+	if in.EscalateAfterDays != nil {
+		s.EscalateAfterDays = toInt32KeepSign(*in.EscalateAfterDays)
 	}
 	if in.SLADays != nil {
 		s.SlaDays = toInt32(*in.SLADays)

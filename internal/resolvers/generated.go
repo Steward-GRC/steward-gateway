@@ -1750,12 +1750,14 @@ type ComplexityRoot struct {
 	WorkflowStageDef struct {
 		Approvers           func(childComplexity int) int
 		ApproversByCategory func(childComplexity int) int
+		EscalateAfterDays   func(childComplexity int) int
 		GroupUnits          func(childComplexity int) int
 		ID                  func(childComplexity int) int
 		Name                func(childComplexity int) int
 		PinnedLast          func(childComplexity int) int
 		Quorum              func(childComplexity int) int
 		RejectOnSLABreach   func(childComplexity int) int
+		RemindEveryDays     func(childComplexity int) int
 		SLADays             func(childComplexity int) int
 		VetoUserIds         func(childComplexity int) int
 	}
@@ -10600,6 +10602,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkflowStageDef.ApproversByCategory(childComplexity), true
+	case "WorkflowStageDef.escalateAfterDays":
+		if e.ComplexityRoot.WorkflowStageDef.EscalateAfterDays == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStageDef.EscalateAfterDays(childComplexity), true
 	case "WorkflowStageDef.groupUnits":
 		if e.ComplexityRoot.WorkflowStageDef.GroupUnits == nil {
 			break
@@ -10636,6 +10644,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkflowStageDef.RejectOnSLABreach(childComplexity), true
+	case "WorkflowStageDef.remindEveryDays":
+		if e.ComplexityRoot.WorkflowStageDef.RemindEveryDays == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStageDef.RemindEveryDays(childComplexity), true
 	case "WorkflowStageDef.slaDays":
 		if e.ComplexityRoot.WorkflowStageDef.SLADays == nil {
 			break
@@ -14758,9 +14772,19 @@ type WorkflowStageDef {
   approversByCategory: [CategoryApprovers!]!
   groupUnits: [GroupUnit!]!
   quorum: String!
+  # Whole working days from when the approver is assigned until the stage is due, counted on the
+  # run's pinned site calendar. 0 or absent means no due date.
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
+  # Whole working days between reminders to each approver still pending once the stage is past due
+  # (first at due), until they decide. 0 means off. Needs slaDays above 0 and cannot be combined
+  # with rejectOnSlaBreach. A reminder never approves or rejects anything.
+  remindEveryDays: Int!
+  # Whole working days after due when the stage is still undecided at which the category owners are
+  # told once. 0 means off. Same rules as remindEveryDays. It only notifies; it adds no approver and
+  # never decides.
+  escalateAfterDays: Int!
   # The people whose single reject ends the version as rejected, even inside a quorum and below its
   # threshold. A veto person must be one of the stage's approvers: there are no veto-only seats, and
   # a site admin or root does not count. Any one of them rejecting ends the run. A stage with a
@@ -14790,9 +14814,15 @@ input WorkflowStageInput {
   approversByCategory: [CategoryApproversInput!]
   groupUnits: [GroupUnitInput!]
   quorum: String!
+  # Whole working days until the stage is due. 0 or absent means no due date.
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
+  # Whole working days between reminders once past due. 0 or absent means off. See
+  # WorkflowStageDef.remindEveryDays. Workflow refuses invalid combinations with InvalidArgument.
+  remindEveryDays: Int
+  # Whole working days after due until the category owners are told once. 0 or absent means off.
+  escalateAfterDays: Int
   # The stage's veto people; each must be one of its approvers. Omitted or empty means no veto.
   vetoUserIds: [ID!]
 }
@@ -17635,6 +17665,10 @@ func (ec *executionContext) childFields_WorkflowStageDef(ctx context.Context, fi
 		return ec.fieldContext_WorkflowStageDef_rejectOnSlaBreach(ctx, field)
 	case "pinnedLast":
 		return ec.fieldContext_WorkflowStageDef_pinnedLast(ctx, field)
+	case "remindEveryDays":
+		return ec.fieldContext_WorkflowStageDef_remindEveryDays(ctx, field)
+	case "escalateAfterDays":
+		return ec.fieldContext_WorkflowStageDef_escalateAfterDays(ctx, field)
 	case "vetoUserIds":
 		return ec.fieldContext_WorkflowStageDef_vetoUserIds(ctx, field)
 	}
@@ -56963,6 +56997,52 @@ func (ec *executionContext) fieldContext_WorkflowStageDef_pinnedLast(_ context.C
 	return graphql.NewScalarFieldContext("WorkflowStageDef", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
+func (ec *executionContext) _WorkflowStageDef_remindEveryDays(ctx context.Context, field graphql.CollectedField, obj *WorkflowStageDef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStageDef_remindEveryDays(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RemindEveryDays, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStageDef_remindEveryDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowStageDef", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _WorkflowStageDef_escalateAfterDays(ctx context.Context, field graphql.CollectedField, obj *WorkflowStageDef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStageDef_escalateAfterDays(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EscalateAfterDays, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStageDef_escalateAfterDays(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowStageDef", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
 func (ec *executionContext) _WorkflowStageDef_vetoUserIds(ctx context.Context, field graphql.CollectedField, obj *WorkflowStageDef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -60341,7 +60421,7 @@ func (ec *executionContext) unmarshalInputWorkflowStageInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "name", "approvers", "approversByCategory", "groupUnits", "quorum", "slaDays", "rejectOnSlaBreach", "pinnedLast", "vetoUserIds"}
+	fieldsInOrder := [...]string{"id", "name", "approvers", "approversByCategory", "groupUnits", "quorum", "slaDays", "rejectOnSlaBreach", "pinnedLast", "remindEveryDays", "escalateAfterDays", "vetoUserIds"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60411,6 +60491,20 @@ func (ec *executionContext) unmarshalInputWorkflowStageInput(ctx context.Context
 				return it, err
 			}
 			it.PinnedLast = data
+		case "remindEveryDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("remindEveryDays"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RemindEveryDays = data
+		case "escalateAfterDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("escalateAfterDays"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EscalateAfterDays = data
 		case "vetoUserIds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vetoUserIds"))
 			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
@@ -74741,6 +74835,16 @@ func (ec *executionContext) _WorkflowStageDef(ctx context.Context, sel ast.Selec
 		case "pinnedLast":
 			out.Values[i] = ec._WorkflowStageDef_pinnedLast(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "remindEveryDays":
+			out.Values[i] = ec._WorkflowStageDef_remindEveryDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "escalateAfterDays":
+			out.Values[i] = ec._WorkflowStageDef_escalateAfterDays(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "vetoUserIds":

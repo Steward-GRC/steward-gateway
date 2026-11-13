@@ -1074,15 +1074,22 @@ type PolicySummaryResult struct {
 }
 
 type PolicyVersion struct {
-	ID                string      `json:"id"`
-	PolicyID          string      `json:"policyId"`
-	VersionNo         int         `json:"versionNo"`
-	Status            string      `json:"status"`
-	TemplateVersionID string      `json:"templateVersionId"`
-	ContentJSON       string      `json:"contentJson"`
-	Appendices        []*Appendix `json:"appendices"`
-	CreatedAt         *string     `json:"createdAt,omitempty"`
-	PublishedAt       *string     `json:"publishedAt,omitempty"`
+	ID                        string      `json:"id"`
+	PolicyID                  string      `json:"policyId"`
+	VersionNo                 int         `json:"versionNo"`
+	Status                    string      `json:"status"`
+	TemplateVersionID         string      `json:"templateVersionId"`
+	ContentJSON               string      `json:"contentJson"`
+	Appendices                []*Appendix `json:"appendices"`
+	CreatedAt                 *string     `json:"createdAt,omitempty"`
+	PublishedAt               *string     `json:"publishedAt,omitempty"`
+	SemanticVersion           *string     `json:"semanticVersion,omitempty"`
+	SuggestedChangeType       *ChangeType `json:"suggestedChangeType,omitempty"`
+	ChangeType                *ChangeType `json:"changeType,omitempty"`
+	RequestedChangeType       *ChangeType `json:"requestedChangeType,omitempty"`
+	ChangeTypeReason          *string     `json:"changeTypeReason,omitempty"`
+	ChangeTypeSetByUserID     *string     `json:"changeTypeSetByUserId,omitempty"`
+	ChangeTypeAgreedByUserIds []string    `json:"changeTypeAgreedByUserIds"`
 }
 
 type PolicyVersionLinks struct {
@@ -1575,14 +1582,19 @@ type Template struct {
 	Name            string  `json:"name"`
 	OwnerCategoryID *string `json:"ownerCategoryId,omitempty"`
 	RetiredAt       *string `json:"retiredAt,omitempty"`
+	UpdatedAt       *string `json:"updatedAt,omitempty"`
 }
 
 type TemplateVersion struct {
-	ID         string     `json:"id"`
-	TemplateID string     `json:"templateId"`
-	VersionNo  int        `json:"versionNo"`
-	Status     string     `json:"status"`
-	Sections   []*Section `json:"sections"`
+	ID              string      `json:"id"`
+	TemplateID      string      `json:"templateId"`
+	VersionNo       int         `json:"versionNo"`
+	Status          string      `json:"status"`
+	SemanticVersion *string     `json:"semanticVersion,omitempty"`
+	ChangeType      *ChangeType `json:"changeType,omitempty"`
+	CreatedAt       *string     `json:"createdAt,omitempty"`
+	PublishedAt     *string     `json:"publishedAt,omitempty"`
+	Sections        []*Section  `json:"sections"`
 }
 
 type TextSpan struct {
@@ -2382,6 +2394,63 @@ func (e *CategoryDocumentTypes) UnmarshalJSON(b []byte) error {
 }
 
 func (e CategoryDocumentTypes) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type ChangeType string
+
+const (
+	ChangeTypeMajor ChangeType = "MAJOR"
+	ChangeTypeMinor ChangeType = "MINOR"
+	ChangeTypeFix   ChangeType = "FIX"
+)
+
+var AllChangeType = []ChangeType{
+	ChangeTypeMajor,
+	ChangeTypeMinor,
+	ChangeTypeFix,
+}
+
+func (e ChangeType) IsValid() bool {
+	switch e {
+	case ChangeTypeMajor, ChangeTypeMinor, ChangeTypeFix:
+		return true
+	}
+	return false
+}
+
+func (e ChangeType) String() string {
+	return string(e)
+}
+
+func (e *ChangeType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ChangeType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ChangeType", str)
+	}
+	return nil
+}
+
+func (e ChangeType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ChangeType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ChangeType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

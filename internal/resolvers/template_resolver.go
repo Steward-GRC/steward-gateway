@@ -108,6 +108,7 @@ func templateFromProto(t *corev1.Template) *Template {
 		Name:            t.Name,
 		OwnerCategoryID: nilIfEmpty(t.OwnerCategoryId),
 		RetiredAt:       nilIfEmpty(t.RetiredAt),
+		UpdatedAt:       rfc3339OrNil(t.UpdatedAt),
 	}
 }
 
@@ -204,6 +205,11 @@ func templateVersionFromProto(v *corev1.TemplateVersion) *TemplateVersion {
 		VersionNo:  int(v.VersionNo),
 		Status:     v.Status.String(),
 		Sections:   sectionsFromProto(v.Sections),
+
+		SemanticVersion: semanticVersionString(v.SemanticVersion),
+		ChangeType:      changeTypeFromCore(v.ChangeType),
+		CreatedAt:       rfc3339OrNil(v.CreatedAt),
+		PublishedAt:     rfc3339OrNil(v.PublishedAt),
 	}
 }
 

@@ -250,6 +250,14 @@ func policyVersionFromProto(v *corev1.PolicyVersion) *PolicyVersion {
 		Status:            versionStatusName(v.Status),
 		TemplateVersionID: v.TemplateVersionId,
 		ContentJSON:       v.ContentJson,
+
+		SemanticVersion:           semanticVersionString(v.SemanticVersion),
+		SuggestedChangeType:       changeTypeFromCore(v.SuggestedChangeType),
+		ChangeType:                changeTypeFromCore(v.ChangeType),
+		RequestedChangeType:       changeTypeFromCore(v.RequestedChangeType),
+		ChangeTypeReason:          nilIfEmpty(v.ChangeTypeReason),
+		ChangeTypeSetByUserID:     nilIfEmpty(v.ChangeTypeSetBy),
+		ChangeTypeAgreedByUserIds: append([]string{}, v.ChangeTypeAgreedBy...),
 	}
 	if v.CreatedAt != nil {
 		ts := v.CreatedAt.AsTime().UTC().Format("2006-01-02T15:04:05Z")

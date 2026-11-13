@@ -775,7 +775,7 @@ func TestSubmitWorkflow_NonAuthorDenied(t *testing.T) {
 		[]*corev1.CategoryRule{authorRule("someone-else", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
 	wf := &fakeWorkflowClient{submitResp: &workflowv1.SubmitResponse{RunId: "run-1"}}
 	ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-9", RolesValue: []string{"policy-author"}})
-	res, err := resolvers.SubmitWorkflowResolver(ctx, log.Nop(), wf, gc, pc, "v-1", "pol", "g-cat", nil)
+	res, err := resolvers.SubmitWorkflowResolver(ctx, log.Nop(), wf, gc, pc, "v-1", "pol", "g-cat", nil, nil, nil)
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("want PermissionDenied, got %v", err)
 	}
@@ -792,7 +792,7 @@ func TestSubmitWorkflow_NonAuthorDenied(t *testing.T) {
 func TestSubmitWorkflow_Unauthenticated(t *testing.T) {
 	pc, gc := coAuthMatrixEnv("u-1", nil, nil)
 	wf := &fakeWorkflowClient{submitResp: &workflowv1.SubmitResponse{RunId: "run-1"}}
-	res, err := resolvers.SubmitWorkflowResolver(context.Background(), log.Nop(), wf, gc, pc, "v-1", "pol", "g-cat", nil)
+	res, err := resolvers.SubmitWorkflowResolver(context.Background(), log.Nop(), wf, gc, pc, "v-1", "pol", "g-cat", nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected an error with no authenticated user")
 	}
@@ -813,7 +813,7 @@ func TestSubmitWorkflow_ServiceRefusalKeepsItsCode(t *testing.T) {
 			pc, gc := coAuthMatrixEnv("u-1", nil, nil)
 			wf := &fakeWorkflowClient{submitErr: status.Error(code, "refused by workflow")}
 			ctx := ctxWithStubClaims(t, principal.Static{UserIDValue: "u-1", RolesValue: []string{"policy-author"}})
-			res, err := resolvers.SubmitWorkflowResolver(ctx, log.Nop(), wf, gc, pc, "v-1", "pol", "g-cat", nil)
+			res, err := resolvers.SubmitWorkflowResolver(ctx, log.Nop(), wf, gc, pc, "v-1", "pol", "g-cat", nil, nil, nil)
 			if err == nil || res != nil {
 				t.Fatalf("want an error and no result, got %+v, %v", res, err)
 			}

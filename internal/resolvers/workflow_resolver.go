@@ -107,11 +107,16 @@ func SubmitWorkflowResolver(
 	policyClient corev1.PolicyServiceClient,
 	policyVersionID, policyID, categoryID string,
 	ancestorCategoryIDs []string,
+	changeType *ChangeType,
+	changeTypeReason *string,
 ) (*WorkflowSubmitResult, error) {
 	claims, ok := principal.FromContext(ctx)
 	if !ok || claims.UserID() == "" {
 		return nil, fmt.Errorf("unauthenticated")
 	}
+	log.Trace(lg, "workflow submit requested",
+		log.F("policy_id", policyID), log.F("policy_version_id", policyVersionID),
+		log.F("change_type", changeTypeLabel(changeType)), log.F("has_change_type_reason", changeTypeReason != nil && *changeTypeReason != ""))
 	if _, err := authorizeEffectiveAuthor(ctx, policyClient, categoryClient, policyID); err != nil {
 		return nil, err
 	}
@@ -128,6 +133,8 @@ func SubmitWorkflowResolver(
 		CategoryId:          categoryID,
 		SubmittedBy:         claims.UserID(),
 		AncestorCategoryIds: lineage,
+		ChangeType:          changeTypeToWorkflow(changeType),
+		ChangeTypeReason:    derefOrEmpty(changeTypeReason),
 	})
 	if err != nil {
 		if refused := emptySubmitRefusal(err); refused != nil {
@@ -140,7 +147,8 @@ func SubmitWorkflowResolver(
 		return nil, fmt.Errorf("workflow submit: %w", err)
 	}
 	lg.Info("workflow submitted for review",
-		log.F("policy_id", policyID), log.F("policy_version_id", policyVersionID), log.F("run_id", resp.GetRunId()))
+		log.F("policy_id", policyID), log.F("policy_version_id", policyVersionID), log.F("run_id", resp.GetRunId()),
+		log.F("change_type", changeTypeLabel(changeType)))
 	return &WorkflowSubmitResult{RunID: resp.GetRunId()}, nil
 }
 

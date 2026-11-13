@@ -12,8 +12,8 @@ import (
 )
 
 // SubmitWorkflow is the resolver for the submitWorkflow field.
-func (r *mutationResolver) SubmitWorkflow(ctx context.Context, policyVersionID string, policyID string, categoryID string, ancestorCategoryIds []string) (*WorkflowSubmitResult, error) {
-	return SubmitWorkflowResolver(ctx, r.logger().Ctx(ctx), r.WorkflowClient, r.CategoryClient, r.PolicyClient, policyVersionID, policyID, categoryID, ancestorCategoryIds)
+func (r *mutationResolver) SubmitWorkflow(ctx context.Context, policyVersionID string, policyID string, categoryID string, ancestorCategoryIds []string, changeType *ChangeType, changeTypeReason *string) (*WorkflowSubmitResult, error) {
+	return SubmitWorkflowResolver(ctx, r.logger().Ctx(ctx), r.WorkflowClient, r.CategoryClient, r.PolicyClient, policyVersionID, policyID, categoryID, ancestorCategoryIds, changeType, changeTypeReason)
 }
 
 // SignalWorkflow is the resolver for the signalWorkflow field.

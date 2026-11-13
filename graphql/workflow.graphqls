@@ -103,6 +103,13 @@ type WorkflowStatus {
   # Each stage's due date and rule, index-aligned with stageNames; empty when
   # there is no run.
   stageProgress: [StageProgress!]!
+  # The semantic version the run publishes ("3.0.0"), read from core's version the
+  # run is on, so it needs no workflow-definition access. Null when there is no run
+  # or core has no semantic version for it.
+  targetSemanticVersion: String
+  # The change type that version publishes as (the same value as
+  # PolicyVersion.changeType). Null when there is no run or core has none.
+  targetChangeType: ChangeType
 }
 
 type PendingTask {

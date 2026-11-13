@@ -1788,15 +1788,17 @@ type WorkflowStageInput struct {
 }
 
 type WorkflowStatus struct {
-	Status            ApprovalStatus         `json:"status"`
-	RunID             string                 `json:"runId"`
-	CurrentStageIdx   int                    `json:"currentStageIdx"`
-	StageNames        []string               `json:"stageNames"`
-	StageAssignees    [][]*StageAssignee     `json:"stageAssignees"`
-	StageUnitProgress [][]*StageUnitProgress `json:"stageUnitProgress"`
-	SubmittedBy       *string                `json:"submittedBy,omitempty"`
-	SubmittedAt       *string                `json:"submittedAt,omitempty"`
-	StageProgress     []*StageProgress       `json:"stageProgress"`
+	Status                ApprovalStatus         `json:"status"`
+	RunID                 string                 `json:"runId"`
+	CurrentStageIdx       int                    `json:"currentStageIdx"`
+	StageNames            []string               `json:"stageNames"`
+	StageAssignees        [][]*StageAssignee     `json:"stageAssignees"`
+	StageUnitProgress     [][]*StageUnitProgress `json:"stageUnitProgress"`
+	SubmittedBy           *string                `json:"submittedBy,omitempty"`
+	SubmittedAt           *string                `json:"submittedAt,omitempty"`
+	StageProgress         []*StageProgress       `json:"stageProgress"`
+	TargetSemanticVersion *string                `json:"targetSemanticVersion,omitempty"`
+	TargetChangeType      *ChangeType            `json:"targetChangeType,omitempty"`
 }
 
 type WorkflowSubmitResult struct {

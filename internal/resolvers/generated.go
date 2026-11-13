@@ -1764,15 +1764,17 @@ type ComplexityRoot struct {
 	}
 
 	WorkflowStatus struct {
-		CurrentStageIdx   func(childComplexity int) int
-		RunID             func(childComplexity int) int
-		StageAssignees    func(childComplexity int) int
-		StageNames        func(childComplexity int) int
-		StageProgress     func(childComplexity int) int
-		StageUnitProgress func(childComplexity int) int
-		Status            func(childComplexity int) int
-		SubmittedAt       func(childComplexity int) int
-		SubmittedBy       func(childComplexity int) int
+		CurrentStageIdx       func(childComplexity int) int
+		RunID                 func(childComplexity int) int
+		StageAssignees        func(childComplexity int) int
+		StageNames            func(childComplexity int) int
+		StageProgress         func(childComplexity int) int
+		StageUnitProgress     func(childComplexity int) int
+		Status                func(childComplexity int) int
+		SubmittedAt           func(childComplexity int) int
+		SubmittedBy           func(childComplexity int) int
+		TargetChangeType      func(childComplexity int) int
+		TargetSemanticVersion func(childComplexity int) int
 	}
 
 	WorkflowSubmitResult struct {
@@ -10730,6 +10732,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkflowStatus.SubmittedBy(childComplexity), true
+	case "WorkflowStatus.targetChangeType":
+		if e.ComplexityRoot.WorkflowStatus.TargetChangeType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStatus.TargetChangeType(childComplexity), true
+	case "WorkflowStatus.targetSemanticVersion":
+		if e.ComplexityRoot.WorkflowStatus.TargetSemanticVersion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStatus.TargetSemanticVersion(childComplexity), true
 
 	case "WorkflowSubmitResult.runId":
 		if e.ComplexityRoot.WorkflowSubmitResult.RunID == nil {
@@ -14472,6 +14486,13 @@ type WorkflowStatus {
   # Each stage's due date and rule, index-aligned with stageNames; empty when
   # there is no run.
   stageProgress: [StageProgress!]!
+  # The semantic version the run publishes ("3.0.0"), read from core's version the
+  # run is on, so it needs no workflow-definition access. Null when there is no run
+  # or core has no semantic version for it.
+  targetSemanticVersion: String
+  # The change type that version publishes as (the same value as
+  # PolicyVersion.changeType). Null when there is no run or core has none.
+  targetChangeType: ChangeType
 }
 
 type PendingTask {
@@ -17719,6 +17740,10 @@ func (ec *executionContext) childFields_WorkflowStatus(ctx context.Context, fiel
 		return ec.fieldContext_WorkflowStatus_submittedAt(ctx, field)
 	case "stageProgress":
 		return ec.fieldContext_WorkflowStatus_stageProgress(ctx, field)
+	case "targetSemanticVersion":
+		return ec.fieldContext_WorkflowStatus_targetSemanticVersion(ctx, field)
+	case "targetChangeType":
+		return ec.fieldContext_WorkflowStatus_targetChangeType(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type WorkflowStatus", field.Name)
 }
@@ -57382,6 +57407,52 @@ func (ec *executionContext) fieldContext_WorkflowStatus_stageProgress(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _WorkflowStatus_targetSemanticVersion(ctx context.Context, field graphql.CollectedField, obj *WorkflowStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStatus_targetSemanticVersion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TargetSemanticVersion, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStatus_targetSemanticVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowStatus", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _WorkflowStatus_targetChangeType(ctx context.Context, field graphql.CollectedField, obj *WorkflowStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStatus_targetChangeType(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TargetChangeType, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ChangeType) graphql.Marshaler {
+			return ec.marshalOChangeType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐChangeType(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStatus_targetChangeType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowStatus", field, false, false, errors.New("field of type ChangeType does not have child fields"))
+}
+
 func (ec *executionContext) _WorkflowSubmitResult_runId(ctx context.Context, field graphql.CollectedField, obj *WorkflowSubmitResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -75017,6 +75088,16 @@ func (ec *executionContext) _WorkflowStatus(ctx context.Context, sel ast.Selecti
 		case "stageProgress":
 			out.Values[i] = ec._WorkflowStatus_stageProgress(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "targetSemanticVersion":
+			out.Values[i] = ec._WorkflowStatus_targetSemanticVersion(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "targetChangeType":
+			out.Values[i] = ec._WorkflowStatus_targetChangeType(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:

@@ -126,6 +126,10 @@ wins. No backend is asked for content the caller may not read.
   publishes) are core's `semanticVersion` and `changeType` for the version the run is on, so a
   caller who can read the run gets them without any workflow-definition access; both are null when
   there is no run or core has none.
+  `workflowStatus.stageAssignees[].roleLabel` says why the person holds the seat: "Approver" when
+  the workflow definition names them, "Category owner" when the policy's category owner joined to
+  meet the stage's quorum. It is null when the workflow did not record the source, so the client
+  falls back to its own wording.
 - **Allow:** the real content. A read that only a break-glass grant allows is recorded first (see
   below), once per version.
 

@@ -1456,6 +1456,7 @@ type StageAssignee struct {
 	ChangesRequested   *string `json:"changesRequested,omitempty"`
 	ChangesRequestedAt *string `json:"changesRequestedAt,omitempty"`
 	Veto               bool    `json:"veto"`
+	RoleLabel          *string `json:"roleLabel,omitempty"`
 }
 
 type StageEligibleAssignees struct {

@@ -445,11 +445,12 @@ func WorkflowStatusResolver(
 		row := make([]*StageAssignee, 0, len(sa.GetAssignees()))
 		for _, a := range sa.GetAssignees() {
 			entry := &StageAssignee{
-				UserID:  a.GetUserId(),
-				State:   a.GetState(),
-				Name:    nilIfEmpty(labels.userName(ctx, a.GetUserId())),
-				GroupID: nilIfEmpty(a.GetGroupId()),
-				Veto:    a.GetVeto(),
+				UserID:    a.GetUserId(),
+				State:     a.GetState(),
+				Name:      nilIfEmpty(labels.userName(ctx, a.GetUserId())),
+				GroupID:   nilIfEmpty(a.GetGroupId()),
+				Veto:      a.GetVeto(),
+				RoleLabel: seatRoleLabel(a.GetSource()),
 			}
 			if c := a.GetComment(); c != "" && !hideComments {
 				s := c
@@ -785,4 +786,20 @@ func (v *versionTitles) of(ctx context.Context, versionID string) string {
 	}
 	v.cache[versionID] = t
 	return t
+}
+
+// seatRoleLabel is the stepper's role text for a seat, from why the person
+// holds it. It is nil when the workflow did not record a source (a seat made
+// before it was kept), so the client falls back to its own wording.
+func seatRoleLabel(src workflowv1.SeatSource) *string {
+	var s string
+	switch src {
+	case workflowv1.SeatSource_SEAT_SOURCE_APPROVER:
+		s = "Approver"
+	case workflowv1.SeatSource_SEAT_SOURCE_CATEGORY_OWNER:
+		s = "Category owner"
+	default:
+		return nil
+	}
+	return &s
 }

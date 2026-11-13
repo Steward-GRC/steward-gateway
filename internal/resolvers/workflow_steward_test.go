@@ -11,6 +11,8 @@ import (
 
 	log "github.com/Bugs5382/go-log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
@@ -208,5 +210,48 @@ func TestWorkflowStatusResolver_NoStageProgressIsAnEmptyList(t *testing.T) {
 	}
 	if out.SubmittedBy != nil || out.SubmittedAt != nil {
 		t.Fatalf("an unset submitter and time are null: %v %v", out.SubmittedBy, out.SubmittedAt)
+	}
+}
+
+func TestWorkflowStatusResolver_TargetVersionAndChangeType(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	pc.versions["pol-1-v1"].SemanticVersion = &corev1.SemanticVersion{Major: 3, Minor: 0, Fix: 0, Text: "3.0.0"}
+	pc.versions["pol-1-v1"].ChangeType = corev1.ChangeType_CHANGE_TYPE_MAJOR
+
+	// A caller who can read the run but holds no workflow-definition access: the
+	// reader role. The target comes from core's version, not from the definition.
+	out, err := resolvers.WorkflowStatusResolver(readerCtx(t), log.Nop(), statusRun(), &groupNameIdentity{}, pc, groups, noGrant(), "pol-1-v1")
+	if err != nil {
+		t.Fatalf("WorkflowStatusResolver: %v", err)
+	}
+	if out.TargetSemanticVersion == nil || *out.TargetSemanticVersion != "3.0.0" {
+		t.Fatalf("targetSemanticVersion = %v, want 3.0.0", out.TargetSemanticVersion)
+	}
+	if out.TargetChangeType == nil || *out.TargetChangeType != resolvers.ChangeTypeMajor {
+		t.Fatalf("targetChangeType = %v, want MAJOR", out.TargetChangeType)
+	}
+}
+
+func TestWorkflowStatusResolver_TargetVersionNullWhenCoreHasNone(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	out, err := resolvers.WorkflowStatusResolver(readerCtx(t), log.Nop(), statusRun(), &groupNameIdentity{}, pc, groups, noGrant(), "pol-1-v1")
+	if err != nil {
+		t.Fatalf("WorkflowStatusResolver: %v", err)
+	}
+	if out.TargetSemanticVersion != nil || out.TargetChangeType != nil {
+		t.Fatalf("target = %v %v, want null when core sent none", out.TargetSemanticVersion, out.TargetChangeType)
+	}
+}
+
+func TestWorkflowStatusResolver_NoRunHasNoTarget(t *testing.T) {
+	pc, groups, _ := statusReadSetup(t, false)
+	pc.versions["pol-1-v1"].SemanticVersion = &corev1.SemanticVersion{Major: 3, Text: "3.0.0"}
+	wf := &fakeWorkflowClient{statusErr: status.Error(codes.NotFound, "no approval run")}
+	out, err := resolvers.WorkflowStatusResolver(readerCtx(t), log.Nop(), wf, &groupNameIdentity{}, pc, groups, noGrant(), "pol-1-v1")
+	if err != nil {
+		t.Fatalf("WorkflowStatusResolver: %v", err)
+	}
+	if out.TargetSemanticVersion != nil || out.TargetChangeType != nil {
+		t.Fatalf("a version with no run shows no target: %v %v", out.TargetSemanticVersion, out.TargetChangeType)
 	}
 }

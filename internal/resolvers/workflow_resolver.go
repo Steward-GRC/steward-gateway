@@ -416,7 +416,7 @@ func WorkflowStatusResolver(
 	adminClient identityv1.IdentityAdminServiceClient,
 	policyVersionID string,
 ) (*WorkflowStatus, error) {
-	_, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, client, policyVersionID)
+	reads, effect, err := authorizeVersionReads(ctx, policyClient, categoryClient, adminClient, client, policyVersionID)
 	if err != nil {
 		logger.Debug("workflow status refused by the version read decision",
 			log.F("policy_version_id", policyVersionID), log.F("code", status.Code(err).String()))
@@ -525,6 +525,17 @@ func WorkflowStatusResolver(
 	logger.Debug("workflow status submitter and stage progress mapped",
 		log.F("policy_version_id", policyVersionID), log.F("stages", len(stageProgress)),
 		log.F("has_submitter", resp.GetSubmittedBy() != ""), log.F("has_submitted_at", submittedAt != nil))
+	// The target comes from core's version the run is on, which the read decision above
+	// already loaded: a caller who can read the run needs no workflow-definition access.
+	var targetVersion *string
+	var targetChangeType *ChangeType
+	if len(reads) > 0 && reads[0].version != nil {
+		targetVersion = reads[0].version.SemanticVersion
+		targetChangeType = reads[0].version.ChangeType
+	}
+	logger.Debug("workflow status target mapped",
+		log.F("policy_version_id", policyVersionID), log.F("has_target_version", targetVersion != nil),
+		log.F("has_target_change_type", targetChangeType != nil))
 	return &WorkflowStatus{
 		Status:            approvalStatusProtoToGQL(resp.GetStatus()),
 		RunID:             resp.GetRunId(),
@@ -535,6 +546,9 @@ func WorkflowStatusResolver(
 		SubmittedBy:       nilIfEmpty(resp.GetSubmittedBy()),
 		SubmittedAt:       submittedAt,
 		StageProgress:     stageProgress,
+
+		TargetSemanticVersion: targetVersion,
+		TargetChangeType:      targetChangeType,
 	}, nil
 }
 

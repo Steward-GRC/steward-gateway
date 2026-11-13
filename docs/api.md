@@ -122,7 +122,10 @@ wins. No backend is asked for content the caller may not read.
   `requestPDFExport` and `createMagicLink` are `NotFound`, because delivery serves the real
   text; `policyVersionSummary` returns no summary; and `workflowStatus` returns the run without the
   decision comments (the approvers' names, states and decision times stay, as the policy's
-  metadata does).
+  metadata does). `workflowStatus.targetSemanticVersion` and `targetChangeType` (what the run
+  publishes) are core's `semanticVersion` and `changeType` for the version the run is on, so a
+  caller who can read the run gets them without any workflow-definition access; both are null when
+  there is no run or core has none.
 - **Allow:** the real content. A read that only a break-glass grant allows is recorded first (see
   below), once per version.
 

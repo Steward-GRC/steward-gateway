@@ -299,7 +299,7 @@ func (f *fakeWorkflowClient) SetWorkflowVetoEnabled(_ context.Context, in *workf
 		return nil, f.vetoErr
 	}
 	if f.vetoResp == nil {
-		return &workflowv1.SetWorkflowVetoEnabledResponse{Def: &workflowv1.WorkflowDef{Id: in.GetId(), Name: "Standard", Version: 1, VetoEnabled: in.GetEnabled()}}, nil
+		return &workflowv1.SetWorkflowVetoEnabledResponse{Def: &workflowv1.WorkflowDef{Id: in.GetId(), Name: "Standard", Version: 1, VetoEnabled: in.GetEnabled()}}, nil //nolint:staticcheck // the old flag stays until the cleanup change
 	}
 	return f.vetoResp, nil
 }

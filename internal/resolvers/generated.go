@@ -1733,6 +1733,7 @@ type ComplexityRoot struct {
 		SLADays             func(childComplexity int) int
 		VetoApproverIds     func(childComplexity int) int
 		VetoGroupIds        func(childComplexity int) int
+		VetoUserIds         func(childComplexity int) int
 	}
 
 	WorkflowStatus struct {
@@ -10487,6 +10488,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkflowStageDef.VetoGroupIds(childComplexity), true
+	case "WorkflowStageDef.vetoUserIds":
+		if e.ComplexityRoot.WorkflowStageDef.VetoUserIds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WorkflowStageDef.VetoUserIds(childComplexity), true
 
 	case "WorkflowStatus.currentStageIdx":
 		if e.ComplexityRoot.WorkflowStatus.CurrentStageIdx == nil {
@@ -14497,18 +14504,23 @@ type WorkflowStageDef {
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
-  # Veto seats: users and group seats whose single reject ends the version as rejected, when the
-  # workflow has opted in (WorkflowDef.vetoEnabled).
-  vetoApproverIds: [ID!]!
-  vetoGroupIds: [ID!]!
+  # Deprecated: veto people are named in vetoUserIds. Read as the workflow service answers, and
+  # removed with the workflow-level switch once the web has moved.
+  vetoApproverIds: [ID!]! @deprecated(reason: "Use vetoUserIds.")
+  vetoGroupIds: [ID!]! @deprecated(reason: "Use vetoUserIds.")
+  # The people whose single reject ends the version as rejected, even inside a quorum and below its
+  # threshold. A veto person must be one of the stage's approvers: there are no veto-only seats, and
+  # a site admin or root does not count. Any one of them rejecting ends the run. A stage with a
+  # non-empty list applies it; there is no workflow-wide switch.
+  vetoUserIds: [ID!]!
 }
 type WorkflowDef {
   id: ID!
   name: String!
   description: String
   version: Int!
-  # Off by default; set only through setWorkflowVetoEnabled.
-  vetoEnabled: Boolean!
+  # Deprecated: stored and read back, but it gates nothing. A stage's vetoUserIds apply by themselves.
+  vetoEnabled: Boolean! @deprecated(reason: "A stage's vetoUserIds apply on their own; this gates nothing.")
   stages: [WorkflowStageDef!]!
 }
 input CategoryApproversInput {
@@ -14530,8 +14542,11 @@ input WorkflowStageInput {
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
-  vetoApproverIds: [ID!]
-  vetoGroupIds: [ID!]
+  # Deprecated: accepted and ignored by the workflow service. Use vetoUserIds.
+  vetoApproverIds: [ID!] @deprecated(reason: "Use vetoUserIds.")
+  vetoGroupIds: [ID!] @deprecated(reason: "Use vetoUserIds.")
+  # The stage's veto people; each must be one of its approvers. Omitted or empty means no veto.
+  vetoUserIds: [ID!]
 }
 # Who the workflow editor may offer as an approver. A workflow draws its approvers from the
 # categories that use it as their default workflow, so this is the union of those categories'
@@ -14555,8 +14570,8 @@ extend type Mutation {
   createWorkflowDef(name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
   updateWorkflowDef(id: ID!, name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
   archiveWorkflowDef(id: ID!): Boolean!
-  # Template admins and above: opts a workflow in or out of veto seats.
-  setWorkflowVetoEnabled(id: ID!, enabled: Boolean!): WorkflowDef!
+  # Deprecated: the flag gates nothing now. Name veto people on a stage with vetoUserIds.
+  setWorkflowVetoEnabled(id: ID!, enabled: Boolean!): WorkflowDef! @deprecated(reason: "A stage's vetoUserIds apply on their own.")
 }
 
 
@@ -17332,6 +17347,8 @@ func (ec *executionContext) childFields_WorkflowStageDef(ctx context.Context, fi
 		return ec.fieldContext_WorkflowStageDef_vetoApproverIds(ctx, field)
 	case "vetoGroupIds":
 		return ec.fieldContext_WorkflowStageDef_vetoGroupIds(ctx, field)
+	case "vetoUserIds":
+		return ec.fieldContext_WorkflowStageDef_vetoUserIds(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type WorkflowStageDef", field.Name)
 }
@@ -56114,6 +56131,29 @@ func (ec *executionContext) fieldContext_WorkflowStageDef_vetoGroupIds(_ context
 	return graphql.NewScalarFieldContext("WorkflowStageDef", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
+func (ec *executionContext) _WorkflowStageDef_vetoUserIds(ctx context.Context, field graphql.CollectedField, obj *WorkflowStageDef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_WorkflowStageDef_vetoUserIds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.VetoUserIds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNID2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_WorkflowStageDef_vetoUserIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("WorkflowStageDef", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
 func (ec *executionContext) _WorkflowStatus_status(ctx context.Context, field graphql.CollectedField, obj *WorkflowStatus) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -59469,7 +59509,7 @@ func (ec *executionContext) unmarshalInputWorkflowStageInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "name", "approvers", "approversByCategory", "groupUnits", "quorum", "slaDays", "rejectOnSlaBreach", "pinnedLast", "vetoApproverIds", "vetoGroupIds"}
+	fieldsInOrder := [...]string{"id", "name", "approvers", "approversByCategory", "groupUnits", "quorum", "slaDays", "rejectOnSlaBreach", "pinnedLast", "vetoApproverIds", "vetoGroupIds", "vetoUserIds"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59553,6 +59593,13 @@ func (ec *executionContext) unmarshalInputWorkflowStageInput(ctx context.Context
 				return it, err
 			}
 			it.VetoGroupIds = data
+		case "vetoUserIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vetoUserIds"))
+			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.VetoUserIds = data
 		}
 	}
 	return it, nil
@@ -73665,6 +73712,11 @@ func (ec *executionContext) _WorkflowStageDef(ctx context.Context, sel ast.Selec
 			}
 		case "vetoGroupIds":
 			out.Values[i] = ec._WorkflowStageDef_vetoGroupIds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "vetoUserIds":
+			out.Values[i] = ec._WorkflowStageDef_vetoUserIds(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

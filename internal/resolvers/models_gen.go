@@ -1746,6 +1746,7 @@ type WorkflowStageDef struct {
 	PinnedLast          *bool                `json:"pinnedLast,omitempty"`
 	VetoApproverIds     []string             `json:"vetoApproverIds"`
 	VetoGroupIds        []string             `json:"vetoGroupIds"`
+	VetoUserIds         []string             `json:"vetoUserIds"`
 }
 
 type WorkflowStageInput struct {
@@ -1760,6 +1761,7 @@ type WorkflowStageInput struct {
 	PinnedLast          *bool                     `json:"pinnedLast,omitempty"`
 	VetoApproverIds     []string                  `json:"vetoApproverIds,omitempty"`
 	VetoGroupIds        []string                  `json:"vetoGroupIds,omitempty"`
+	VetoUserIds         []string                  `json:"vetoUserIds,omitempty"`
 }
 
 type WorkflowStatus struct {

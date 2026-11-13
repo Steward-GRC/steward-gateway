@@ -91,6 +91,8 @@ extend type Mutation {
   retireAppendix(id: ID!): PolicyAppendix!
   # Brings a retired appendix back, last in the order. Editors only.
   restoreAppendix(id: ID!): PolicyAppendix!
+  # Site admin only: removes the appendix and its history.
+  deleteAppendixForever(id: ID!): Boolean!
   # Sets the order of the live appendices, which then take the letters A, B, C in that order.
   # orderedIds must name every live appendix of the policy exactly once; a missing, repeated,
   # foreign or retired id is refused and the order is left as it was. Makes no draft and touches no

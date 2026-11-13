@@ -241,6 +241,11 @@ whether the caller may edit the policy:
   for an editor, with the new letters. A list that misses, repeats, or adds a foreign or retired
   appendix is core's `InvalidArgument` and leaves the order as it was. It makes no draft. The older
   `reorderAppendices` (by policy version) is unchanged.
+- `deleteAppendixForever(id)` removes a retired appendix, its versions and its history for good, and
+  returns `true`. Site admin only, decided before core is called: an author is `PermissionDenied`
+  and core is never asked. It sends the signed-in admin as the actor. A live appendix is
+  `FailedPrecondition` ("Retire the appendix first; only a retired appendix can be deleted for
+  good."); an unknown id is `NotFound`. It is served over core's `DeletePolicyAppendix`.
 - `appendixDiff(id, contentJson)` diffs the appendix against its latest published row, section by
   section, through core's `DiffPolicyAppendix`. It diffs the open draft, or `contentJson` (what the
   author is typing, not saved) when one is passed; the text goes to core as it is and an unreadable

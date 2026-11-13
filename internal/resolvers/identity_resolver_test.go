@@ -1104,3 +1104,88 @@ func TestResetUserPasswordResolverDeniedWithoutUserManage(t *testing.T) {
 		t.Fatal("identity must not be called when the gate refuses")
 	}
 }
+
+// TestSearchUsersNeedsTwoCharacters verifies a query under two characters
+// (after trimming) answers an empty list and never asks identity, so the
+// required argument cannot list the directory.
+func TestSearchUsersNeedsTwoCharacters(t *testing.T) {
+	for _, q := range []string{"", " ", "a", "  a  "} {
+		read := &fakeReadClient{
+			listResp: &identityv1.ListUsersByEmailResponse{
+				Users: []*identityv1.User{{Id: "u-1", Name: "Alice", Email: "a@example.org"}},
+			},
+		}
+		out, err := resolvers.SearchUsersResolver(ctxWithUser(t, "u-caller"), read, q, nil)
+		if err != nil {
+			t.Fatalf("query %q: %v", q, err)
+		}
+		if len(out) != 0 {
+			t.Errorf("query %q: got %d results, want none", q, len(out))
+		}
+		if read.lastListReq != nil {
+			t.Errorf("query %q: identity was called", q)
+		}
+	}
+}
+
+// TestSearchUsersSendsTheTrimmedQuery verifies surrounding blanks are dropped
+// before the query reaches identity.
+func TestSearchUsersSendsTheTrimmedQuery(t *testing.T) {
+	read := &fakeReadClient{listResp: &identityv1.ListUsersByEmailResponse{}}
+	if _, err := resolvers.SearchUsersResolver(ctxWithUser(t, "u-caller"), read, "  Ivan Ive ", nil); err != nil {
+		t.Fatalf("SearchUsersResolver: %v", err)
+	}
+	if read.lastListReq == nil || read.lastListReq.EmailSubstring != "Ivan Ive" {
+		t.Errorf("query sent: %+v", read.lastListReq)
+	}
+}
+
+// TestSearchUsersListsPrefixMatchesFirst verifies a person whose name or email
+// starts with the query comes before one who only contains it, each group
+// keeping identity's order, and that the case of the query does not matter.
+func TestSearchUsersListsPrefixMatchesFirst(t *testing.T) {
+	read := &fakeReadClient{
+		listResp: &identityv1.ListUsersByEmailResponse{
+			Users: []*identityv1.User{
+				{Id: "u-1", Name: "Zed Patrick", Email: "a@example.org"},
+				{Id: "u-2", Name: "Mia Spatz", Email: "b@example.org"},
+				{Id: "u-3", Name: "Patty Zed", Email: "c@example.org"},
+				{Id: "u-4", Name: "Quinn", Email: "pat.quinn@example.org"},
+			},
+		},
+	}
+	out, err := resolvers.SearchUsersResolver(ctxWithUser(t, "u-caller"), read, "PAT", nil)
+	if err != nil {
+		t.Fatalf("SearchUsersResolver: %v", err)
+	}
+	var got []string
+	for _, u := range out {
+		got = append(got, u.ID)
+	}
+	want := []string{"u-3", "u-4", "u-1", "u-2"}
+	if !slices.Equal(got, want) {
+		t.Errorf("order: got %v want %v", got, want)
+	}
+}
+
+// TestSearchUsersKeepsTheLimitAfterOrdering verifies the answer is never
+// longer than the limit asked for.
+func TestSearchUsersKeepsTheLimitAfterOrdering(t *testing.T) {
+	read := &fakeReadClient{
+		listResp: &identityv1.ListUsersByEmailResponse{
+			Users: []*identityv1.User{
+				{Id: "u-1", Name: "Xpat", Email: "1@example.org"},
+				{Id: "u-2", Name: "Pat", Email: "2@example.org"},
+				{Id: "u-3", Name: "Xpat2", Email: "3@example.org"},
+			},
+		},
+	}
+	lim := 2
+	out, err := resolvers.SearchUsersResolver(ctxWithUser(t, "u-caller"), read, "pat", &lim)
+	if err != nil {
+		t.Fatalf("SearchUsersResolver: %v", err)
+	}
+	if len(out) != 2 || out[0].ID != "u-2" {
+		t.Errorf("got %+v", out)
+	}
+}

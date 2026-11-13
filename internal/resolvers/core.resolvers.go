@@ -308,6 +308,11 @@ func (r *policyVersionResolver) Appendices(ctx context.Context, obj *PolicyVersi
 	return r.AppendicesForVersionResolver(ctx, obj)
 }
 
+// Reacknowledge is the resolver for the reacknowledge field.
+func (r *policyVersionResolver) Reacknowledge(ctx context.Context, obj *PolicyVersion, changeType *ChangeType) (bool, error) {
+	return r.ReacknowledgeForVersionResolver(ctx, obj, changeType)
+}
+
 // Category is the resolver for the category field.
 func (r *queryResolver) Category(ctx context.Context, id string) (*Category, error) {
 	return GetCategory(ctx, r.CategoryClient, id)

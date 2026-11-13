@@ -1102,6 +1102,7 @@ type ComplexityRoot struct {
 		ID                        func(childComplexity int) int
 		PolicyID                  func(childComplexity int) int
 		PublishedAt               func(childComplexity int) int
+		Reacknowledge             func(childComplexity int, changeType *ChangeType) int
 		RequestedChangeType       func(childComplexity int) int
 		SemanticVersion           func(childComplexity int) int
 		Status                    func(childComplexity int) int
@@ -1972,6 +1973,8 @@ type NotificationSettingsResolver interface {
 }
 type PolicyVersionResolver interface {
 	Appendices(ctx context.Context, obj *PolicyVersion) ([]*Appendix, error)
+
+	Reacknowledge(ctx context.Context, obj *PolicyVersion, changeType *ChangeType) (bool, error)
 }
 type QueryResolver interface {
 	Health(ctx context.Context) (*HealthStatus, error)
@@ -7366,6 +7369,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PolicyVersion.PublishedAt(childComplexity), true
+	case "PolicyVersion.reacknowledge":
+		if e.ComplexityRoot.PolicyVersion.Reacknowledge == nil {
+			break
+		}
+
+		args, err := ec.field_PolicyVersion_reacknowledge_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.PolicyVersion.Reacknowledge(childComplexity, args["changeType"].(*ChangeType)), true
 	case "PolicyVersion.requestedChangeType":
 		if e.ComplexityRoot.PolicyVersion.RequestedChangeType == nil {
 			break
@@ -12172,6 +12186,13 @@ type PolicyVersion {
   changeTypeSetByUserId: ID
   # The approvers who agreed to a lowering. Empty when there was none.
   changeTypeAgreedByUserIds: [ID!]!
+  # Whether publishing this version asks readers to acknowledge it again. True only for a
+  # POLICY whose acknowledgement trigger is ON_CHANGE and whose change type is MAJOR.
+  # Always false for a procedure (no acknowledgements), for MINOR or FIX, for a policy that
+  # is not ON_CHANGE, and when no change type is known. changeType is what the submit dialog
+  # passes: the author's pick before it is stored. Without it, the version's own changeType
+  # is used, else its suggestedChangeType. Needs the same read access as the version.
+  reacknowledge(changeType: ChangeType): Boolean!
 }
 
 type Appendix {
@@ -16566,6 +16587,8 @@ func (ec *executionContext) childFields_PolicyVersion(ctx context.Context, field
 		return ec.fieldContext_PolicyVersion_changeTypeSetByUserId(ctx, field)
 	case "changeTypeAgreedByUserIds":
 		return ec.fieldContext_PolicyVersion_changeTypeAgreedByUserIds(ctx, field)
+	case "reacknowledge":
+		return ec.fieldContext_PolicyVersion_reacknowledge(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PolicyVersion", field.Name)
 }
@@ -21635,6 +21658,20 @@ func (ec *executionContext) field_Mutation_webauthnRegisterFinish_args(ctx conte
 		return nil, err
 	}
 	args["label"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_PolicyVersion_reacknowledge_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "changeType",
+		func(ctx context.Context, v any) (*ChangeType, error) {
+			return ec.unmarshalOChangeType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐChangeType(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["changeType"] = arg0
 	return args, nil
 }
 
@@ -43919,6 +43956,50 @@ func (ec *executionContext) _PolicyVersion_changeTypeAgreedByUserIds(ctx context
 }
 func (ec *executionContext) fieldContext_PolicyVersion_changeTypeAgreedByUserIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersion_reacknowledge(ctx context.Context, field graphql.CollectedField, obj *PolicyVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersion_reacknowledge(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.PolicyVersion().Reacknowledge(ctx, obj, fc.Args["changeType"].(*ChangeType))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersion_reacknowledge(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PolicyVersion",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_PolicyVersion_reacknowledge_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _PolicyVersionLinks_policyVersionId(ctx context.Context, field graphql.CollectedField, obj *PolicyVersionLinks) (ret graphql.Marshaler) {
@@ -68242,6 +68323,44 @@ func (ec *executionContext) _PolicyVersion(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "reacknowledge":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._PolicyVersion_reacknowledge(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.IsDeferred() {
+				deferredFieldSet.AddField(field)
+				fieldIndex := len(deferredFieldSet.Values) - 1
+				deferredFieldSet.Concurrently(fieldIndex, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, deferredFieldSet)
+				})
+
+				for _, deferrable := range field.Deferrables {
+					view, ok := deferLabelToView[deferrable.Label]
+					if !ok {
+						view = deferredFieldSet.NewView()
+						deferLabelToView[deferrable.Label] = view
+					}
+					view.AddIndices(fieldIndex)
+				}
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

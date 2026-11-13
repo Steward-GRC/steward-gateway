@@ -434,6 +434,13 @@ type PolicyVersion {
   changeTypeSetByUserId: ID
   # The approvers who agreed to a lowering. Empty when there was none.
   changeTypeAgreedByUserIds: [ID!]!
+  # Whether publishing this version asks readers to acknowledge it again. True only for a
+  # POLICY whose acknowledgement trigger is ON_CHANGE and whose change type is MAJOR.
+  # Always false for a procedure (no acknowledgements), for MINOR or FIX, for a policy that
+  # is not ON_CHANGE, and when no change type is known. changeType is what the submit dialog
+  # passes: the author's pick before it is stored. Without it, the version's own changeType
+  # is used, else its suggestedChangeType. Needs the same read access as the version.
+  reacknowledge(changeType: ChangeType): Boolean!
 }
 
 type Appendix {

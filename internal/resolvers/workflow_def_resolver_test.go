@@ -7,8 +7,6 @@ import (
 	"context"
 	"testing"
 
-	log "github.com/Bugs5382/go-log"
-
 	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 	"github.com/Steward-GRC/steward-gateway/internal/resolvers"
 	"google.golang.org/grpc/codes"
@@ -413,99 +411,33 @@ func TestCreateWorkflowDefResolver_QuorumPassthrough(t *testing.T) {
 	}
 }
 
-// --- veto seat: opting a workflow in ---
+// --- the old workflow-wide veto is gone from the schema ---
 
-func TestSetWorkflowVetoEnabledResolver_OffByDefaultOnTheDefinition(t *testing.T) {
-	c := &fakeWorkflowClient{listDefsResp: &workflowv1.ListWorkflowDefsResponse{
-		Defs: []*workflowv1.WorkflowDef{{Id: "d1", Name: "Standard", Version: 1}},
-	}}
-	out, err := resolvers.WorkflowDefsResolver(context.Background(), c)
-	if err != nil {
-		t.Fatalf("WorkflowDefsResolver: %v", err)
+// The workflow service dropped the workflow-wide veto switch and the per-stage veto seat lists
+// (steward-workflow#70). The GraphQL schema must not offer them any more; vetoUserIds stays.
+func TestSchema_OldWorkflowVetoFieldsAreGone(t *testing.T) {
+	schema := resolvers.NewExecutableSchema(resolvers.Config{}).Schema()
+	gone := map[string][]string{
+		"WorkflowDef":        {"vetoEnabled"},
+		"WorkflowStageDef":   {"vetoApproverIds", "vetoGroupIds"},
+		"Mutation":           {"setWorkflowVetoEnabled"},
+		"WorkflowStageInput": {"vetoApproverIds", "vetoGroupIds"},
 	}
-	if out[0].VetoEnabled {
-		t.Fatal("a definition the workflow has not opted in must read as vetoEnabled=false")
+	for typ, names := range gone {
+		def := schema.Types[typ]
+		if def == nil {
+			t.Fatalf("type %s missing from the schema", typ)
+		}
+		for _, n := range names {
+			if def.Fields.ForName(n) != nil {
+				t.Errorf("%s.%s must be removed from the schema", typ, n)
+			}
+		}
 	}
-}
-
-func TestSetWorkflowVetoEnabledResolver_TemplateAdminSetsAndForwardsActor(t *testing.T) {
-	c := &fakeWorkflowClient{}
-	out, err := resolvers.SetWorkflowVetoEnabledResolver(
-		ctxWithRoles(t, "u1", []string{"template-admin"}), log.Nop(), c, "def-1", true,
-	)
-	if err != nil {
-		t.Fatalf("SetWorkflowVetoEnabledResolver: %v", err)
-	}
-	if out.ID != "def-1" || !out.VetoEnabled {
-		t.Fatalf("want def-1 with vetoEnabled=true, got %+v", out)
-	}
-	if c.lastVeto == nil || c.lastVeto.GetId() != "def-1" || !c.lastVeto.GetEnabled() || c.lastVeto.GetActorUserId() != "u1" {
-		t.Fatalf("forwarded request: %+v", c.lastVeto)
-	}
-}
-
-func TestSetWorkflowVetoEnabledResolver_AuthorDeniedWithoutACall(t *testing.T) {
-	c := &fakeWorkflowClient{}
-	_, err := resolvers.SetWorkflowVetoEnabledResolver(
-		ctxWithRoles(t, "u1", []string{"author"}), log.Nop(), c, "def-1", true,
-	)
-	if status.Code(err) != codes.PermissionDenied {
-		t.Fatalf("expected PermissionDenied; got %v", err)
-	}
-	if c.lastVeto != nil {
-		t.Fatalf("workflow must not be called for a refused caller: %+v", c.lastVeto)
-	}
-}
-
-func TestSetWorkflowVetoEnabledResolver_Unauthenticated(t *testing.T) {
-	_, err := resolvers.SetWorkflowVetoEnabledResolver(context.Background(), log.Nop(), &fakeWorkflowClient{}, "def-1", true)
-	if status.Code(err) != codes.Unauthenticated {
-		t.Fatalf("expected Unauthenticated; got %v", err)
-	}
-}
-
-func TestSetWorkflowVetoEnabledResolver_WorkflowDenialPassesThrough(t *testing.T) {
-	c := &fakeWorkflowClient{vetoErr: status.Error(codes.PermissionDenied, "admin only")}
-	_, err := resolvers.SetWorkflowVetoEnabledResolver(
-		ctxWithRoles(t, "u1", []string{"template-admin"}), log.Nop(), c, "def-1", true,
-	)
-	if status.Code(err) != codes.PermissionDenied {
-		t.Fatalf("expected PermissionDenied from workflow; got %v", err)
-	}
-}
-
-// --- veto seat: marking users and group seats on a stage ---
-
-// The old per-stage veto seat lists are accepted on input but no longer forwarded: the workflow
-// service ignores them and answers them empty.
-func TestWorkflowDefResolvers_OldVetoSeatInputIsNotForwarded(t *testing.T) {
-	c := &fakeWorkflowClient{}
-	_, err := resolvers.UpdateWorkflowDefResolver(
-		ctxWithRoles(t, "u1", []string{"template-admin"}), c, "def-1", "Finance", nil,
-		[]*resolvers.WorkflowStageInput{{
-			Name: "Finance sign-off", Approvers: []string{"u3"}, Quorum: "one",
-			VetoApproverIds: []string{"u3"}, VetoGroupIds: []string{"group-finance"},
-		}},
-	)
-	if err != nil {
-		t.Fatalf("UpdateWorkflowDefResolver: %v", err)
-	}
-	sent := c.lastUpdateDef.GetStages()[0]
-	if len(sent.GetVetoApproverIds()) != 0 || len(sent.GetVetoGroupIds()) != 0 || len(sent.GetVetoUserIds()) != 0 {
-		t.Fatalf("old veto seat input must not be forwarded: %+v", sent)
-	}
-}
-
-func TestWorkflowStageDefFromProto_NoVetoMarksAreEmptyLists(t *testing.T) {
-	c := &fakeWorkflowClient{getDefResp: &workflowv1.GetWorkflowDefResponse{
-		Def: &workflowv1.WorkflowDef{Id: "d1", Stages: []*workflowv1.WorkflowStage{{Id: "s1", Name: "A"}}},
-	}}
-	out, err := resolvers.WorkflowDefResolver(context.Background(), c, "d1")
-	if err != nil {
-		t.Fatalf("WorkflowDefResolver: %v", err)
-	}
-	if out.Stages[0].VetoApproverIds == nil || out.Stages[0].VetoGroupIds == nil {
-		t.Fatalf("non-null lists required by the schema: %+v", out.Stages[0])
+	for typ, name := range map[string]string{"WorkflowStageDef": "vetoUserIds", "WorkflowStageInput": "vetoUserIds", "StageAssignee": "veto"} {
+		if schema.Types[typ] == nil || schema.Types[typ].Fields.ForName(name) == nil {
+			t.Errorf("%s.%s must stay in the schema", typ, name)
+		}
 	}
 }
 

@@ -863,7 +863,6 @@ type ComplexityRoot struct {
 		SetVersionDefinitions         func(childComplexity int, policyVersionID string, definitionIds []string) int
 		SetVersionReferences          func(childComplexity int, policyVersionID string, referenceIds []string) int
 		SetVersionRelated             func(childComplexity int, policyVersionID string, links []*RelatedLinkInput) int
-		SetWorkflowVetoEnabled        func(childComplexity int, id string, enabled bool) int
 		ShredAuditSubject             func(childComplexity int, subjectKey string, reason string) int
 		SignalWorkflow                func(childComplexity int, policyVersionID string, runID string, taskID string, signal SignalType, comment string) int
 		StartDomainVerification       func(childComplexity int, domain string, rotate *bool) int
@@ -1718,7 +1717,6 @@ type ComplexityRoot struct {
 		Name        func(childComplexity int) int
 		Stages      func(childComplexity int) int
 		Version     func(childComplexity int) int
-		VetoEnabled func(childComplexity int) int
 	}
 
 	WorkflowStageDef struct {
@@ -1731,8 +1729,6 @@ type ComplexityRoot struct {
 		Quorum              func(childComplexity int) int
 		RejectOnSLABreach   func(childComplexity int) int
 		SLADays             func(childComplexity int) int
-		VetoApproverIds     func(childComplexity int) int
-		VetoGroupIds        func(childComplexity int) int
 		VetoUserIds         func(childComplexity int) int
 	}
 
@@ -1940,7 +1936,6 @@ type MutationResolver interface {
 	CreateWorkflowDef(ctx context.Context, name string, description *string, stages []*WorkflowStageInput) (*WorkflowDef, error)
 	UpdateWorkflowDef(ctx context.Context, id string, name string, description *string, stages []*WorkflowStageInput) (*WorkflowDef, error)
 	ArchiveWorkflowDef(ctx context.Context, id string) (bool, error)
-	SetWorkflowVetoEnabled(ctx context.Context, id string, enabled bool) (*WorkflowDef, error)
 }
 type NotificationSettingsResolver interface {
 	QuietHours(ctx context.Context, obj *NotificationSettings) (*QuietHours, error)
@@ -6188,17 +6183,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetVersionRelated(childComplexity, args["policyVersionId"].(string), args["links"].([]*RelatedLinkInput)), true
-	case "Mutation.setWorkflowVetoEnabled":
-		if e.ComplexityRoot.Mutation.SetWorkflowVetoEnabled == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_setWorkflowVetoEnabled_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.SetWorkflowVetoEnabled(childComplexity, args["id"].(string), args["enabled"].(bool)), true
 	case "Mutation.shredAuditSubject":
 		if e.ComplexityRoot.Mutation.ShredAuditSubject == nil {
 			break
@@ -10415,12 +10399,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkflowDef.Version(childComplexity), true
-	case "WorkflowDef.vetoEnabled":
-		if e.ComplexityRoot.WorkflowDef.VetoEnabled == nil {
-			break
-		}
-
-		return e.ComplexityRoot.WorkflowDef.VetoEnabled(childComplexity), true
 
 	case "WorkflowStageDef.approvers":
 		if e.ComplexityRoot.WorkflowStageDef.Approvers == nil {
@@ -10476,18 +10454,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.WorkflowStageDef.SLADays(childComplexity), true
-	case "WorkflowStageDef.vetoApproverIds":
-		if e.ComplexityRoot.WorkflowStageDef.VetoApproverIds == nil {
-			break
-		}
-
-		return e.ComplexityRoot.WorkflowStageDef.VetoApproverIds(childComplexity), true
-	case "WorkflowStageDef.vetoGroupIds":
-		if e.ComplexityRoot.WorkflowStageDef.VetoGroupIds == nil {
-			break
-		}
-
-		return e.ComplexityRoot.WorkflowStageDef.VetoGroupIds(childComplexity), true
 	case "WorkflowStageDef.vetoUserIds":
 		if e.ComplexityRoot.WorkflowStageDef.VetoUserIds == nil {
 			break
@@ -14504,10 +14470,6 @@ type WorkflowStageDef {
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
-  # Deprecated: veto people are named in vetoUserIds. Read as the workflow service answers, and
-  # removed with the workflow-level switch once the web has moved.
-  vetoApproverIds: [ID!]! @deprecated(reason: "Use vetoUserIds.")
-  vetoGroupIds: [ID!]! @deprecated(reason: "Use vetoUserIds.")
   # The people whose single reject ends the version as rejected, even inside a quorum and below its
   # threshold. A veto person must be one of the stage's approvers: there are no veto-only seats, and
   # a site admin or root does not count. Any one of them rejecting ends the run. A stage with a
@@ -14519,8 +14481,6 @@ type WorkflowDef {
   name: String!
   description: String
   version: Int!
-  # Deprecated: stored and read back, but it gates nothing. A stage's vetoUserIds apply by themselves.
-  vetoEnabled: Boolean! @deprecated(reason: "A stage's vetoUserIds apply on their own; this gates nothing.")
   stages: [WorkflowStageDef!]!
 }
 input CategoryApproversInput {
@@ -14542,9 +14502,6 @@ input WorkflowStageInput {
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
-  # Deprecated: accepted and ignored by the workflow service. Use vetoUserIds.
-  vetoApproverIds: [ID!] @deprecated(reason: "Use vetoUserIds.")
-  vetoGroupIds: [ID!] @deprecated(reason: "Use vetoUserIds.")
   # The stage's veto people; each must be one of its approvers. Omitted or empty means no veto.
   vetoUserIds: [ID!]
 }
@@ -14570,8 +14527,6 @@ extend type Mutation {
   createWorkflowDef(name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
   updateWorkflowDef(id: ID!, name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
   archiveWorkflowDef(id: ID!): Boolean!
-  # Deprecated: the flag gates nothing now. Name veto people on a stage with vetoUserIds.
-  setWorkflowVetoEnabled(id: ID!, enabled: Boolean!): WorkflowDef! @deprecated(reason: "A stage's vetoUserIds apply on their own.")
 }
 
 
@@ -17315,8 +17270,6 @@ func (ec *executionContext) childFields_WorkflowDef(ctx context.Context, field g
 		return ec.fieldContext_WorkflowDef_description(ctx, field)
 	case "version":
 		return ec.fieldContext_WorkflowDef_version(ctx, field)
-	case "vetoEnabled":
-		return ec.fieldContext_WorkflowDef_vetoEnabled(ctx, field)
 	case "stages":
 		return ec.fieldContext_WorkflowDef_stages(ctx, field)
 	}
@@ -17343,10 +17296,6 @@ func (ec *executionContext) childFields_WorkflowStageDef(ctx context.Context, fi
 		return ec.fieldContext_WorkflowStageDef_rejectOnSlaBreach(ctx, field)
 	case "pinnedLast":
 		return ec.fieldContext_WorkflowStageDef_pinnedLast(ctx, field)
-	case "vetoApproverIds":
-		return ec.fieldContext_WorkflowStageDef_vetoApproverIds(ctx, field)
-	case "vetoGroupIds":
-		return ec.fieldContext_WorkflowStageDef_vetoGroupIds(ctx, field)
 	case "vetoUserIds":
 		return ec.fieldContext_WorkflowStageDef_vetoUserIds(ctx, field)
 	}
@@ -20586,28 +20535,6 @@ func (ec *executionContext) field_Mutation_setVersionRelated_args(ctx context.Co
 		return nil, err
 	}
 	args["links"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_setWorkflowVetoEnabled_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
-		func(ctx context.Context, v any) (string, error) {
-			return ec.unmarshalNID2string(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "enabled",
-		func(ctx context.Context, v any) (bool, error) {
-			return ec.unmarshalNBoolean2bool(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["enabled"] = arg1
 	return args, nil
 }
 
@@ -40264,50 +40191,6 @@ func (ec *executionContext) fieldContext_Mutation_archiveWorkflowDef(ctx context
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_setWorkflowVetoEnabled(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_Mutation_setWorkflowVetoEnabled(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().SetWorkflowVetoEnabled(ctx, fc.Args["id"].(string), fc.Args["enabled"].(bool))
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v *WorkflowDef) graphql.Marshaler {
-			return ec.marshalNWorkflowDef2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐWorkflowDef(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_Mutation_setWorkflowVetoEnabled(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.childFields_WorkflowDef(ctx, field)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_setWorkflowVetoEnabled_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _MyReport_caseId(ctx context.Context, field graphql.CollectedField, obj *MyReport) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -55805,29 +55688,6 @@ func (ec *executionContext) fieldContext_WorkflowDef_version(_ context.Context, 
 	return graphql.NewScalarFieldContext("WorkflowDef", field, false, false, errors.New("field of type Int does not have child fields"))
 }
 
-func (ec *executionContext) _WorkflowDef_vetoEnabled(ctx context.Context, field graphql.CollectedField, obj *WorkflowDef) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_WorkflowDef_vetoEnabled(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.VetoEnabled, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
-			return ec.marshalNBoolean2bool(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_WorkflowDef_vetoEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("WorkflowDef", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
 func (ec *executionContext) _WorkflowDef_stages(ctx context.Context, field graphql.CollectedField, obj *WorkflowDef) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -56083,52 +55943,6 @@ func (ec *executionContext) _WorkflowStageDef_pinnedLast(ctx context.Context, fi
 }
 func (ec *executionContext) fieldContext_WorkflowStageDef_pinnedLast(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("WorkflowStageDef", field, false, false, errors.New("field of type Boolean does not have child fields"))
-}
-
-func (ec *executionContext) _WorkflowStageDef_vetoApproverIds(ctx context.Context, field graphql.CollectedField, obj *WorkflowStageDef) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_WorkflowStageDef_vetoApproverIds(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.VetoApproverIds, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
-			return ec.marshalNID2ᚕstringᚄ(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_WorkflowStageDef_vetoApproverIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("WorkflowStageDef", field, false, false, errors.New("field of type ID does not have child fields"))
-}
-
-func (ec *executionContext) _WorkflowStageDef_vetoGroupIds(ctx context.Context, field graphql.CollectedField, obj *WorkflowStageDef) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_WorkflowStageDef_vetoGroupIds(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.VetoGroupIds, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
-			return ec.marshalNID2ᚕstringᚄ(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_WorkflowStageDef_vetoGroupIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("WorkflowStageDef", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
 func (ec *executionContext) _WorkflowStageDef_vetoUserIds(ctx context.Context, field graphql.CollectedField, obj *WorkflowStageDef) (ret graphql.Marshaler) {
@@ -59509,7 +59323,7 @@ func (ec *executionContext) unmarshalInputWorkflowStageInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"id", "name", "approvers", "approversByCategory", "groupUnits", "quorum", "slaDays", "rejectOnSlaBreach", "pinnedLast", "vetoApproverIds", "vetoGroupIds", "vetoUserIds"}
+	fieldsInOrder := [...]string{"id", "name", "approvers", "approversByCategory", "groupUnits", "quorum", "slaDays", "rejectOnSlaBreach", "pinnedLast", "vetoUserIds"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -59579,20 +59393,6 @@ func (ec *executionContext) unmarshalInputWorkflowStageInput(ctx context.Context
 				return it, err
 			}
 			it.PinnedLast = data
-		case "vetoApproverIds":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vetoApproverIds"))
-			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VetoApproverIds = data
-		case "vetoGroupIds":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vetoGroupIds"))
-			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.VetoGroupIds = data
 		case "vetoUserIds":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vetoUserIds"))
 			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
@@ -65896,13 +65696,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "archiveWorkflowDef":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_archiveWorkflowDef(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "setWorkflowVetoEnabled":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_setWorkflowVetoEnabled(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -73617,11 +73410,6 @@ func (ec *executionContext) _WorkflowDef(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "vetoEnabled":
-			out.Values[i] = ec._WorkflowDef_vetoEnabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "stages":
 			out.Values[i] = ec._WorkflowDef_stages(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -73703,16 +73491,6 @@ func (ec *executionContext) _WorkflowStageDef(ctx context.Context, sel ast.Selec
 		case "pinnedLast":
 			out.Values[i] = ec._WorkflowStageDef_pinnedLast(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
-				out.Invalids++
-			}
-		case "vetoApproverIds":
-			out.Values[i] = ec._WorkflowStageDef_vetoApproverIds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "vetoGroupIds":
-			out.Values[i] = ec._WorkflowStageDef_vetoGroupIds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "vetoUserIds":

@@ -887,7 +887,7 @@ type ComplexityRoot struct {
 		SubmitNamedReport             func(childComplexity int, details ReportDetailsInput, attachments []*ReportAttachmentInput) int
 		SubmitPolicyReview            func(childComplexity int, input SubmitPolicyReviewInput) int
 		SubmitPolicyRevision          func(childComplexity int, input SubmitPolicyRevisionInput) int
-		SubmitWorkflow                func(childComplexity int, policyVersionID string, policyID string, categoryID string, ancestorCategoryIds []string) int
+		SubmitWorkflow                func(childComplexity int, policyVersionID string, policyID string, categoryID string, ancestorCategoryIds []string, changeType *ChangeType, changeTypeReason *string) int
 		SummarizeChanges              func(childComplexity int, fromVersionID string, toVersionID string, regenerate *bool) int
 		SwapAssignee                  func(childComplexity int, input SwapAssigneeInput) int
 		TestAIProvider                func(childComplexity int) int
@@ -1091,15 +1091,22 @@ type ComplexityRoot struct {
 	}
 
 	PolicyVersion struct {
-		Appendices        func(childComplexity int) int
-		ContentJSON       func(childComplexity int) int
-		CreatedAt         func(childComplexity int) int
-		ID                func(childComplexity int) int
-		PolicyID          func(childComplexity int) int
-		PublishedAt       func(childComplexity int) int
-		Status            func(childComplexity int) int
-		TemplateVersionID func(childComplexity int) int
-		VersionNo         func(childComplexity int) int
+		Appendices                func(childComplexity int) int
+		ChangeType                func(childComplexity int) int
+		ChangeTypeAgreedByUserIds func(childComplexity int) int
+		ChangeTypeReason          func(childComplexity int) int
+		ChangeTypeSetByUserID     func(childComplexity int) int
+		ContentJSON               func(childComplexity int) int
+		CreatedAt                 func(childComplexity int) int
+		ID                        func(childComplexity int) int
+		PolicyID                  func(childComplexity int) int
+		PublishedAt               func(childComplexity int) int
+		RequestedChangeType       func(childComplexity int) int
+		SemanticVersion           func(childComplexity int) int
+		Status                    func(childComplexity int) int
+		SuggestedChangeType       func(childComplexity int) int
+		TemplateVersionID         func(childComplexity int) int
+		VersionNo                 func(childComplexity int) int
 	}
 
 	PolicyVersionLinks struct {
@@ -1580,14 +1587,19 @@ type ComplexityRoot struct {
 		Name            func(childComplexity int) int
 		OwnerCategoryID func(childComplexity int) int
 		RetiredAt       func(childComplexity int) int
+		UpdatedAt       func(childComplexity int) int
 	}
 
 	TemplateVersion struct {
-		ID         func(childComplexity int) int
-		Sections   func(childComplexity int) int
-		Status     func(childComplexity int) int
-		TemplateID func(childComplexity int) int
-		VersionNo  func(childComplexity int) int
+		ChangeType      func(childComplexity int) int
+		CreatedAt       func(childComplexity int) int
+		ID              func(childComplexity int) int
+		PublishedAt     func(childComplexity int) int
+		Sections        func(childComplexity int) int
+		SemanticVersion func(childComplexity int) int
+		Status          func(childComplexity int) int
+		TemplateID      func(childComplexity int) int
+		VersionNo       func(childComplexity int) int
 	}
 
 	TextSpan struct {
@@ -1946,7 +1958,7 @@ type MutationResolver interface {
 	SetVersionRelated(ctx context.Context, policyVersionID string, links []*RelatedLinkInput) (*PolicyVersionLinks, error)
 	SetVersionReferences(ctx context.Context, policyVersionID string, referenceIds []string) (*PolicyVersionLinks, error)
 	SetVersionContacts(ctx context.Context, policyVersionID string, contactBlockIds []string) (*PolicyVersionLinks, error)
-	SubmitWorkflow(ctx context.Context, policyVersionID string, policyID string, categoryID string, ancestorCategoryIds []string) (*WorkflowSubmitResult, error)
+	SubmitWorkflow(ctx context.Context, policyVersionID string, policyID string, categoryID string, ancestorCategoryIds []string, changeType *ChangeType, changeTypeReason *string) (*WorkflowSubmitResult, error)
 	SignalWorkflow(ctx context.Context, policyVersionID string, runID string, taskID string, signal SignalType, comment string) (bool, error)
 	SwapAssignee(ctx context.Context, input SwapAssigneeInput) (*SwapAssigneeResult, error)
 	BulkDecide(ctx context.Context, input BulkDecideInput) (*BulkDecideResult, error)
@@ -6386,7 +6398,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.SubmitWorkflow(childComplexity, args["policyVersionId"].(string), args["policyId"].(string), args["categoryId"].(string), args["ancestorCategoryIds"].([]string)), true
+		return e.ComplexityRoot.Mutation.SubmitWorkflow(childComplexity, args["policyVersionId"].(string), args["policyId"].(string), args["categoryId"].(string), args["ancestorCategoryIds"].([]string), args["changeType"].(*ChangeType), args["changeTypeReason"].(*string)), true
 	case "Mutation.summarizeChanges":
 		if e.ComplexityRoot.Mutation.SummarizeChanges == nil {
 			break
@@ -7293,6 +7305,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PolicyVersion.Appendices(childComplexity), true
+	case "PolicyVersion.changeType":
+		if e.ComplexityRoot.PolicyVersion.ChangeType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersion.ChangeType(childComplexity), true
+	case "PolicyVersion.changeTypeAgreedByUserIds":
+		if e.ComplexityRoot.PolicyVersion.ChangeTypeAgreedByUserIds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersion.ChangeTypeAgreedByUserIds(childComplexity), true
+	case "PolicyVersion.changeTypeReason":
+		if e.ComplexityRoot.PolicyVersion.ChangeTypeReason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersion.ChangeTypeReason(childComplexity), true
+	case "PolicyVersion.changeTypeSetByUserId":
+		if e.ComplexityRoot.PolicyVersion.ChangeTypeSetByUserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersion.ChangeTypeSetByUserID(childComplexity), true
 	case "PolicyVersion.contentJson":
 		if e.ComplexityRoot.PolicyVersion.ContentJSON == nil {
 			break
@@ -7323,12 +7359,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PolicyVersion.PublishedAt(childComplexity), true
+	case "PolicyVersion.requestedChangeType":
+		if e.ComplexityRoot.PolicyVersion.RequestedChangeType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersion.RequestedChangeType(childComplexity), true
+	case "PolicyVersion.semanticVersion":
+		if e.ComplexityRoot.PolicyVersion.SemanticVersion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersion.SemanticVersion(childComplexity), true
 	case "PolicyVersion.status":
 		if e.ComplexityRoot.PolicyVersion.Status == nil {
 			break
 		}
 
 		return e.ComplexityRoot.PolicyVersion.Status(childComplexity), true
+	case "PolicyVersion.suggestedChangeType":
+		if e.ComplexityRoot.PolicyVersion.SuggestedChangeType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PolicyVersion.SuggestedChangeType(childComplexity), true
 	case "PolicyVersion.templateVersionId":
 		if e.ComplexityRoot.PolicyVersion.TemplateVersionID == nil {
 			break
@@ -9899,19 +9953,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Template.RetiredAt(childComplexity), true
+	case "Template.updatedAt":
+		if e.ComplexityRoot.Template.UpdatedAt == nil {
+			break
+		}
 
+		return e.ComplexityRoot.Template.UpdatedAt(childComplexity), true
+
+	case "TemplateVersion.changeType":
+		if e.ComplexityRoot.TemplateVersion.ChangeType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TemplateVersion.ChangeType(childComplexity), true
+	case "TemplateVersion.createdAt":
+		if e.ComplexityRoot.TemplateVersion.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TemplateVersion.CreatedAt(childComplexity), true
 	case "TemplateVersion.id":
 		if e.ComplexityRoot.TemplateVersion.ID == nil {
 			break
 		}
 
 		return e.ComplexityRoot.TemplateVersion.ID(childComplexity), true
+	case "TemplateVersion.publishedAt":
+		if e.ComplexityRoot.TemplateVersion.PublishedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TemplateVersion.PublishedAt(childComplexity), true
 	case "TemplateVersion.sections":
 		if e.ComplexityRoot.TemplateVersion.Sections == nil {
 			break
 		}
 
 		return e.ComplexityRoot.TemplateVersion.Sections(childComplexity), true
+	case "TemplateVersion.semanticVersion":
+		if e.ComplexityRoot.TemplateVersion.SemanticVersion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TemplateVersion.SemanticVersion(childComplexity), true
 	case "TemplateVersion.status":
 		if e.ComplexityRoot.TemplateVersion.Status == nil {
 			break
@@ -11909,13 +11993,37 @@ type Template {
   name: String!
   ownerCategoryId: ID
   retiredAt: String      # RFC3339; null = active. Set = retired (soft-deleted).
+  # RFC3339. The latest of a rename and any version of the template being created or
+  # published. Null when core has no time for it.
+  updatedAt: String
+}
+
+# How big a change to a policy or template version is. It decides which part of the
+# semantic version a publish raises: MAJOR raises the first number and resets the rest,
+# MINOR raises the second and resets FIX, FIX raises the third.
+enum ChangeType {
+  MAJOR
+  MINOR
+  FIX
 }
 
 type TemplateVersion {
   id: ID!
   templateId: ID!
+  # The ordinal (1, 2, 3 ...). The semantic version is semanticVersion.
   versionNo: Int!
   status: String!
+  # MAJOR.MINOR.FIX, for example "2.1.0". Stored at publish (the first is 1.0.0); for a
+  # draft it is the number a publish would give it now. Null only for a version that
+  # core has no semantic version for.
+  semanticVersion: String
+  # What the version published as; for a draft, what it would publish as now. A required
+  # section added, dropped or turned required is MAJOR; an optional section added or
+  # dropped, or changed boilerplate text, is MINOR; the rest (titles, order, heading
+  # level) is FIX. Null when unset.
+  changeType: ChangeType
+  createdAt: String      # RFC3339; null when unavailable
+  publishedAt: String    # RFC3339; null until published
   sections: [Section!]!
 }
 
@@ -12033,6 +12141,26 @@ type PolicyVersion {
   appendices: [Appendix!]!
   createdAt: String    # RFC-3339; null when unavailable
   publishedAt: String  # RFC-3339; null until published
+  # MAJOR.MINOR.FIX, for example "2.1.0". Stored at publish; versionNo stays the ordinal.
+  # For a draft or a version in review it is the number a publish would give it from its
+  # content as it is now. Null for a version core has no semantic version for.
+  semanticVersion: String
+  # What core classified the change as against the version before. Null for the first
+  # version, which is always 1.0.0.
+  suggestedChangeType: ChangeType
+  # The type the version publishes as: stored at publish; before that, the suggestion,
+  # raised by the author's pick, and lowered below the suggestion only once the approvers
+  # have agreed.
+  changeType: ChangeType
+  # A lowering below the suggestion that the author asked for and the approvers have not
+  # yet agreed to. Null when there is none (it clears once the approvers agree).
+  requestedChangeType: ChangeType
+  # Why the author set the type below the suggestion.
+  changeTypeReason: String
+  # The user who picked the type; null when nobody did and the suggestion stands.
+  changeTypeSetByUserId: ID
+  # The approvers who agreed to a lowering. Empty when there was none.
+  changeTypeAgreedByUserIds: [ID!]!
 }
 
 type Appendix {
@@ -14391,12 +14519,20 @@ extend type Mutation {
   from the signed-in user; ancestorCategoryIds is the policy's category lineage leaf→root
   so the workflow service can resolve the effective workflow without a
   cross-service call back into policy-core.
+
+  changeType is the author's pick of the change type, with changeTypeReason for it.
+  Leave both out to keep the suggestion core made. A pick at or above the suggestion
+  applies at once; a pick below it needs a reason (refused with INVALID_ARGUMENT
+  without one, and the version stays a draft) and waits for the first stage's approvers
+  to agree. The first version of a document is always 1.0.0 and takes no pick.
   """
   submitWorkflow(
     policyVersionId: ID!
     policyId: ID!
     categoryId: ID!
     ancestorCategoryIds: [ID!]!
+    changeType: ChangeType
+    changeTypeReason: String
   ): WorkflowSubmitResult!
 
   """
@@ -16403,6 +16539,20 @@ func (ec *executionContext) childFields_PolicyVersion(ctx context.Context, field
 		return ec.fieldContext_PolicyVersion_createdAt(ctx, field)
 	case "publishedAt":
 		return ec.fieldContext_PolicyVersion_publishedAt(ctx, field)
+	case "semanticVersion":
+		return ec.fieldContext_PolicyVersion_semanticVersion(ctx, field)
+	case "suggestedChangeType":
+		return ec.fieldContext_PolicyVersion_suggestedChangeType(ctx, field)
+	case "changeType":
+		return ec.fieldContext_PolicyVersion_changeType(ctx, field)
+	case "requestedChangeType":
+		return ec.fieldContext_PolicyVersion_requestedChangeType(ctx, field)
+	case "changeTypeReason":
+		return ec.fieldContext_PolicyVersion_changeTypeReason(ctx, field)
+	case "changeTypeSetByUserId":
+		return ec.fieldContext_PolicyVersion_changeTypeSetByUserId(ctx, field)
+	case "changeTypeAgreedByUserIds":
+		return ec.fieldContext_PolicyVersion_changeTypeAgreedByUserIds(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type PolicyVersion", field.Name)
 }
@@ -17113,6 +17263,8 @@ func (ec *executionContext) childFields_Template(ctx context.Context, field grap
 		return ec.fieldContext_Template_ownerCategoryId(ctx, field)
 	case "retiredAt":
 		return ec.fieldContext_Template_retiredAt(ctx, field)
+	case "updatedAt":
+		return ec.fieldContext_Template_updatedAt(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Template", field.Name)
 }
@@ -17127,6 +17279,14 @@ func (ec *executionContext) childFields_TemplateVersion(ctx context.Context, fie
 		return ec.fieldContext_TemplateVersion_versionNo(ctx, field)
 	case "status":
 		return ec.fieldContext_TemplateVersion_status(ctx, field)
+	case "semanticVersion":
+		return ec.fieldContext_TemplateVersion_semanticVersion(ctx, field)
+	case "changeType":
+		return ec.fieldContext_TemplateVersion_changeType(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_TemplateVersion_createdAt(ctx, field)
+	case "publishedAt":
+		return ec.fieldContext_TemplateVersion_publishedAt(ctx, field)
 	case "sections":
 		return ec.fieldContext_TemplateVersion_sections(ctx, field)
 	}
@@ -20986,6 +21146,22 @@ func (ec *executionContext) field_Mutation_submitWorkflow_args(ctx context.Conte
 		return nil, err
 	}
 	args["ancestorCategoryIds"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "changeType",
+		func(ctx context.Context, v any) (*ChangeType, error) {
+			return ec.unmarshalOChangeType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐChangeType(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["changeType"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "changeTypeReason",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["changeTypeReason"] = arg5
 	return args, nil
 }
 
@@ -40310,7 +40486,7 @@ func (ec *executionContext) _Mutation_submitWorkflow(ctx context.Context, field 
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().SubmitWorkflow(ctx, fc.Args["policyVersionId"].(string), fc.Args["policyId"].(string), fc.Args["categoryId"].(string), fc.Args["ancestorCategoryIds"].([]string))
+			return ec.Resolvers.Mutation().SubmitWorkflow(ctx, fc.Args["policyVersionId"].(string), fc.Args["policyId"].(string), fc.Args["categoryId"].(string), fc.Args["ancestorCategoryIds"].([]string), fc.Args["changeType"].(*ChangeType), fc.Args["changeTypeReason"].(*string))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *WorkflowSubmitResult) graphql.Marshaler {
@@ -43546,6 +43722,167 @@ func (ec *executionContext) _PolicyVersion_publishedAt(ctx context.Context, fiel
 }
 func (ec *executionContext) fieldContext_PolicyVersion_publishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersion_semanticVersion(ctx context.Context, field graphql.CollectedField, obj *PolicyVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersion_semanticVersion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SemanticVersion, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersion_semanticVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersion_suggestedChangeType(ctx context.Context, field graphql.CollectedField, obj *PolicyVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersion_suggestedChangeType(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SuggestedChangeType, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ChangeType) graphql.Marshaler {
+			return ec.marshalOChangeType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐChangeType(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersion_suggestedChangeType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type ChangeType does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersion_changeType(ctx context.Context, field graphql.CollectedField, obj *PolicyVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersion_changeType(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ChangeType, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ChangeType) graphql.Marshaler {
+			return ec.marshalOChangeType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐChangeType(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersion_changeType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type ChangeType does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersion_requestedChangeType(ctx context.Context, field graphql.CollectedField, obj *PolicyVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersion_requestedChangeType(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RequestedChangeType, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ChangeType) graphql.Marshaler {
+			return ec.marshalOChangeType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐChangeType(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersion_requestedChangeType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type ChangeType does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersion_changeTypeReason(ctx context.Context, field graphql.CollectedField, obj *PolicyVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersion_changeTypeReason(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ChangeTypeReason, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersion_changeTypeReason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersion_changeTypeSetByUserId(ctx context.Context, field graphql.CollectedField, obj *PolicyVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersion_changeTypeSetByUserId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ChangeTypeSetByUserID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOID2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersion_changeTypeSetByUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _PolicyVersion_changeTypeAgreedByUserIds(ctx context.Context, field graphql.CollectedField, obj *PolicyVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_PolicyVersion_changeTypeAgreedByUserIds(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ChangeTypeAgreedByUserIds, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNID2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_PolicyVersion_changeTypeAgreedByUserIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("PolicyVersion", field, false, false, errors.New("field of type ID does not have child fields"))
 }
 
 func (ec *executionContext) _PolicyVersionLinks_policyVersionId(ctx context.Context, field graphql.CollectedField, obj *PolicyVersionLinks) (ret graphql.Marshaler) {
@@ -53908,6 +54245,29 @@ func (ec *executionContext) fieldContext_Template_retiredAt(_ context.Context, f
 	return graphql.NewScalarFieldContext("Template", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
+func (ec *executionContext) _Template_updatedAt(ctx context.Context, field graphql.CollectedField, obj *Template) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Template_updatedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Template_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Template", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
 func (ec *executionContext) _TemplateVersion_id(ctx context.Context, field graphql.CollectedField, obj *TemplateVersion) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -53997,6 +54357,98 @@ func (ec *executionContext) _TemplateVersion_status(ctx context.Context, field g
 	)
 }
 func (ec *executionContext) fieldContext_TemplateVersion_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TemplateVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TemplateVersion_semanticVersion(ctx context.Context, field graphql.CollectedField, obj *TemplateVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TemplateVersion_semanticVersion(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.SemanticVersion, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TemplateVersion_semanticVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TemplateVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TemplateVersion_changeType(ctx context.Context, field graphql.CollectedField, obj *TemplateVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TemplateVersion_changeType(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ChangeType, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *ChangeType) graphql.Marshaler {
+			return ec.marshalOChangeType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐChangeType(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TemplateVersion_changeType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TemplateVersion", field, false, false, errors.New("field of type ChangeType does not have child fields"))
+}
+
+func (ec *executionContext) _TemplateVersion_createdAt(ctx context.Context, field graphql.CollectedField, obj *TemplateVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TemplateVersion_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TemplateVersion_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("TemplateVersion", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _TemplateVersion_publishedAt(ctx context.Context, field graphql.CollectedField, obj *TemplateVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_TemplateVersion_publishedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.PublishedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_TemplateVersion_publishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("TemplateVersion", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -67714,6 +68166,41 @@ func (ec *executionContext) _PolicyVersion(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.RequiredNull {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "semanticVersion":
+			out.Values[i] = ec._PolicyVersion_semanticVersion(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "suggestedChangeType":
+			out.Values[i] = ec._PolicyVersion_suggestedChangeType(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "changeType":
+			out.Values[i] = ec._PolicyVersion_changeType(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "requestedChangeType":
+			out.Values[i] = ec._PolicyVersion_requestedChangeType(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "changeTypeReason":
+			out.Values[i] = ec._PolicyVersion_changeTypeReason(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "changeTypeSetByUserId":
+			out.Values[i] = ec._PolicyVersion_changeTypeSetByUserId(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "changeTypeAgreedByUserIds":
+			out.Values[i] = ec._PolicyVersion_changeTypeAgreedByUserIds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -72896,6 +73383,11 @@ func (ec *executionContext) _Template(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
+		case "updatedAt":
+			out.Values[i] = ec._Template_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -72947,6 +73439,26 @@ func (ec *executionContext) _TemplateVersion(ctx context.Context, sel ast.Select
 		case "status":
 			out.Values[i] = ec._TemplateVersion_status(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "semanticVersion":
+			out.Values[i] = ec._TemplateVersion_semanticVersion(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "changeType":
+			out.Values[i] = ec._TemplateVersion_changeType(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._TemplateVersion_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "publishedAt":
+			out.Values[i] = ec._TemplateVersion_publishedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		case "sections":
@@ -79412,6 +79924,22 @@ func (ec *executionContext) unmarshalOCategoryApproversInput2ᚕᚖgithubᚗcom�
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) unmarshalOChangeType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐChangeType(ctx context.Context, v any) (*ChangeType, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(ChangeType)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOChangeType2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐChangeType(ctx context.Context, sel ast.SelectionSet, v *ChangeType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOCorrectiveActionInput2ᚕᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐCorrectiveActionInputᚄ(ctx context.Context, v any) ([]*CorrectiveActionInput, error) {

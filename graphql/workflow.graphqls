@@ -209,12 +209,20 @@ extend type Mutation {
   from the signed-in user; ancestorCategoryIds is the policy's category lineage leaf→root
   so the workflow service can resolve the effective workflow without a
   cross-service call back into policy-core.
+
+  changeType is the author's pick of the change type, with changeTypeReason for it.
+  Leave both out to keep the suggestion core made. A pick at or above the suggestion
+  applies at once; a pick below it needs a reason (refused with INVALID_ARGUMENT
+  without one, and the version stays a draft) and waits for the first stage's approvers
+  to agree. The first version of a document is always 1.0.0 and takes no pick.
   """
   submitWorkflow(
     policyVersionId: ID!
     policyId: ID!
     categoryId: ID!
     ancestorCategoryIds: [ID!]!
+    changeType: ChangeType
+    changeTypeReason: String
   ): WorkflowSubmitResult!
 
   """

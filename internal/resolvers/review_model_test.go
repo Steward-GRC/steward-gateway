@@ -171,7 +171,7 @@ func TestReviewParity_SubmitStartsRunAndTheVersionIsInReview(t *testing.T) {
 	}
 	ctx := userCtx(t, reviewAuthor)
 
-	res, err := resolvers.SubmitWorkflowResolver(ctx, log.Nop(), wf, gc, pc, "v-review", "pol", "g-cat", nil)
+	res, err := resolvers.SubmitWorkflowResolver(ctx, log.Nop(), wf, gc, pc, "v-review", "pol", "g-cat", nil, nil, nil)
 	if err != nil || res.RunID != "run-1" {
 		t.Fatalf("submit = %+v, %v; want run-1", res, err)
 	}

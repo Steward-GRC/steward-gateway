@@ -84,9 +84,9 @@ func workflowStageInputToProto(in *WorkflowStageInput) *workflowv1.WorkflowStage
 		ApproversByCategory: categoryApproversInputToProto(in.ApproversByCategory),
 		GroupUnits:          groupUnitsInputToProto(in.GroupUnits),
 		Quorum:              in.Quorum,
-		VetoApproverIds:     in.VetoApproverIds,
-		VetoGroupIds:        in.VetoGroupIds,
-		VetoUserIds:         in.VetoUserIds,
+		// WorkflowStageInput.vetoApproverIds / vetoGroupIds are accepted but not forwarded: the
+		// workflow service ignores them now and only reads veto_user_ids.
+		VetoUserIds: in.VetoUserIds,
 	}
 	if in.SLADays != nil {
 		s.SlaDays = toInt32(*in.SLADays)

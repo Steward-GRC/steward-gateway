@@ -476,9 +476,11 @@ func TestSetWorkflowVetoEnabledResolver_WorkflowDenialPassesThrough(t *testing.T
 
 // --- veto seat: marking users and group seats on a stage ---
 
-func TestWorkflowDefResolvers_VetoMarksRoundTrip(t *testing.T) {
+// The old per-stage veto seat lists are accepted on input but no longer forwarded: the workflow
+// service ignores them and answers them empty.
+func TestWorkflowDefResolvers_OldVetoSeatInputIsNotForwarded(t *testing.T) {
 	c := &fakeWorkflowClient{}
-	out, err := resolvers.UpdateWorkflowDefResolver(
+	_, err := resolvers.UpdateWorkflowDefResolver(
 		ctxWithRoles(t, "u1", []string{"template-admin"}), c, "def-1", "Finance", nil,
 		[]*resolvers.WorkflowStageInput{{
 			Name: "Finance sign-off", Approvers: []string{"u3"}, Quorum: "one",
@@ -489,15 +491,8 @@ func TestWorkflowDefResolvers_VetoMarksRoundTrip(t *testing.T) {
 		t.Fatalf("UpdateWorkflowDefResolver: %v", err)
 	}
 	sent := c.lastUpdateDef.GetStages()[0]
-	if got := sent.GetVetoApproverIds(); len(got) != 1 || got[0] != "u3" {
-		t.Fatalf("forwarded veto_approver_ids: %v", got)
-	}
-	if got := sent.GetVetoGroupIds(); len(got) != 1 || got[0] != "group-finance" {
-		t.Fatalf("forwarded veto_group_ids: %v", got)
-	}
-	st := out.Stages[0]
-	if len(st.VetoApproverIds) != 1 || st.VetoApproverIds[0] != "u3" || len(st.VetoGroupIds) != 1 || st.VetoGroupIds[0] != "group-finance" {
-		t.Fatalf("stage veto marks: %+v", st)
+	if len(sent.GetVetoApproverIds()) != 0 || len(sent.GetVetoGroupIds()) != 0 || len(sent.GetVetoUserIds()) != 0 {
+		t.Fatalf("old veto seat input must not be forwarded: %+v", sent)
 	}
 }
 

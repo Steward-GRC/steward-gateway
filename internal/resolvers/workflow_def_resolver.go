@@ -7,7 +7,6 @@ import (
 	"context"
 	"sort"
 
-	log "github.com/Bugs5382/go-log"
 	workflowv1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/workflow/v1"
 	authz "github.com/Steward-GRC/steward-gateway/internal/authz"
 )
@@ -26,7 +25,6 @@ func workflowDefFromProto(d *workflowv1.WorkflowDef) *WorkflowDef {
 		Name:        d.GetName(),
 		Description: nilIfEmpty(d.GetDescription()),
 		Version:     int(d.GetVersion()),
-		VetoEnabled: d.GetVetoEnabled(),
 		Stages:      stages,
 	}
 }
@@ -48,8 +46,6 @@ func workflowStageDefFromProto(s *workflowv1.WorkflowStage) *WorkflowStageDef {
 		ApproversByCategory: categoryApproversFromProto(s.GetApproversByCategory()),
 		GroupUnits:          groupUnitsFromProto(s.GetGroupUnits()),
 		Quorum:              s.GetQuorum(),
-		VetoApproverIds:     orEmpty(s.GetVetoApproverIds()),
-		VetoGroupIds:        orEmpty(s.GetVetoGroupIds()),
 		VetoUserIds:         orEmpty(s.GetVetoUserIds()),
 	}
 	if v := s.GetSlaDays(); v != 0 {
@@ -84,9 +80,7 @@ func workflowStageInputToProto(in *WorkflowStageInput) *workflowv1.WorkflowStage
 		ApproversByCategory: categoryApproversInputToProto(in.ApproversByCategory),
 		GroupUnits:          groupUnitsInputToProto(in.GroupUnits),
 		Quorum:              in.Quorum,
-		// WorkflowStageInput.vetoApproverIds / vetoGroupIds are accepted but not forwarded: the
-		// workflow service ignores them now and only reads veto_user_ids.
-		VetoUserIds: in.VetoUserIds,
+		VetoUserIds:         in.VetoUserIds,
 	}
 	if in.SLADays != nil {
 		s.SlaDays = toInt32(*in.SLADays)
@@ -254,35 +248,4 @@ func ArchiveWorkflowDefResolver(
 		return false, err
 	}
 	return true, nil
-}
-
-// SetWorkflowVetoEnabledResolver opts a workflow definition in or out of veto seats. It reuses the
-// existing workflow-manage check (template admins and above); the workflow service checks admin
-// again from the actor and answers PermissionDenied, which passes through.
-func SetWorkflowVetoEnabledResolver(
-	ctx context.Context,
-	lg log.Logger,
-	client workflowv1.WorkflowServiceClient,
-	id string,
-	enabled bool,
-) (*WorkflowDef, error) {
-	if err := authorizeOp(ctx, authz.WorkflowManage); err != nil {
-		lg.Debug("set workflow veto enabled refused by the gateway check", log.F("workflow_def_id", id), log.F("enabled", enabled))
-		return nil, err
-	}
-	uid, err := claimsUserID(ctx)
-	if err != nil {
-		lg.Debug("set workflow veto enabled without a signed-in user", log.F("workflow_def_id", id))
-		return nil, err
-	}
-	lg.Debug("set workflow veto enabled: calling workflow", log.F("workflow_def_id", id), log.F("enabled", enabled))
-	resp, err := client.SetWorkflowVetoEnabled(ctx, &workflowv1.SetWorkflowVetoEnabledRequest{
-		Id: id, Enabled: enabled, ActorUserId: uid,
-	})
-	if err != nil {
-		lg.Error(err, "set workflow veto enabled failed", log.F("workflow_def_id", id), log.F("enabled", enabled))
-		return nil, err
-	}
-	lg.Info("workflow veto seats switched", log.F("workflow_def_id", id), log.F("enabled", resp.GetDef().GetVetoEnabled()))
-	return workflowDefFromProto(resp.GetDef()), nil
 }

@@ -411,10 +411,6 @@ type WorkflowStageDef {
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
-  # Deprecated: veto people are named in vetoUserIds. Read as the workflow service answers, and
-  # removed with the workflow-level switch once the web has moved.
-  vetoApproverIds: [ID!]! @deprecated(reason: "Use vetoUserIds.")
-  vetoGroupIds: [ID!]! @deprecated(reason: "Use vetoUserIds.")
   # The people whose single reject ends the version as rejected, even inside a quorum and below its
   # threshold. A veto person must be one of the stage's approvers: there are no veto-only seats, and
   # a site admin or root does not count. Any one of them rejecting ends the run. A stage with a
@@ -426,8 +422,6 @@ type WorkflowDef {
   name: String!
   description: String
   version: Int!
-  # Deprecated: stored and read back, but it gates nothing. A stage's vetoUserIds apply by themselves.
-  vetoEnabled: Boolean! @deprecated(reason: "A stage's vetoUserIds apply on their own; this gates nothing.")
   stages: [WorkflowStageDef!]!
 }
 input CategoryApproversInput {
@@ -449,9 +443,6 @@ input WorkflowStageInput {
   slaDays: Int
   rejectOnSlaBreach: Boolean
   pinnedLast: Boolean
-  # Deprecated: accepted and ignored by the workflow service. Use vetoUserIds.
-  vetoApproverIds: [ID!] @deprecated(reason: "Use vetoUserIds.")
-  vetoGroupIds: [ID!] @deprecated(reason: "Use vetoUserIds.")
   # The stage's veto people; each must be one of its approvers. Omitted or empty means no veto.
   vetoUserIds: [ID!]
 }
@@ -477,8 +468,6 @@ extend type Mutation {
   createWorkflowDef(name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
   updateWorkflowDef(id: ID!, name: String!, description: String, stages: [WorkflowStageInput!]!): WorkflowDef!
   archiveWorkflowDef(id: ID!): Boolean!
-  # Deprecated: the flag gates nothing now. Name veto people on a stage with vetoUserIds.
-  setWorkflowVetoEnabled(id: ID!, enabled: Boolean!): WorkflowDef! @deprecated(reason: "A stage's vetoUserIds apply on their own.")
 }
 
 

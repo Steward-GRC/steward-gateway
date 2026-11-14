@@ -152,3 +152,38 @@ func SearchPlatformGroupsResolver(ctx context.Context, read identityv1.IdentityR
 	}
 	return out, nil
 }
+
+// idpGroupNamesMaxLimit is identity's cap on ListIdpGroupNames; an unset limit
+// goes as 0 so identity applies its own default of 50.
+const idpGroupNamesMaxLimit = 200
+
+// IdpGroupNamesResolver lists the directory (identity provider) group names a
+// category group rule can match, for the rule picker. It carries names only.
+// Whoever edits category access may call it (group.manage or template.manage),
+// the same gate as the simulator and the group typeahead.
+func IdpGroupNamesResolver(ctx context.Context, read identityv1.IdentityReadServiceClient, prefix *string, limit *int) (*IdpGroupNames, error) {
+	if err := authorizeOp(ctx, authz.GroupManage); err != nil {
+		if err2 := authorizeOp(ctx, authz.TemplateManage); err2 != nil {
+			return nil, err
+		}
+	}
+	if read == nil {
+		return nil, status.Error(codes.Unavailable, "identity unavailable")
+	}
+	req := &identityv1.ListIdpGroupNamesRequest{}
+	if prefix != nil {
+		req.Prefix = strings.TrimSpace(*prefix)
+	}
+	if limit != nil && *limit > 0 {
+		req.Limit = toInt32(min(*limit, idpGroupNamesMaxLimit))
+	}
+	resp, err := read.ListIdpGroupNames(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	names := resp.GetNames()
+	if names == nil {
+		names = []string{}
+	}
+	return &IdpGroupNames{Names: names, Truncated: resp.GetTruncated()}, nil
+}

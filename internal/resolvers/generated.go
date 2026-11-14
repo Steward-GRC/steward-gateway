@@ -612,6 +612,11 @@ type ComplexityRoot struct {
 		Label func(childComplexity int) int
 	}
 
+	IdpGroupNames struct {
+		Names     func(childComplexity int) int
+		Truncated func(childComplexity int) int
+	}
+
 	ImpersonationSession struct {
 		ActorName    func(childComplexity int) int
 		ActorUserID  func(childComplexity int) int
@@ -1173,6 +1178,7 @@ type ComplexityRoot struct {
 		GroupMappings              func(childComplexity int, connectionID string) int
 		HardResetRequests          func(childComplexity int, module *string) int
 		Health                     func(childComplexity int) int
+		IdpGroupNames              func(childComplexity int, prefix *string, limit *int) int
 		ImpersonationStatus        func(childComplexity int) int
 		LatestTemplateVersion      func(childComplexity int, templateID string) int
 		ListUserSessions           func(childComplexity int, userID string) int
@@ -2072,6 +2078,7 @@ type QueryResolver interface {
 	ManagedGroupMembers(ctx context.Context, groupID string) ([]*User, error)
 	PlatformGroups(ctx context.Context, parentID *string) ([]*PlatformGroup, error)
 	SearchPlatformGroups(ctx context.Context, query string, limit *int) ([]*PlatformGroup, error)
+	IdpGroupNames(ctx context.Context, prefix *string, limit *int) (*IdpGroupNames, error)
 	MyManagedGroups(ctx context.Context) ([]*PlatformGroup, error)
 	ListUserSessions(ctx context.Context, userID string) ([]*Session, error)
 	MySessions(ctx context.Context) ([]*Session, error)
@@ -4261,6 +4268,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Holiday.Label(childComplexity), true
+
+	case "IdpGroupNames.names":
+		if e.ComplexityRoot.IdpGroupNames.Names == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdpGroupNames.Names(childComplexity), true
+	case "IdpGroupNames.truncated":
+		if e.ComplexityRoot.IdpGroupNames.Truncated == nil {
+			break
+		}
+
+		return e.ComplexityRoot.IdpGroupNames.Truncated(childComplexity), true
 
 	case "ImpersonationSession.actorName":
 		if e.ComplexityRoot.ImpersonationSession.ActorName == nil {
@@ -7916,6 +7936,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Health(childComplexity), true
+	case "Query.idpGroupNames":
+		if e.ComplexityRoot.Query.IdpGroupNames == nil {
+			break
+		}
+
+		args, err := ec.field_Query_idpGroupNames_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.IdpGroupNames(childComplexity, args["prefix"].(*string), args["limit"].(*int)), true
 	case "Query.impersonationStatus":
 		if e.ComplexityRoot.Query.ImpersonationStatus == nil {
 			break
@@ -13173,12 +13204,31 @@ extend type Query {
   # defaults to 20 and is capped at 50. Groups have no description yet, so only
   # the name is matched.
   searchPlatformGroups(query: String!, limit: Int): [PlatformGroup!]!
+  # idpGroupNames -> IdentityReadService.ListIdpGroupNames: the directory
+  # (identity provider) group names a category group rule can match, for the rule
+  # picker, so a rule names a group that exists instead of a typo that never
+  # matches. These are the names in users' IdP group claims and the SSO group
+  # mappings, not identity's platform groups (see searchPlatformGroups). Sorted
+  # by byte order, no duplicates, names only (never who holds them). ` + "`" + `prefix` + "`" + ` is
+  # trimmed and matched case-insensitively; empty or null lists from the start.
+  # ` + "`" + `limit` + "`" + ` defaults to 50 (identity's default) and is capped at 200; ` + "`" + `truncated` + "`" + `
+  # says more names matched than were returned, so the picker asks for a longer
+  # prefix. Open to whoever edits category access (group.manage or
+  # template.manage), as for simulateCategory and searchPlatformGroups.
+  idpGroupNames(prefix: String, limit: Int): IdpGroupNames!
   # myManagedGroups -> IdentityReadService.GetUser for the caller, then
   # GetGroup for each of their managedGroupIds: the platform groups the
   # signed-in caller is a LOCAL group-manager of, sorted by name, for the
   # "My Groups" editor. Any signed-in caller; only their own grants are read.
   # Members come from managedGroupMembers.
   myManagedGroups: [PlatformGroup!]!
+}
+
+# IdpGroupNames is one page of directory group names (idpGroupNames).
+type IdpGroupNames {
+  names: [String!]!
+  # True when more names matched than ` + "`" + `limit` + "`" + ` allowed.
+  truncated: Boolean!
 }
 
 # An identity platform group: a node in identity's group tree that users are
@@ -16218,6 +16268,16 @@ func (ec *executionContext) childFields_Holiday(ctx context.Context, field graph
 		return ec.fieldContext_Holiday_label(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Holiday", field.Name)
+}
+
+func (ec *executionContext) childFields_IdpGroupNames(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "names":
+		return ec.fieldContext_IdpGroupNames_names(ctx, field)
+	case "truncated":
+		return ec.fieldContext_IdpGroupNames_truncated(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type IdpGroupNames", field.Name)
 }
 
 func (ec *executionContext) childFields_ImpersonationSession(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -22529,6 +22589,28 @@ func (ec *executionContext) field_Query_hardResetRequests_args(ctx context.Conte
 		return nil, err
 	}
 	args["module"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_idpGroupNames_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "prefix",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["prefix"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "limit",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOInt2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg1
 	return args, nil
 }
 
@@ -31695,6 +31777,52 @@ func (ec *executionContext) _Holiday_label(ctx context.Context, field graphql.Co
 }
 func (ec *executionContext) fieldContext_Holiday_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Holiday", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _IdpGroupNames_names(ctx context.Context, field graphql.CollectedField, obj *IdpGroupNames) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_IdpGroupNames_names(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Names, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
+			return ec.marshalNString2ᚕstringᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_IdpGroupNames_names(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("IdpGroupNames", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _IdpGroupNames_truncated(ctx context.Context, field graphql.CollectedField, obj *IdpGroupNames) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_IdpGroupNames_truncated(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Truncated, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_IdpGroupNames_truncated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("IdpGroupNames", field, false, false, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _ImpersonationSession_targetUserId(ctx context.Context, field graphql.CollectedField, obj *ImpersonationSession) (ret graphql.Marshaler) {
@@ -47560,6 +47688,50 @@ func (ec *executionContext) fieldContext_Query_searchPlatformGroups(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_searchPlatformGroups_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_idpGroupNames(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_idpGroupNames(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().IdpGroupNames(ctx, fc.Args["prefix"].(*string), fc.Args["limit"].(*int))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *IdpGroupNames) graphql.Marshaler {
+			return ec.marshalNIdpGroupNames2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐIdpGroupNames(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_idpGroupNames(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_IdpGroupNames(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_idpGroupNames_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -65542,6 +65714,49 @@ func (ec *executionContext) _Holiday(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var idpGroupNamesImplementors = []string{"IdpGroupNames"}
+
+func (ec *executionContext) _IdpGroupNames(ctx context.Context, sel ast.SelectionSet, obj *IdpGroupNames) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, idpGroupNamesImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IdpGroupNames")
+		case "names":
+			out.Values[i] = ec._IdpGroupNames_names(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "truncated":
+			out.Values[i] = ec._IdpGroupNames_truncated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var impersonationSessionImplementors = []string{"ImpersonationSession"}
 
 func (ec *executionContext) _ImpersonationSession(ctx context.Context, sel ast.SelectionSet, obj *ImpersonationSession) graphql.Marshaler {
@@ -70904,6 +71119,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_searchPlatformGroups(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "idpGroupNames":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_idpGroupNames(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -78121,6 +78358,20 @@ func (ec *executionContext) marshalNID2ᚕstringᚄ(ctx context.Context, sel ast
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNIdpGroupNames2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐIdpGroupNames(ctx context.Context, sel ast.SelectionSet, v IdpGroupNames) graphql.Marshaler {
+	return ec._IdpGroupNames(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNIdpGroupNames2ᚖgithubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐIdpGroupNames(ctx context.Context, sel ast.SelectionSet, v *IdpGroupNames) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._IdpGroupNames(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNImpersonationSession2githubᚗcomᚋStewardᚑGRCᚋstewardᚑgatewayᚋinternalᚋresolversᚐImpersonationSession(ctx context.Context, sel ast.SelectionSet, v ImpersonationSession) graphql.Marshaler {

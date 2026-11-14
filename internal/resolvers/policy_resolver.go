@@ -778,7 +778,24 @@ func CreatePolicy(ctx context.Context, client corev1.PolicyServiceClient, catego
 	if err != nil {
 		return nil, err
 	}
-	return policyFromProto(resp.Policy), nil
+	created := policyFromProto(resp.Policy)
+	reportNewDraftStatus(created)
+	return created, nil
+}
+
+// reportNewDraftStatus fills currentVersionStatus (DRAFT) and currentVersionNo (0, an
+// unpublished draft is not numbered) on a freshly created policy. Core's CreatePolicy reply
+// carries the draft's id but not its status, while every read of the policy does, so
+// without this createPolicy answered null where a re-read said DRAFT. A status core did
+// send is left as it is.
+func reportNewDraftStatus(p *Policy) {
+	if p == nil || p.CurrentVersionStatus != nil || p.CurrentDraftVersionID == nil {
+		return
+	}
+	no := 0
+	status := versionStatusName(corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_DRAFT)
+	p.CurrentVersionNo = &no
+	p.CurrentVersionStatus = &status
 }
 
 // SaveDraft autosaves the policy's working draft.

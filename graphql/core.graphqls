@@ -895,16 +895,72 @@ type RaciConfiguredBlock {
   subjectKind: RaciSubjectKind!
   subjectRef: String!
 }
+
+# The structured reason of one verdict, beside the English text and the coarse
+# code, so a client never reads the text back apart. It is additive: the text
+# fields and RaciReasonCode are unchanged.
+#   OWNER                  owner of the category or a parent
+#   SITE_ADMIN_READ/AUTHOR/MANAGE  the root seat, exempt for those three actions
+#   RULE_ALLOW / RULE_DENY a rule of the chain decided that action itself
+#   DEFAULT_DENY           no rule decides
+#   AUTHOR_IMPLIES_READ    an allowed Author rule gave Read over a Read deny
+#   APPROVER_IMPLIES_READ  an allowed Approve rule gave Read over a Read deny
+#   MANAGE_IMPLIES_READ / MANAGE_IMPLIES_AUTHOR  an allowed Manage rule gave it
+#   REQUIRES_READ          Ack was denied because Read is not allowed
+enum RaciVerdictCode {
+  OWNER
+  SITE_ADMIN_READ
+  SITE_ADMIN_AUTHOR
+  SITE_ADMIN_MANAGE
+  RULE_ALLOW
+  RULE_DENY
+  DEFAULT_DENY
+  AUTHOR_IMPLIES_READ
+  APPROVER_IMPLIES_READ
+  MANAGE_IMPLIES_READ
+  MANAGE_IMPLIES_AUTHOR
+  REQUIRES_READ
+}
+
+# The rule that decided. For an implication it is the higher action's rule and
+# action says which cell that was.
+type RaciDecidingRule {
+  categoryId: ID!
+  categoryName: String!
+  # 0 is the simulated category, 1 its parent, and so on up the chain.
+  depth: Int!
+  # 1-based position of the rule (the row) in that category's list, the number
+  # the editor shows.
+  ruleNumber: Int!
+  subjectKind: RaciSubjectKind!
+  # A user id, a directory group name, or empty for Everyone.
+  subjectRef: String!
+  action: RaciAction!
+}
+
+type RaciVerdictReason {
+  code: RaciVerdictCode!
+  # Set for RULE_ALLOW, RULE_DENY and the *_IMPLIES_* codes; null otherwise.
+  rule: RaciDecidingRule
+}
+
 type RaciDecision {
   read: Boolean!  ack: Boolean!  approve: Boolean!  author: Boolean!  manage: Boolean!
   readReason: String!  ackReason: String!  approveReason: String!  authorReason: String!  manageReason: String!
   readCode: RaciReasonCode!  ackCode: RaciReasonCode!  approveCode: RaciReasonCode!  authorCode: RaciReasonCode!  manageCode: RaciReasonCode!
+  readVerdict: RaciVerdictReason!  ackVerdict: RaciVerdictReason!  approveVerdict: RaciVerdictReason!  authorVerdict: RaciVerdictReason!  manageVerdict: RaciVerdictReason!
   # Empty unless the person is root and a row would have denied Read, Author or Manage.
   configuredBlock: [RaciConfiguredBlock!]!
 }
 extend type Query {
   categoryRuleset(categoryId: ID!): CategoryRuleset!
-  simulateCategory(categoryId: ID!, userId: ID!, draftRules: [RaciRuleInput!]): RaciDecision!
+  """
+  simulateCategory decides every action for a person (userId), for the members of
+  one directory group (groupName: a subject whose only membership is that group),
+  or, with both empty, for the Everyone baseline. userId and groupName together
+  are refused with InvalidArgument.
+  """
+  simulateCategory(categoryId: ID!, userId: ID!, groupName: String = "", draftRules: [RaciRuleInput!]): RaciDecision!
   categoryApprovers(categoryId: ID!): [User!]!
   """
   viewerIsApprover is true when the signed-in user holds RACI Approve in any

@@ -288,6 +288,11 @@ func decisionsToGQL(d categoryDecisions) *RaciDecision {
 		Approve: d.Approve.Allowed, ApproveReason: reasonText(d.Approve, d.names), ApproveCode: raciReasonCode(d.Approve.Reason),
 		Manage: d.Manage.Allowed, ManageReason: reasonText(d.Manage, d.names), ManageCode: raciReasonCode(d.Manage.Reason),
 		Ack: d.Ack.Allowed, AckReason: reasonText(d.Ack, d.names), AckCode: raciReasonCode(d.Ack.Reason),
+		ReadVerdict:     d.verdict(actRead),
+		AuthorVerdict:   d.verdict(actAuthor),
+		ApproveVerdict:  d.verdict(actApprove),
+		ManageVerdict:   d.verdict(actManage),
+		AckVerdict:      d.verdict(actAck),
 		ConfiguredBlock: []*RaciConfiguredBlock{},
 	}
 	for _, action := range accessActions {
@@ -304,4 +309,99 @@ func decisionsToGQL(d categoryDecisions) *RaciDecision {
 		})
 	}
 	return out
+}
+
+// verdict is the structured reason of one action: the finer code and, when a
+// rule decided, which rule. It travels beside the text and the coarse code.
+func (d categoryDecisions) verdict(action string) *RaciVerdictReason {
+	dec := d.decisionFor(action)
+	switch dec.Reason {
+	case ordered.ReasonSuperuser:
+		switch action {
+		case actRead:
+			return &RaciVerdictReason{Code: RaciVerdictCodeSiteAdminRead}
+		case actAuthor:
+			return &RaciVerdictReason{Code: RaciVerdictCodeSiteAdminAuthor}
+		default:
+			return &RaciVerdictReason{Code: RaciVerdictCodeSiteAdminManage}
+		}
+	case ordered.ReasonOwner:
+		return &RaciVerdictReason{Code: RaciVerdictCodeOwner}
+	case ordered.ReasonRequires:
+		return &RaciVerdictReason{Code: RaciVerdictCodeRequiresRead}
+	case ordered.ReasonEntry:
+		if dec.DecidedBy == nil {
+			return &RaciVerdictReason{Code: RaciVerdictCodeDefaultDeny}
+		}
+		return &RaciVerdictReason{Code: entryVerdictCode(dec, action), Rule: d.decidingRule(dec.DecidedBy)}
+	default:
+		return &RaciVerdictReason{Code: RaciVerdictCodeDefaultDeny}
+	}
+}
+
+// entryVerdictCode tells a rule's own answer from a higher action's rule that
+// gave this action by implication.
+func entryVerdictCode(dec ordered.Decision, action string) RaciVerdictCode {
+	if dec.Allowed && dec.DecidedBy.Action != action {
+		switch dec.DecidedBy.Action {
+		case actAuthor:
+			if action == actRead {
+				return RaciVerdictCodeAuthorImpliesRead
+			}
+		case actApprove:
+			if action == actRead {
+				return RaciVerdictCodeApproverImpliesRead
+			}
+		case actManage:
+			switch action {
+			case actRead:
+				return RaciVerdictCodeManageImpliesRead
+			case actAuthor:
+				return RaciVerdictCodeManageImpliesAuthor
+			}
+		}
+	}
+	if dec.Allowed {
+		return RaciVerdictCodeRuleAllow
+	}
+	return RaciVerdictCodeRuleDeny
+}
+
+// decidingRule names the rule behind an entry: its category, how far up the
+// chain that category is from the simulated one (0 is the category itself),
+// and the rule's 1-based place in that category's list. Rules are rows, one
+// per subject in order of first appearance, as the editor numbers them.
+func (d categoryDecisions) decidingRule(e *ordered.Entry) *RaciDecidingRule {
+	depth := 0
+	seen := map[string]bool{}
+	for at := d.leaf; at != e.Category && !seen[at]; depth++ {
+		seen[at] = true
+		parent, ok := d.rs.Parents[at]
+		if !ok {
+			break
+		}
+		at = parent
+	}
+	number := 0
+	subjects := map[string]bool{}
+	for _, entry := range d.rs.Categories[e.Category].Entries {
+		if subjects[entry.Subject] {
+			continue
+		}
+		subjects[entry.Subject] = true
+		if entry.Subject == e.Subject {
+			number = len(subjects)
+			break
+		}
+	}
+	kind, ref := ruleFromSubject(e.Subject)
+	return &RaciDecidingRule{
+		CategoryID:   e.Category,
+		CategoryName: d.names[e.Category],
+		Depth:        depth,
+		RuleNumber:   number,
+		SubjectKind:  raciKindFromProto(kind),
+		SubjectRef:   ref,
+		Action:       raciActionOf(e.Action),
+	}
 }

@@ -181,7 +181,7 @@ func TestSimulateCategorySmoke(t *testing.T) {
 	ctx := ctxWithRoles(t, "admin", []string{"site-admin"})
 
 	// Contractor must be denied read.
-	d, err := resolvers.SimulateCategoryResolver(ctx, r, "health-id", "contractor-1", draft)
+	d, err := resolvers.SimulateCategoryResolver(ctx, r, "health-id", "contractor-1", "", draft)
 	if err != nil {
 		t.Fatalf("SimulateCategoryResolver (contractor): %v", err)
 	}
@@ -190,7 +190,7 @@ func TestSimulateCategorySmoke(t *testing.T) {
 	}
 
 	// Non-Contractor must be allowed read (and ack).
-	d2, err := resolvers.SimulateCategoryResolver(ctx, r, "health-id", "regular-user-1", draft)
+	d2, err := resolvers.SimulateCategoryResolver(ctx, r, "health-id", "regular-user-1", "", draft)
 	if err != nil {
 		t.Fatalf("SimulateCategoryResolver (regular-user): %v", err)
 	}
@@ -251,7 +251,7 @@ func TestSimulateCategory_LegacyExclusionIgnored(t *testing.T) {
 
 	ctx := ctxWithRoles(t, "admin", []string{"site-admin"})
 
-	d, err := resolvers.SimulateCategoryResolver(ctx, r, catID, userID, nil)
+	d, err := resolvers.SimulateCategoryResolver(ctx, r, catID, userID, "", nil)
 	if err != nil {
 		t.Fatalf("SimulateCategoryResolver (stale exclusion): %v", err)
 	}
@@ -309,7 +309,7 @@ func TestSimulateCategory_AdminStripped(t *testing.T) {
 
 	ctx := ctxWithRoles(t, "admin", []string{"site-admin"})
 
-	d, err := resolvers.SimulateCategoryResolver(ctx, r, catID, userID, nil)
+	d, err := resolvers.SimulateCategoryResolver(ctx, r, catID, userID, "", nil)
 	if err != nil {
 		t.Fatalf("SimulateCategoryResolver (admin stripped): %v", err)
 	}
@@ -375,7 +375,7 @@ func TestSimulateCategory_EveryoneBaseline(t *testing.T) {
 
 	ctx := ctxWithRoles(t, "admin", []string{"site-admin"})
 
-	d, err := resolvers.SimulateCategoryResolver(ctx, r, "cat-id", "", nil)
+	d, err := resolvers.SimulateCategoryResolver(ctx, r, "cat-id", "", "", nil)
 	if err != nil {
 		t.Fatalf("SimulateCategoryResolver (everyone baseline): %v", err)
 	}

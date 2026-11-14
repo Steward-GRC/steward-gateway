@@ -44,7 +44,7 @@ func TestSimulateCategory_ManageColumn(t *testing.T) {
 	r := manageEnv([]*corev1.CategoryRule{m}, nil, &identityv1.User{Id: "mgr"}, &identityv1.User{Id: "other"})
 	ctx := ctxWithRoles(t, "admin", []string{"site-admin"})
 
-	d, err := resolvers.SimulateCategoryResolver(ctx, r, "c", "mgr", nil)
+	d, err := resolvers.SimulateCategoryResolver(ctx, r, "c", "mgr", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestSimulateCategory_ManageColumn(t *testing.T) {
 	if !strings.Contains(d.ManageReason, "user mgr") {
 		t.Fatalf("manageReason = %q", d.ManageReason)
 	}
-	d, err = resolvers.SimulateCategoryResolver(ctx, r, "c", "other", nil)
+	d, err = resolvers.SimulateCategoryResolver(ctx, r, "c", "other", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestSimulateCategory_DraftCarriesManage(t *testing.T) {
 		Read: resolvers.RaciGrantBlank, Author: resolvers.RaciGrantBlank, Approve: resolvers.RaciGrantBlank,
 		Manage: resolvers.RaciGrantAllow, Ack: resolvers.RaciGrantBlank,
 	}}
-	d, err := resolvers.SimulateCategoryResolver(ctxWithRoles(t, "admin", []string{"site-admin"}), r, "c", "u", draft)
+	d, err := resolvers.SimulateCategoryResolver(ctxWithRoles(t, "admin", []string{"site-admin"}), r, "c", "u", "", draft)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestSimulateCategory_RootDenyIsBlockedNotApplied(t *testing.T) {
 	)
 	ctx := ctxWithRoles(t, "admin", []string{"site-admin"})
 
-	d, err := resolvers.SimulateCategoryResolver(ctx, r, "c", "root-u", nil)
+	d, err := resolvers.SimulateCategoryResolver(ctx, r, "c", "root-u", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestSimulateCategory_RootDenyIsBlockedNotApplied(t *testing.T) {
 		t.Fatalf("configuredBlock = %+v", d.ConfiguredBlock)
 	}
 
-	a, err := resolvers.SimulateCategoryResolver(ctx, r, "c", "plain-admin", nil)
+	a, err := resolvers.SimulateCategoryResolver(ctx, r, "c", "plain-admin", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestSimulateCategory_RootDenyIsBlockedNotApplied(t *testing.T) {
 func TestSimulateCategory_DefaultEveryoneRead(t *testing.T) {
 	ev := &corev1.CategoryRule{SubjectKind: corev1.RuleSubjectKind_RULE_SUBJECT_KIND_EVERYONE, Read: corev1.GrantEffect_GRANT_EFFECT_ALLOW}
 	r := manageEnv([]*corev1.CategoryRule{ev}, nil, &identityv1.User{Id: "u", Roles: []string{"site-admin"}})
-	d, err := resolvers.SimulateCategoryResolver(ctxWithRoles(t, "admin", []string{"site-admin"}), r, "c", "u", nil)
+	d, err := resolvers.SimulateCategoryResolver(ctxWithRoles(t, "admin", []string{"site-admin"}), r, "c", "u", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -418,7 +418,7 @@ func TestSimulateCategory_RootApproveAndAckDenyApply(t *testing.T) {
 		Read: corev1.GrantEffect_GRANT_EFFECT_ALLOW, Approve: corev1.GrantEffect_GRANT_EFFECT_ALLOW, Ack: corev1.GrantEffect_GRANT_EFFECT_ALLOW}
 	r := manageEnv([]*corev1.CategoryRule{deny, every}, nil,
 		&identityv1.User{Id: "root-u", IsRoot: true, Roles: []string{"site-admin"}})
-	d, err := resolvers.SimulateCategoryResolver(ctxWithRoles(t, "admin", []string{"site-admin"}), r, "c", "root-u", nil)
+	d, err := resolvers.SimulateCategoryResolver(ctxWithRoles(t, "admin", []string{"site-admin"}), r, "c", "root-u", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

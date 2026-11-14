@@ -360,7 +360,26 @@ each ancestor, nearest first, with owners and rules) and asks the engine.
   simulator returns the action as allowed with code `ROOT` and a `blocked:` reason, and lists the
   entry in `configuredBlock`; a deny of `approve` or `ack` applies and is not listed.
 - **Reasons.** Each action has a human string and a code beside it: `ENTRY`, `DEFAULT_DENY`,
-  `OWNER`, `ROOT`, `REQUIRES`.
+  `OWNER`, `ROOT`, `REQUIRES`. Both stay as they are for older clients. Beside them each action
+  also has a structured verdict (`readVerdict`, `ackVerdict`, `approveVerdict`, `authorVerdict`,
+  `manageVerdict`: `RaciVerdictReason { code, rule }`), so a client never reads the English text
+  back apart. `code` is a `RaciVerdictCode`: `OWNER`; `SITE_ADMIN_READ`, `SITE_ADMIN_AUTHOR`,
+  `SITE_ADMIN_MANAGE` (the root seat); `RULE_ALLOW`, `RULE_DENY` (a rule decided that action);
+  `DEFAULT_DENY` (no rule decides); `AUTHOR_IMPLIES_READ`, `APPROVER_IMPLIES_READ`,
+  `MANAGE_IMPLIES_READ`, `MANAGE_IMPLIES_AUTHOR` (an allowed higher action gave it over a deny);
+  `REQUIRES_READ` (Ack denied because Read is not allowed). `rule` is set for `RULE_ALLOW`,
+  `RULE_DENY` and the `*_IMPLIES_*` codes, and is null otherwise: `categoryId`, `categoryName`,
+  `depth` (0 is the simulated category, 1 its parent), `ruleNumber` (1-based, the row's place in
+  that category's list), `subjectKind`, `subjectRef` (a user id, a directory group name, or empty
+  for Everyone) and `action` (the cell that decided; for an implication, the higher action).
+  Adding a `RaciVerdictCode` value is not a breaking change: clients treat an unknown value as
+  `RULE_ALLOW` or `RULE_DENY` by the verdict's allowed flag.
+- **Simulating a group.** `simulateCategory(categoryId, userId, groupName, draftRules)` decides for
+  a person (`userId`), for the members of one directory group (`groupName`, an IdP group name: a
+  subject whose only membership is that group, plus Everyone), or, with both empty, for the
+  Everyone baseline. Giving both is refused with `InvalidArgument`. It needs `group.manage` or
+  `template.manage`, like the person simulation. `groupName` defaults to empty, so older queries
+  keep working.
 - **Approver pool.** `categoryApprovers` is the owners plus everyone whose `approve` is allowed,
   owners first. Root is in it, and `viewerIsApprover` and `viewerCan.approve` are true for root,
   only where an Approve cell or ownership allows.

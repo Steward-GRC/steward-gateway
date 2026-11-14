@@ -57,13 +57,18 @@ func SetCategoryRulesetResolver(ctx context.Context, gc corev1.CategoryServiceCl
 }
 
 // SimulateCategoryResolver evaluates a (possibly draft) ruleset for a given user against the full
-// category chain with the ordered engine. A deny configured for root is reported in
-// configuredBlock and not applied.
-func SimulateCategoryResolver(ctx context.Context, r *Resolver, categoryID string, userID string, draftRules []*RaciRuleInput) (*RaciDecision, error) {
+// category chain with the ordered engine. The subject is a person (userID), the members of one
+// directory group (groupName: a subject whose only membership is that group), or, with both empty,
+// the Everyone baseline. A deny configured for root is reported in configuredBlock and not applied.
+func SimulateCategoryResolver(ctx context.Context, r *Resolver, categoryID string, userID string, groupName string, draftRules []*RaciRuleInput) (*RaciDecision, error) {
 	if err := authorizeOp(ctx, authz.GroupManage); err != nil {
 		if err2 := authorizeOp(ctx, authz.TemplateManage); err2 != nil {
 			return nil, err
 		}
+	}
+
+	if userID != "" && groupName != "" {
+		return nil, status.Error(codes.InvalidArgument, "simulate a person or a group, not both")
 	}
 
 	access, err := loadCategoryAccess(ctx, r.CategoryClient, categoryID)
@@ -79,6 +84,10 @@ func SimulateCategoryResolver(ctx context.Context, r *Resolver, categoryID strin
 		access = access.withLeafRules(draft)
 	}
 
+	if groupName != "" {
+		r.logger().Debug("simulate category: group subject", log.F("category_id", categoryID))
+		return decisionsToGQL(access.decide(ordered.Person{Groups: []string{groupName}})), nil
+	}
 	if userID == "" {
 		return decisionsToGQL(access.decide(ordered.Person{})), nil
 	}

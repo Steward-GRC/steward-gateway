@@ -210,3 +210,66 @@ func TestCreatePolicy_SkeletonFailureKeepsThePolicy(t *testing.T) {
 		t.Fatalf("unknown template version writes nothing, got %d saves", len(pc.saves))
 	}
 }
+
+// createPolicy answers the new draft's status (DRAFT, number 0) even though core's CreatePolicy
+// reply carries no version status; a re-read of the policy says the same.
+func TestCreatePolicy_ReportsTheNewDraftsStatus(t *testing.T) {
+	pc, gc := skeletonEnv("{}", &corev1.GetEffectiveTemplateResponse{TemplateId: "tmpl-1", TemplateVersionId: "tv-1"})
+
+	got, err := resolvers.CreatePolicyWithSkeleton(bobCtx(t), log.Nop(), pc, gc, skeletonTemplates(), nil, nil, nil, "g-cat", "Hello", resolvers.SensitivityStandard, nil, nil)
+	if err != nil {
+		t.Fatalf("CreatePolicyWithSkeleton: %v", err)
+	}
+	if got.CurrentVersionStatus == nil || *got.CurrentVersionStatus != "DRAFT" {
+		t.Fatalf("currentVersionStatus = %v, want DRAFT", got.CurrentVersionStatus)
+	}
+	if got.CurrentVersionNo == nil || *got.CurrentVersionNo != 0 {
+		t.Fatalf("currentVersionNo = %v, want 0 for an unpublished draft", got.CurrentVersionNo)
+	}
+}
+
+// A reply that already names a version status is passed through unchanged.
+func TestCreatePolicy_KeepsAStatusCoreAlreadySet(t *testing.T) {
+	pc := &statusCreateFake{fakePolicyClient: &fakePolicyClient{policies: map[string]*corev1.Policy{}}}
+	gc := newRaciReadClient(
+		map[string]*corev1.Category{"g-cat": {Id: "g-cat", Name: "CAT"}},
+		map[string][]*corev1.CategoryRule{"g-cat": {authorRule("bob", corev1.GrantEffect_GRANT_EFFECT_ALLOW)}},
+	)
+
+	got, err := resolvers.CreatePolicy(bobCtx(t), pc, gc, "g-cat", "Hello", resolvers.SensitivityStandard, nil, nil)
+	if err != nil {
+		t.Fatalf("CreatePolicy: %v", err)
+	}
+	if got.CurrentVersionStatus == nil || *got.CurrentVersionStatus != "IN_REVIEW" {
+		t.Fatalf("currentVersionStatus = %v, want IN_REVIEW kept", got.CurrentVersionStatus)
+	}
+}
+
+// With no draft in the reply there is nothing to report a status for.
+func TestCreatePolicy_NoDraftNoStatus(t *testing.T) {
+	pc := &fakePolicyClient{policies: map[string]*corev1.Policy{}}
+	gc := newRaciReadClient(
+		map[string]*corev1.Category{"g-cat": {Id: "g-cat", Name: "CAT"}},
+		map[string][]*corev1.CategoryRule{"g-cat": {authorRule("bob", corev1.GrantEffect_GRANT_EFFECT_ALLOW)}},
+	)
+
+	got, err := resolvers.CreatePolicy(bobCtx(t), pc, gc, "g-cat", "Hello", resolvers.SensitivityStandard, nil, nil)
+	if err != nil {
+		t.Fatalf("CreatePolicy: %v", err)
+	}
+	if got.CurrentVersionStatus != nil {
+		t.Fatalf("currentVersionStatus = %v, want nil", *got.CurrentVersionStatus)
+	}
+}
+
+// statusCreateFake replies with a draft that already carries a version status.
+type statusCreateFake struct{ *fakePolicyClient }
+
+func (f *statusCreateFake) CreatePolicy(ctx context.Context, in *corev1.CreatePolicyRequest, opts ...grpc.CallOption) (*corev1.CreatePolicyResponse, error) {
+	resp, err := f.fakePolicyClient.CreatePolicy(ctx, in, opts...)
+	if err == nil {
+		resp.Policy.CurrentDraftVersionId = "draft-1"
+		resp.Policy.CurrentVersionStatus = corev1.PolicyVersionStatus_POLICY_VERSION_STATUS_IN_REVIEW
+	}
+	return resp, err
+}

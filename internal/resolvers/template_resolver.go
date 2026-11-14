@@ -5,6 +5,7 @@ package resolvers
 
 import (
 	"context"
+	"strings"
 
 	log "github.com/Bugs5382/go-log"
 	corev1 "github.com/Steward-GRC/steward-gateway/gen/go/thirdparty/core/v1"
@@ -196,6 +197,19 @@ func DeleteTemplate(ctx context.Context, client corev1.TemplateServiceClient, id
 	return err
 }
 
+// templateVersionStatusPrefix is what core's template version enum names start with.
+const templateVersionStatusPrefix = "TEMPLATE_VERSION_STATUS_"
+
+// templateVersionStatusName is a template version's status as the GraphQL contract spells
+// it: the lower-case words draft, published and archived, which the mock server and the
+// admin template page use. An unspecified status is the empty string.
+func templateVersionStatusName(s corev1.TemplateVersionStatus) string {
+	if s == corev1.TemplateVersionStatus_TEMPLATE_VERSION_STATUS_UNSPECIFIED {
+		return ""
+	}
+	return strings.ToLower(strings.TrimPrefix(s.String(), templateVersionStatusPrefix))
+}
+
 func templateVersionFromProto(v *corev1.TemplateVersion) *TemplateVersion {
 	if v == nil {
 		return nil
@@ -204,7 +218,7 @@ func templateVersionFromProto(v *corev1.TemplateVersion) *TemplateVersion {
 		ID:         v.Id,
 		TemplateID: v.TemplateId,
 		VersionNo:  int(v.VersionNo),
-		Status:     v.Status.String(),
+		Status:     templateVersionStatusName(v.Status),
 		Sections:   sectionsFromProto(v.Sections),
 
 		SemanticVersion: semanticVersionString(v.SemanticVersion),

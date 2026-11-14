@@ -270,7 +270,23 @@ func MeResolver(ctx context.Context, read identityv1.IdentityReadServiceClient, 
 	authorCats, approverCats := meritScopeCategories(ctx, categoryClient, uid, claims.IdpGroups())
 	me.Scopes.Author = mergeUniqueCategories(me.Scopes.Author, authorCats)
 	me.Scopes.Approver = mergeUniqueCategories(me.Scopes.Approver, approverCats)
+	me.Permissions = withCategoryAuthorPermission(me.Permissions, me.Scopes.Author)
 	return me, nil
+}
+
+// withCategoryAuthorPermission adds policy.author to perms when the person authors in at
+// least one category (an explicit scoped grant or a category rule). Author by category rule
+// holds no global author role, so the role-derived list lacks it, and the staff nav shows
+// Templates only to a holder. It is display only: every write still checks the person's
+// right on the category it touches. perms stays sorted and without duplicates.
+func withCategoryAuthorPermission(perms, authorCategories []string) []string {
+	author := string(authz.PolicyAuthor)
+	if len(authorCategories) == 0 || slices.Contains(perms, author) {
+		return perms
+	}
+	out := append(slices.Clone(perms), author)
+	slices.Sort(out)
+	return out
 }
 
 // mergeUniqueCategories appends every category name in add to existing that is not already present,

@@ -88,6 +88,23 @@ the same `clientSecret`.
 **Live updates:** `liveEvents` streams every audit event, so it needs `audit.read`; anyone else
 is refused with `PermissionDenied`.
 
+## Status words and the author permission
+
+Version statuses are plain strings and the gateway spells them without core's enum prefix:
+
+- `Policy.currentVersionStatus` and `PolicyVersion.status` are upper case: `DRAFT`, `IN_REVIEW`,
+  `REJECTED`, `PUBLISHED`, `SUPERSEDED`, `ARCHIVED`. `createPolicy` answers `DRAFT` with
+  `currentVersionNo` 0 for the new draft, the same as a later read of the policy.
+- `TemplateVersion.status` is lower case: `draft`, `published`, `archived`. These are the words the
+  mock server and the admin template page use.
+
+`me.permissions` lists the permissions the person's roles hold. It also lists `policy.author` for
+a person who authors in at least one category, whether by an explicit scoped grant or only by a
+category rule (those people hold no global author role). The gateway adds it from the same
+category walk that fills `me.scopes.author`, so it costs no extra call. The list is for the
+client to show or hide entries such as Templates; every write still checks the person's right on
+the category it touches.
+
 ## Diagnostics
 
 `diagnostics` takes no arguments and needs a signed-in user. It returns the caller's own id,

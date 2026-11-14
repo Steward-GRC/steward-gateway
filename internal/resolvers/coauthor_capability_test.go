@@ -5,6 +5,7 @@ package resolvers_test
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	log "github.com/Bugs5382/go-log"
@@ -165,6 +166,73 @@ func TestMeScopes_CategoryRuleAuthor(t *testing.T) {
 	}
 	if containsStr(out.Scopes.Approver, "Facilities") {
 		t.Errorf("author-only rule must NOT confer approver scope; got %v", out.Scopes.Approver)
+	}
+}
+
+// A person who is an author only through category rules holds policy.author in
+// me().permissions, so the staff Templates entry shows; an approver-only rule
+// does not add it, and the list stays sorted without duplicates.
+func TestMePermissions_CategoryRuleAuthorGetsPolicyAuthor(t *testing.T) {
+	gc := meScopeCategoryClient("Facilities", []*corev1.CategoryRule{authorRule(bobID, corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
+	read := &fakeReadClient{getUserResp: &identityv1.GetUserResponse{User: &identityv1.User{Id: bobID, Roles: []string{"reader"}}}}
+
+	out, err := resolvers.MeResolver(ctxWithUser(t, bobID), read, gc)
+	if err != nil {
+		t.Fatalf("MeResolver: %v", err)
+	}
+	if !containsStr(out.Permissions, "policy.author") {
+		t.Errorf("a category-rule author must hold policy.author; got %v", out.Permissions)
+	}
+	if !containsStr(out.Permissions, "policy.read") {
+		t.Errorf("the role's own permissions must stay; got %v", out.Permissions)
+	}
+	if !sort.StringsAreSorted(out.Permissions) {
+		t.Errorf("permissions must stay sorted; got %v", out.Permissions)
+	}
+}
+
+func TestMePermissions_PolicyAuthorNotDuplicated(t *testing.T) {
+	gc := meScopeCategoryClient("Facilities", []*corev1.CategoryRule{authorRule(bobID, corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
+	read := &fakeReadClient{getUserResp: &identityv1.GetUserResponse{User: &identityv1.User{Id: bobID, Roles: []string{"author"}}}}
+
+	out, err := resolvers.MeResolver(ctxWithUser(t, bobID), read, gc)
+	if err != nil {
+		t.Fatalf("MeResolver: %v", err)
+	}
+	n := 0
+	for _, p := range out.Permissions {
+		if p == "policy.author" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("policy.author must appear once; got %v", out.Permissions)
+	}
+}
+
+func TestMePermissions_ApproverRuleDoesNotGrantPolicyAuthor(t *testing.T) {
+	gc := meScopeCategoryClient("Facilities", []*corev1.CategoryRule{userApproveRule(bobID, corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
+	read := &fakeReadClient{getUserResp: &identityv1.GetUserResponse{User: &identityv1.User{Id: bobID, Roles: []string{"reader"}}}}
+
+	out, err := resolvers.MeResolver(ctxWithUser(t, bobID), read, gc)
+	if err != nil {
+		t.Fatalf("MeResolver: %v", err)
+	}
+	if containsStr(out.Permissions, "policy.author") {
+		t.Errorf("an approve-only rule must not grant policy.author; got %v", out.Permissions)
+	}
+}
+
+func TestMePermissions_NoGrantNoPolicyAuthor(t *testing.T) {
+	gc := meScopeCategoryClient("Facilities", []*corev1.CategoryRule{authorRule("someone-else", corev1.GrantEffect_GRANT_EFFECT_ALLOW)})
+	read := &fakeReadClient{getUserResp: &identityv1.GetUserResponse{User: &identityv1.User{Id: bobID, Roles: []string{"reader"}}}}
+
+	out, err := resolvers.MeResolver(ctxWithUser(t, bobID), read, gc)
+	if err != nil {
+		t.Fatalf("MeResolver: %v", err)
+	}
+	if containsStr(out.Permissions, "policy.author") {
+		t.Errorf("no author grant, no policy.author; got %v", out.Permissions)
 	}
 }
 

@@ -133,6 +133,9 @@ type categoryDecisions struct {
 	// AckUngated is the acknowledge rule without the Read requirement.
 	AckUngated bool
 	names      map[string]string
+	// rs and leaf let a verdict name the deciding rule's depth and number.
+	rs   ordered.RuleSet
+	leaf string
 }
 
 // decide answers every action for the person.
@@ -146,6 +149,8 @@ func (a *categoryAccess) decide(p ordered.Person) categoryDecisions {
 		Ack:        m.Decide(a.rs, p, a.leaf, actAck),
 		AckUngated: ackUngatedModel().Decide(a.rs, p, a.leaf, actAck).Allowed,
 		names:      a.names,
+		rs:         a.rs,
+		leaf:       a.leaf,
 	}
 }
 

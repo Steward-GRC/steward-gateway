@@ -454,8 +454,12 @@ func (r *queryResolver) CategoryRuleset(ctx context.Context, categoryID string) 
 }
 
 // SimulateCategory is the resolver for the simulateCategory field.
-func (r *queryResolver) SimulateCategory(ctx context.Context, categoryID string, userID string, draftRules []*RaciRuleInput) (*RaciDecision, error) {
-	return SimulateCategoryResolver(ctx, r.Resolver, categoryID, userID, draftRules)
+func (r *queryResolver) SimulateCategory(ctx context.Context, categoryID string, userID string, groupName *string, draftRules []*RaciRuleInput) (*RaciDecision, error) {
+	group := ""
+	if groupName != nil {
+		group = *groupName
+	}
+	return SimulateCategoryResolver(ctx, r.Resolver, categoryID, userID, group, draftRules)
 }
 
 // CategoryApprovers is the resolver for the categoryApprovers field.

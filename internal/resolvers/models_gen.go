@@ -1131,6 +1131,16 @@ type RaciConfiguredBlock struct {
 	SubjectRef  string          `json:"subjectRef"`
 }
 
+type RaciDecidingRule struct {
+	CategoryID   string          `json:"categoryId"`
+	CategoryName string          `json:"categoryName"`
+	Depth        int             `json:"depth"`
+	RuleNumber   int             `json:"ruleNumber"`
+	SubjectKind  RaciSubjectKind `json:"subjectKind"`
+	SubjectRef   string          `json:"subjectRef"`
+	Action       RaciAction      `json:"action"`
+}
+
 type RaciDecision struct {
 	Read            bool                   `json:"read"`
 	Ack             bool                   `json:"ack"`
@@ -1147,6 +1157,11 @@ type RaciDecision struct {
 	ApproveCode     RaciReasonCode         `json:"approveCode"`
 	AuthorCode      RaciReasonCode         `json:"authorCode"`
 	ManageCode      RaciReasonCode         `json:"manageCode"`
+	ReadVerdict     *RaciVerdictReason     `json:"readVerdict"`
+	AckVerdict      *RaciVerdictReason     `json:"ackVerdict"`
+	ApproveVerdict  *RaciVerdictReason     `json:"approveVerdict"`
+	AuthorVerdict   *RaciVerdictReason     `json:"authorVerdict"`
+	ManageVerdict   *RaciVerdictReason     `json:"manageVerdict"`
 	ConfiguredBlock []*RaciConfiguredBlock `json:"configuredBlock"`
 }
 
@@ -1168,6 +1183,11 @@ type RaciRuleInput struct {
 	Approve     RaciGrant       `json:"approve"`
 	Author      RaciGrant       `json:"author"`
 	Manage      RaciGrant       `json:"manage"`
+}
+
+type RaciVerdictReason struct {
+	Code RaciVerdictCode   `json:"code"`
+	Rule *RaciDecidingRule `json:"rule,omitempty"`
 }
 
 type ReassignUserPoliciesResult struct {
@@ -3803,6 +3823,81 @@ func (e *RaciSubjectKind) UnmarshalJSON(b []byte) error {
 }
 
 func (e RaciSubjectKind) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type RaciVerdictCode string
+
+const (
+	RaciVerdictCodeOwner               RaciVerdictCode = "OWNER"
+	RaciVerdictCodeSiteAdminRead       RaciVerdictCode = "SITE_ADMIN_READ"
+	RaciVerdictCodeSiteAdminAuthor     RaciVerdictCode = "SITE_ADMIN_AUTHOR"
+	RaciVerdictCodeSiteAdminManage     RaciVerdictCode = "SITE_ADMIN_MANAGE"
+	RaciVerdictCodeRuleAllow           RaciVerdictCode = "RULE_ALLOW"
+	RaciVerdictCodeRuleDeny            RaciVerdictCode = "RULE_DENY"
+	RaciVerdictCodeDefaultDeny         RaciVerdictCode = "DEFAULT_DENY"
+	RaciVerdictCodeAuthorImpliesRead   RaciVerdictCode = "AUTHOR_IMPLIES_READ"
+	RaciVerdictCodeApproverImpliesRead RaciVerdictCode = "APPROVER_IMPLIES_READ"
+	RaciVerdictCodeManageImpliesRead   RaciVerdictCode = "MANAGE_IMPLIES_READ"
+	RaciVerdictCodeManageImpliesAuthor RaciVerdictCode = "MANAGE_IMPLIES_AUTHOR"
+	RaciVerdictCodeRequiresRead        RaciVerdictCode = "REQUIRES_READ"
+)
+
+var AllRaciVerdictCode = []RaciVerdictCode{
+	RaciVerdictCodeOwner,
+	RaciVerdictCodeSiteAdminRead,
+	RaciVerdictCodeSiteAdminAuthor,
+	RaciVerdictCodeSiteAdminManage,
+	RaciVerdictCodeRuleAllow,
+	RaciVerdictCodeRuleDeny,
+	RaciVerdictCodeDefaultDeny,
+	RaciVerdictCodeAuthorImpliesRead,
+	RaciVerdictCodeApproverImpliesRead,
+	RaciVerdictCodeManageImpliesRead,
+	RaciVerdictCodeManageImpliesAuthor,
+	RaciVerdictCodeRequiresRead,
+}
+
+func (e RaciVerdictCode) IsValid() bool {
+	switch e {
+	case RaciVerdictCodeOwner, RaciVerdictCodeSiteAdminRead, RaciVerdictCodeSiteAdminAuthor, RaciVerdictCodeSiteAdminManage, RaciVerdictCodeRuleAllow, RaciVerdictCodeRuleDeny, RaciVerdictCodeDefaultDeny, RaciVerdictCodeAuthorImpliesRead, RaciVerdictCodeApproverImpliesRead, RaciVerdictCodeManageImpliesRead, RaciVerdictCodeManageImpliesAuthor, RaciVerdictCodeRequiresRead:
+		return true
+	}
+	return false
+}
+
+func (e RaciVerdictCode) String() string {
+	return string(e)
+}
+
+func (e *RaciVerdictCode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = RaciVerdictCode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid RaciVerdictCode", str)
+	}
+	return nil
+}
+
+func (e RaciVerdictCode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *RaciVerdictCode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e RaciVerdictCode) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

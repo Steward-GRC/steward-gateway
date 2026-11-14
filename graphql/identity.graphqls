@@ -167,12 +167,31 @@ extend type Query {
   # defaults to 20 and is capped at 50. Groups have no description yet, so only
   # the name is matched.
   searchPlatformGroups(query: String!, limit: Int): [PlatformGroup!]!
+  # idpGroupNames -> IdentityReadService.ListIdpGroupNames: the directory
+  # (identity provider) group names a category group rule can match, for the rule
+  # picker, so a rule names a group that exists instead of a typo that never
+  # matches. These are the names in users' IdP group claims and the SSO group
+  # mappings, not identity's platform groups (see searchPlatformGroups). Sorted
+  # by byte order, no duplicates, names only (never who holds them). `prefix` is
+  # trimmed and matched case-insensitively; empty or null lists from the start.
+  # `limit` defaults to 50 (identity's default) and is capped at 200; `truncated`
+  # says more names matched than were returned, so the picker asks for a longer
+  # prefix. Open to whoever edits category access (group.manage or
+  # template.manage), as for simulateCategory and searchPlatformGroups.
+  idpGroupNames(prefix: String, limit: Int): IdpGroupNames!
   # myManagedGroups -> IdentityReadService.GetUser for the caller, then
   # GetGroup for each of their managedGroupIds: the platform groups the
   # signed-in caller is a LOCAL group-manager of, sorted by name, for the
   # "My Groups" editor. Any signed-in caller; only their own grants are read.
   # Members come from managedGroupMembers.
   myManagedGroups: [PlatformGroup!]!
+}
+
+# IdpGroupNames is one page of directory group names (idpGroupNames).
+type IdpGroupNames {
+  names: [String!]!
+  # True when more names matched than `limit` allowed.
+  truncated: Boolean!
 }
 
 # An identity platform group: a node in identity's group tree that users are

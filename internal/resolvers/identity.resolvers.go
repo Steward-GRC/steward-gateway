@@ -286,6 +286,11 @@ func (r *queryResolver) SearchPlatformGroups(ctx context.Context, query string, 
 	return SearchPlatformGroupsResolver(ctx, r.IdentityClient, query, limit)
 }
 
+// IdpGroupNames is the resolver for the idpGroupNames field.
+func (r *queryResolver) IdpGroupNames(ctx context.Context, prefix *string, limit *int) (*IdpGroupNames, error) {
+	return IdpGroupNamesResolver(ctx, r.IdentityClient, prefix, limit)
+}
+
 // MyManagedGroups is the resolver for the myManagedGroups field.
 func (r *queryResolver) MyManagedGroups(ctx context.Context) ([]*PlatformGroup, error) {
 	return MyManagedGroupsResolver(ctx, r.IdentityClient)

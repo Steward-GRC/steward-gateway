@@ -745,6 +745,11 @@ type HolidayInput struct {
 	Label string `json:"label"`
 }
 
+type IdpGroupNames struct {
+	Names     []string `json:"names"`
+	Truncated bool     `json:"truncated"`
+}
+
 type ImpersonationSession struct {
 	TargetUserID string `json:"targetUserId"`
 	TargetName   string `json:"targetName"`

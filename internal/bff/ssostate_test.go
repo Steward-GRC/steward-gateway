@@ -45,7 +45,7 @@ func TestSSOStateStore_RoundTripAllFields(t *testing.T) {
 		Connection:   "example-saml",
 		ConnectionID: "conn-123",
 		Mode:         "test",
-		ReturnPath:   "/admin/organizations",
+		ReturnPath:   "/admin/organisations",
 		Tenant:       "example.org",
 		AdminUserID:  "admin-1",
 	}

@@ -28,7 +28,7 @@ const ssoStateTTL = 10 * time.Minute
 
 const (
 	ssoCallbackPath        = "/auth/sso/callback"
-	defaultAdminReturnPath = "/admin/organizations"
+	defaultAdminReturnPath = "/admin/organisations"
 	// ssoMfaResumePath is the web route an SSO sign-in that owes a second
 	// factor lands on, with the pending id in the query.
 	ssoMfaResumePath = "/login"

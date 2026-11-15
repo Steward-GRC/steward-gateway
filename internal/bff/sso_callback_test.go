@@ -200,7 +200,7 @@ func TestSSOCallback_TestMode_AuthorizedRecordsPassed(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.SSOCallback(rec, ssoCallbackReq("st1")) // NO cookie: proof comes from the stash
 
-	requireTestResultHTML(t, rec, true, "https://app", "/admin/organizations?test=passed")
+	requireTestResultHTML(t, rec, true, "https://app", "/admin/organisations?test=passed")
 	require.Nil(t, sessionCookie(rec), "test mode must never issue a session")
 	require.True(t, recorded, "IdPTestRecorder must be invoked")
 	require.Equal(t, "conn-9", recordedConn)
@@ -218,14 +218,14 @@ func TestSSOCallback_TestMode_ReturnsToStoredReturnPath(t *testing.T) {
 	h, ssoState := newSSOCallbackHandler(t, "alice@example.org", id, MFAConfig{Mode: MFAModeNever})
 	require.NoError(t, ssoState.PutSSOState(context.Background(), "st1", SSOState{
 		Connection: "example-sso", Mode: "test", ConnectionID: "conn-9",
-		ReturnPath: "/admin/organizations/example.org", AdminUserID: testAdminUserID,
+		ReturnPath: "/admin/organisations/example.org", AdminUserID: testAdminUserID,
 	}, ssoStateTTL))
 	h.IdPTestRecorder = func(context.Context, string, bool, string) error { return nil }
 
 	rec := httptest.NewRecorder()
 	h.SSOCallback(rec, ssoCallbackReq("st1"))
 
-	requireTestResultHTML(t, rec, true, "https://app", "/admin/organizations/example.org?test=passed")
+	requireTestResultHTML(t, rec, true, "https://app", "/admin/organisations/example.org?test=passed")
 }
 
 // A returnPath that already carries a query gets the ?test= result appended with
@@ -236,7 +236,7 @@ func TestSSOCallback_TestMode_ReturnPathWithExistingQuery(t *testing.T) {
 	h, ssoState := newSSOCallbackHandler(t, "alice@example.org", id, MFAConfig{Mode: MFAModeNever})
 	require.NoError(t, ssoState.PutSSOState(context.Background(), "st1", SSOState{
 		Connection: "example-sso", Mode: "test", ConnectionID: "conn-9",
-		ReturnPath: "/admin/organizations/example.org?step=test", AdminUserID: testAdminUserID,
+		ReturnPath: "/admin/organisations/example.org?step=test", AdminUserID: testAdminUserID,
 	}, ssoStateTTL))
 	h.IdPTestRecorder = func(context.Context, string, bool, string) error { return nil }
 
@@ -245,7 +245,7 @@ func TestSSOCallback_TestMode_ReturnPathWithExistingQuery(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	body := rec.Body.String()
-	require.Contains(t, body, `/admin/organizations/example.org?step=test&amp;test=passed`)
+	require.Contains(t, body, `/admin/organisations/example.org?step=test&amp;test=passed`)
 	require.Contains(t, body, `"success":true`)
 }
 
@@ -396,7 +396,7 @@ func TestSSO_Kratos_TestModeStartThenCallbackRecords(t *testing.T) {
 	cbRec := httptest.NewRecorder()
 	h.SSOCallback(cbRec, cbReq)
 
-	requireTestResultHTML(t, cbRec, true, "https://app", "/admin/organizations?test=passed")
+	requireTestResultHTML(t, cbRec, true, "https://app", "/admin/organisations?test=passed")
 	require.True(t, recorded, "RecordIdPTestResult must be called on the kratos-native path")
 	require.True(t, ctxHadSiteAdmin, "record ctx must carry the admin's forwarded site-admin claims")
 	require.Nil(t, sessionCookie(cbRec), "test mode never issues a session")

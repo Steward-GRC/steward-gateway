@@ -100,7 +100,7 @@ func TestSSOStart_StoresConnectionID(t *testing.T) {
 func TestSSOStart_StoresValidReturnPath(t *testing.T) {
 	store := newTestStore(t)
 	h := &Handler{Polis: testPolis(), SSOState: store, SSORedirectBase: "https://app", Store: newTestStore(t), Identity: &fakeMfaIdentity{getUser: adminUser()}}
-	const rp = "/admin/organizations/example.org"
+	const rp = "/admin/organisations/example.org"
 	req := siteAdminStartReq(t, h, "/auth/sso/start?connection=example-sso&mode=test&tenant=example.org&returnPath="+url.QueryEscape(rp))
 	rec := httptest.NewRecorder()
 	h.SSOStart(rec, req)
@@ -145,7 +145,7 @@ func TestSSOStart_ReturnPathOpenRedirectGuard(t *testing.T) {
 			got, ok, err := store.TakeSSOState(req.Context(), loc.Query().Get("state"))
 			require.NoError(t, err)
 			require.True(t, ok)
-			require.Equal(t, "/admin/organizations", got.ReturnPath)
+			require.Equal(t, "/admin/organisations", got.ReturnPath)
 		})
 	}
 }

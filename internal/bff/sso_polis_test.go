@@ -337,7 +337,7 @@ func TestSSOCallback_Polis_TestModeRecordsAndNoSession(t *testing.T) {
 	rec := httptest.NewRecorder()
 	h.SSOCallback(rec, ssoCallbackReq("st1"))
 
-	requireTestResultHTML(t, rec, true, "https://app", "/admin/organizations?test=passed")
+	requireTestResultHTML(t, rec, true, "https://app", "/admin/organisations?test=passed")
 	require.True(t, recorded)
 	require.True(t, recordedOK)
 	require.Nil(t, sessionCookie(rec), "test mode must never issue a session")

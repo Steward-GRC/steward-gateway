@@ -23,7 +23,7 @@ func testLinkRecord() SSOTestLinkRecord {
 		ConnectionID: "conn-9",
 		Alias:        "example-sso",
 		Tenant:       "acme.example",
-		ReturnPath:   "/admin/organizations/acme.example",
+		ReturnPath:   "/admin/organisations/acme.example",
 		AdminUserID:  testAdminUserID,
 	}
 }
@@ -85,7 +85,7 @@ func serveMintTestLink(t *testing.T, h *Handler, claims principal.Claims, body s
 func TestMintSSOTestLink_HappyPathStashesAdminAndReturnsURL(t *testing.T) {
 	store := newTestStore(t)
 	h := &Handler{SSOTestLink: store, SSORedirectBase: "https://app", TestLinkTTL: 30 * time.Minute}
-	body := `{"connectionId":"conn-9","alias":"example-sso","tenant":"ACME.example","returnPath":"/admin/organizations/acme.example"}`
+	body := `{"connectionId":"conn-9","alias":"example-sso","tenant":"ACME.example","returnPath":"/admin/organisations/acme.example"}`
 	rec := serveMintTestLink(t, h, siteAdminClaims(), body)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 
@@ -109,7 +109,7 @@ func TestMintSSOTestLink_HappyPathStashesAdminAndReturnsURL(t *testing.T) {
 	require.Equal(t, "conn-9", got.ConnectionID)
 	require.Equal(t, "example-sso", got.Alias)
 	require.Equal(t, "acme.example", got.Tenant, "tenant is lowercased")
-	require.Equal(t, "/admin/organizations/acme.example", got.ReturnPath)
+	require.Equal(t, "/admin/organisations/acme.example", got.ReturnPath)
 	require.Equal(t, "admin-1", got.AdminUserID)
 }
 
@@ -175,7 +175,7 @@ func TestSSOStart_TestTokenStashesStateWithoutSession(t *testing.T) {
 	require.Equal(t, "test", got.Mode)
 	require.Equal(t, "conn-9", got.ConnectionID)
 	require.Equal(t, "example-sso", got.Connection)
-	require.Equal(t, "/admin/organizations/acme.example", got.ReturnPath)
+	require.Equal(t, "/admin/organisations/acme.example", got.ReturnPath)
 	require.Equal(t, testAdminUserID, got.AdminUserID, "the minting admin's UserID rides the state to the callback")
 }
 

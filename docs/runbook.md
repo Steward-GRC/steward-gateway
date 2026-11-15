@@ -28,6 +28,19 @@ Every backend call carries the projected token from `WORKLOAD_TOKEN_FILE`. A cal
 means the callee doesn't list `steward-gateway` for that method. `WORKLOAD_AUTH=disabled` sends no
 token and is for local runs only.
 
+### Act-as with `WORKLOAD_AUTH=disabled`
+
+Act-as does not carry through to the backends in this mode. The gateway always puts the actor on
+each backend call: the user it acts as, and the real admin as the impersonator. A backend only
+honours that actor from a caller it has authenticated, and with `WORKLOAD_AUTH=disabled` it
+authenticates no caller, so it trusts no forwarded actor and drops it. The calls then arrive
+without the actor, so the backends never see the impersonator and cannot name the real admin in
+their audit entries.
+This is intended: a backend must never believe an actor from a caller it could not verify. The
+gateway's own side still works (the session swap, `startImpersonation`, `impersonationStatus` and
+the `IMPERSONATION_DENIED` refusals). To exercise act-as end to end through the backends, run
+with workload authentication on.
+
 ## Sessions
 
 Sessions live in Valkey under `sess:<id>` for `SESSION_TTL`. Losing Valkey signs everyone out and
